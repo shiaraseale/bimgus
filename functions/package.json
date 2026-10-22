@@ -1,0 +1,36 @@
+{
+  "name": "your-project-id-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for Clash of Clans Discord Bot and Poller",
+  "main": "lib/index.js",
+  "scripts": {
+    "lint": "echo \"No linter configured\"",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "register-commands": "npm run build && node -r dotenv/config lib/scripts/registerCommands.js"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "discord-interactions": "^4.4.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.1.0",
+    "firebase-functions": "^6.3.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.17.19",
+    "firebase-functions-test": "^3.3.0",
+    "typescript": "^5.7.3"
+  },
+  "private": true
+}

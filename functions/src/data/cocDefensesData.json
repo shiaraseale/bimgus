@@ -1,0 +1,3924 @@
+{
+  "1000000": {
+    "id": "army-camp",
+    "name": "Army Camp",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 250,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 2500,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 3,
+        "cost": 10000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 100000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 250000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 750000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 1500000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 2500000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 5000000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 10,
+        "cost": 7500000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 11,
+        "cost": 10500000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 12,
+        "cost": 14000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 13,
+        "cost": 18000000,
+        "resource": "Elixir",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000002": {
+    "id": "elixir-collector",
+    "name": "Elixir Collector",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 150,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 300,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 3,
+        "cost": 700,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 4,
+        "cost": 1400,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 5,
+        "cost": 3000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 6,
+        "cost": 7000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 7,
+        "cost": 14000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 8,
+        "cost": 28000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 9,
+        "cost": 56000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 10,
+        "cost": 84000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 11,
+        "cost": 168000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 12,
+        "cost": 336000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 13,
+        "cost": 700000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 14,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 15,
+        "cost": 2000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 16,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000003": {
+    "id": "elixir-storage",
+    "name": "Elixir Storage",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 300,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 750,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 3,
+        "cost": 1500,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 4,
+        "cost": 3000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 5,
+        "cost": 6000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 6,
+        "cost": 12000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 7,
+        "cost": 25000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 8,
+        "cost": 50000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 9,
+        "cost": 100000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 10,
+        "cost": 250000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 11,
+        "cost": 500000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 12,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 13,
+        "cost": 1800000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 14,
+        "cost": 2800000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 15,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 16,
+        "cost": 4000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 17,
+        "cost": 5500000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 18,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000004": {
+    "id": "gold-mine",
+    "name": "Gold Mine",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 150,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 300,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 3,
+        "cost": 700,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 4,
+        "cost": 1400,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 5,
+        "cost": 3000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 6,
+        "cost": 7000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 7,
+        "cost": 14000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 8,
+        "cost": 28000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 9,
+        "cost": 56000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 10,
+        "cost": 84000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 11,
+        "cost": 168000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 12,
+        "cost": 336000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 13,
+        "cost": 700000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 14,
+        "cost": 1200000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 15,
+        "cost": 2000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 16,
+        "cost": 3000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000005": {
+    "id": "gold-storage",
+    "name": "Gold Storage",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 300,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 750,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 3,
+        "cost": 1500,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 4,
+        "cost": 3000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 5,
+        "cost": 6000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 6,
+        "cost": 12000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 7,
+        "cost": 25000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 8,
+        "cost": 50000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 9,
+        "cost": 100000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 10,
+        "cost": 250000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 11,
+        "cost": 500000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 12,
+        "cost": 1000000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 13,
+        "cost": 1800000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 14,
+        "cost": 2800000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 15,
+        "cost": 3000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 16,
+        "cost": 4000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 17,
+        "cost": 5500000,
+        "resource": "Elixir",
+        "thRequired": 16
+      },
+      {
+        "level": 18,
+        "cost": 10000000,
+        "resource": "Elixir",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000006": {
+    "id": "barracks",
+    "name": "Barracks",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 200,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 1000,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 3,
+        "cost": 2500,
+        "resource": "Elixir",
+        "thRequired": 1
+      },
+      {
+        "level": 4,
+        "cost": 5000,
+        "resource": "Elixir",
+        "thRequired": 2
+      },
+      {
+        "level": 5,
+        "cost": 10000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 6,
+        "cost": 80000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 7,
+        "cost": 240000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 8,
+        "cost": 700000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 9,
+        "cost": 1200000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 10,
+        "cost": 1800000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 11,
+        "cost": 2500000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 12,
+        "cost": 3500000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 13,
+        "cost": 4500000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 14,
+        "cost": 5500000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 15,
+        "cost": 7000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 16,
+        "cost": 9000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 17,
+        "cost": 12000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 18,
+        "cost": 15000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000007": {
+    "id": "laboratory",
+    "name": "Laboratory",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 25000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 50000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 90000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 4,
+        "cost": 270000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 5,
+        "cost": 540000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 6,
+        "cost": 1080000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 1800000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 2700000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 4500000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 10,
+        "cost": 6000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 11,
+        "cost": 8500000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 12,
+        "cost": 11000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 13,
+        "cost": 13500000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 14,
+        "cost": 16000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      },
+      {
+        "level": 15,
+        "cost": 19500000,
+        "resource": "Elixir",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000008": {
+    "id": "cannon",
+    "name": "Cannon",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 250,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 1000,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 3,
+        "cost": 4000,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 4,
+        "cost": 16000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 5,
+        "cost": 50000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 6,
+        "cost": 60000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 7,
+        "cost": 100000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 8,
+        "cost": 160000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 9,
+        "cost": 250000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 10,
+        "cost": 330000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 11,
+        "cost": 500000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 12,
+        "cost": 600000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 13,
+        "cost": 660000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 14,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 15,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 16,
+        "cost": 1300000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 17,
+        "cost": 1500000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 18,
+        "cost": 1800000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 19,
+        "cost": 2000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 20,
+        "cost": 2600000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 21,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000009": {
+    "id": "archer-tower",
+    "name": "Archer Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 2,
+        "cost": 2000,
+        "resource": "Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 3,
+        "cost": 5000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 20000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 70000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 80000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 7,
+        "cost": 150000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 8,
+        "cost": 200000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 9,
+        "cost": 400000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 10,
+        "cost": 460000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 11,
+        "cost": 600000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 12,
+        "cost": 700000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 13,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 14,
+        "cost": 1100000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 15,
+        "cost": 1300000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 16,
+        "cost": 1600000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 17,
+        "cost": 1800000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 18,
+        "cost": 2000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 19,
+        "cost": 2200000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 20,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 21,
+        "cost": 4000000,
+        "resource": "Gold",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000011": {
+    "id": "wizard-tower",
+    "name": "Wizard Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 100000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 2,
+        "cost": 150000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 3,
+        "cost": 250000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 4,
+        "cost": 400000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 5,
+        "cost": 550000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 6,
+        "cost": 660000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 1100000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 1300000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 10,
+        "cost": 2000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 11,
+        "cost": 2500000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 12,
+        "cost": 2600000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 13,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 14,
+        "cost": 4500000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 15,
+        "cost": 5500000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 16,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 17,
+        "cost": 14000000,
+        "resource": "Gold",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000012": {
+    "id": "air-defense",
+    "name": "Air Defense",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 22000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 2,
+        "cost": 90000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 210000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 4,
+        "cost": 500000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 5,
+        "cost": 800000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 6,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 1750000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 2300000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 3400000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 10,
+        "cost": 5000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 11,
+        "cost": 5600000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 12,
+        "cost": 6500000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 13,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 14,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 15,
+        "cost": 15000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 16,
+        "cost": 26000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000013": {
+    "id": "mortar",
+    "name": "Mortar",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 5000,
+        "resource": "Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 25000,
+        "resource": "Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 90000,
+        "resource": "Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 4,
+        "cost": 180000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 5,
+        "cost": 300000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 6,
+        "cost": 500000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 900000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 1600000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 10,
+        "cost": 1800000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 11,
+        "cost": 2300000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 12,
+        "cost": 2400000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 13,
+        "cost": 2800000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 14,
+        "cost": 4300000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 15,
+        "cost": 5000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 16,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 17,
+        "cost": 13000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 18,
+        "cost": 21000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000014": {
+    "id": "clan-castle",
+    "name": "Clan Castle",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 10000,
+        "resource": "Elixir",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 50000,
+        "resource": "Elixir",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 600000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 4,
+        "cost": 1200000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 2000000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 3000000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 7,
+        "cost": 5000000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 8,
+        "cost": 5000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 9,
+        "cost": 8000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 10,
+        "cost": 10000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 11,
+        "cost": 12000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 12,
+        "cost": 14500000,
+        "resource": "Elixir",
+        "thRequired": 16
+      },
+      {
+        "level": 13,
+        "cost": 19000000,
+        "resource": "Elixir",
+        "thRequired": 17
+      },
+      {
+        "level": 14,
+        "cost": 28000000,
+        "resource": "Elixir",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000015": {
+    "id": "builders-hut",
+    "name": "Builder's Hut",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 0,
+        "resource": "Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 3,
+        "cost": 4000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 4,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 5,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 6,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 7,
+        "cost": 15500000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 8,
+        "cost": 24000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000019": {
+    "id": "hidden-tesla",
+    "name": "Hidden Tesla",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 250000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 2,
+        "cost": 350000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 3,
+        "cost": 500000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 4,
+        "cost": 600000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 800000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 6,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 1400000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 1600000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 9,
+        "cost": 2100000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 10,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 11,
+        "cost": 3100000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 12,
+        "cost": 3700000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 13,
+        "cost": 5100000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 14,
+        "cost": 6500000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 15,
+        "cost": 8200000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 16,
+        "cost": 15000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 17,
+        "cost": 25000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000020": {
+    "id": "spell-factory",
+    "name": "Spell Factory",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 200000,
+        "resource": "Elixir",
+        "thRequired": 5
+      },
+      {
+        "level": 2,
+        "cost": 400000,
+        "resource": "Elixir",
+        "thRequired": 6
+      },
+      {
+        "level": 3,
+        "cost": 800000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 4,
+        "cost": 1200000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 1600000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 2500000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 7,
+        "cost": 4500000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 8,
+        "cost": 7500000,
+        "resource": "Elixir",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000021": {
+    "id": "x-bow",
+    "name": "X-Bow",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 2,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 3,
+        "cost": 2400000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 4,
+        "cost": 2500000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 5,
+        "cost": 3900000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 6,
+        "cost": 5000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 7,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 8,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 9,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 10,
+        "cost": 9500000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 11,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 12,
+        "cost": 16000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 13,
+        "cost": 26000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000023": {
+    "id": "dark-elixir-drill",
+    "name": "Dark Elixir Drill",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 2,
+        "cost": 1500000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 3,
+        "cost": 2000000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 4,
+        "cost": 2500000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 3000000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 6,
+        "cost": 4000000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 5000000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 8,
+        "cost": 6000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 9,
+        "cost": 8000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 10,
+        "cost": 10000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000024": {
+    "id": "dark-elixir-storage",
+    "name": "Dark Elixir Storage",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 250000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 2,
+        "cost": 500000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 3,
+        "cost": 1000000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 4,
+        "cost": 1500000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 2000000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 2800000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 7,
+        "cost": 4000000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 8,
+        "cost": 6000000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 9,
+        "cost": 8000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 10,
+        "cost": 10000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 11,
+        "cost": 12000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 12,
+        "cost": 14500000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 13,
+        "cost": 18000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000025": {
+    "id": "dark-barracks",
+    "name": "Dark Barracks",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 750000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 2,
+        "cost": 1250000,
+        "resource": "Elixir",
+        "thRequired": 7
+      },
+      {
+        "level": 3,
+        "cost": 1750000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 4,
+        "cost": 2250000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 2750000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 3500000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 7,
+        "cost": 4500000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 8,
+        "cost": 5500000,
+        "resource": "Elixir",
+        "thRequired": 11
+      },
+      {
+        "level": 9,
+        "cost": 7000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 10,
+        "cost": 9000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 11,
+        "cost": 12000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000027": {
+    "id": "inferno-tower",
+    "name": "Inferno Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 2,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 3,
+        "cost": 2400000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 4,
+        "cost": 3400000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 5,
+        "cost": 4200000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 6,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 7,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 8,
+        "cost": 9500000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 9,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 10,
+        "cost": 11000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 11,
+        "cost": 16000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 12,
+        "cost": 26500000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 13000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 8500000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000028": {
+    "id": "air-sweeper",
+    "name": "Air Sweeper",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 200000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 2,
+        "cost": 300000,
+        "resource": "Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 3,
+        "cost": 450000,
+        "resource": "Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 4,
+        "cost": 800000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 1200000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 1900000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 7,
+        "cost": 3400000,
+        "resource": "Gold",
+        "thRequired": 11
+      }
+    ]
+  },
+  "1000029": {
+    "id": "dark-spell-factory",
+    "name": "Dark Spell Factory",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 2,
+        "cost": 1500000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 3,
+        "cost": 2000000,
+        "resource": "Elixir",
+        "thRequired": 8
+      },
+      {
+        "level": 4,
+        "cost": 2500000,
+        "resource": "Elixir",
+        "thRequired": 9
+      },
+      {
+        "level": 5,
+        "cost": 3500000,
+        "resource": "Elixir",
+        "thRequired": 10
+      },
+      {
+        "level": 6,
+        "cost": 5500000,
+        "resource": "Elixir",
+        "thRequired": 15
+      }
+    ]
+  },
+  "1000031": {
+    "id": "eagle-artillery",
+    "name": "Eagle Artillery",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 5000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 2,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 3,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 4,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 5,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 6,
+        "cost": 13000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 7,
+        "cost": 14000000,
+        "resource": "Gold",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000032": {
+    "id": "bomb-tower",
+    "name": "Bomb Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 700000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 2,
+        "cost": 1000000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 3,
+        "cost": 1300000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 4,
+        "cost": 1800000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 5,
+        "cost": 1900000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 6,
+        "cost": 2000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 7,
+        "cost": 4000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 8,
+        "cost": 5000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 9,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 10,
+        "cost": 7000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 11,
+        "cost": 8500000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 12,
+        "cost": 14500000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 13,
+        "cost": 25000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 3000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000035": {
+    "id": "workshop",
+    "name": "Workshop",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 4000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 2,
+        "cost": 6000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 3,
+        "cost": 8000000,
+        "resource": "Elixir",
+        "thRequired": 12
+      },
+      {
+        "level": 4,
+        "cost": 10000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 5,
+        "cost": 12000000,
+        "resource": "Elixir",
+        "thRequired": 13
+      },
+      {
+        "level": 6,
+        "cost": 14000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 7,
+        "cost": 16500000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 8,
+        "cost": 19000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000041": {
+    "id": "double-cannon",
+    "name": "Double Cannon",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 20000,
+        "resource": "Builder Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 2,
+        "cost": 50000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 80000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 300000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 900000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1400000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2200000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3200000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4200000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5200000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000043": {
+    "id": "hidden-tesla",
+    "name": "Hidden Tesla",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 50000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 100000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 150000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 280000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 700000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1300000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2100000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3100000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4100000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5100000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000044": {
+    "id": "cannon",
+    "name": "Cannon",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 10000,
+        "resource": "Builder Gold",
+        "thRequired": 1
+      },
+      {
+        "level": 2,
+        "cost": 20000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 50000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 200000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 600000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1000000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 1800000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 2500000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 3300000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 4500000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000045": {
+    "id": "multi-mortar",
+    "name": "Multi Mortar",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 600000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 2,
+        "cost": 700000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 3,
+        "cost": 800000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 4,
+        "cost": 1000000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 5,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1600000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2500000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3500000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4500000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5500000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000048": {
+    "id": "archer-tower",
+    "name": "Archer Tower",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 12000,
+        "resource": "Builder Gold",
+        "thRequired": 2
+      },
+      {
+        "level": 2,
+        "cost": 30000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 60000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 250000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 800000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2000000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 2800000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 3600000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 4600000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000050": {
+    "id": "firecrackers",
+    "name": "Firecrackers",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 40000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 80000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 120000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 300000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 800000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2000000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3000000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4000000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5000000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000051": {
+    "id": "guard-post",
+    "name": "Guard Post",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 200000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 2,
+        "cost": 240000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 280000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 4,
+        "cost": 320000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 1000000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1400000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2300000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3200000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4100000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5100000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000052": {
+    "id": "mega-tesla",
+    "name": "Mega Tesla",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 3000000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 2,
+        "cost": 3100000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 3,
+        "cost": 3200000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 4,
+        "cost": 3300000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 5,
+        "cost": 3400000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 6,
+        "cost": 3600000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 7,
+        "cost": 3800000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 8,
+        "cost": 4000000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4800000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5800000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000054": {
+    "id": "air-bombs",
+    "name": "Air Bombs",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 300000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 2,
+        "cost": 320000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 3,
+        "cost": 340000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 4,
+        "cost": 360000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1500000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2400000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3400000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4400000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5400000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000055": {
+    "id": "crusher",
+    "name": "Crusher",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 120000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 2,
+        "cost": 180000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 3,
+        "cost": 220000,
+        "resource": "Builder Gold",
+        "thRequired": 3
+      },
+      {
+        "level": 4,
+        "cost": 350000,
+        "resource": "Builder Gold",
+        "thRequired": 4
+      },
+      {
+        "level": 5,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 5
+      },
+      {
+        "level": 6,
+        "cost": 1500000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2400000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3400000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4400000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5400000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000056": {
+    "id": "roaster",
+    "name": "Roaster",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 1000000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 2,
+        "cost": 1200000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 3,
+        "cost": 1400000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 4,
+        "cost": 1500000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 5,
+        "cost": 1600000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 6,
+        "cost": 1700000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 2600000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3600000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4600000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5600000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000057": {
+    "id": "giant-cannon",
+    "name": "Giant Cannon",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 2000000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 2,
+        "cost": 2100000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 3,
+        "cost": 2200000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 4,
+        "cost": 2300000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 5,
+        "cost": 2400000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 6,
+        "cost": 2500000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 7,
+        "cost": 2700000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 3800000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 4700000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5700000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000063": {
+    "id": "lava-launcher",
+    "name": "Lava Launcher",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 3000000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 2,
+        "cost": 3100000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 3,
+        "cost": 3200000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 4,
+        "cost": 3400000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 5,
+        "cost": 3700000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 6,
+        "cost": 4000000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 7,
+        "cost": 4300000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 8,
+        "cost": 4600000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 9,
+        "cost": 4900000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 5900000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000067": {
+    "id": "scattershot",
+    "name": "Scattershot",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 8000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 2,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 3,
+        "cost": 11000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 4,
+        "cost": 11500000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 5,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 6,
+        "cost": 16500000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 7,
+        "cost": 26500000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 14500000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 9500000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000072": {
+    "id": "spell-tower",
+    "name": "Spell Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 9000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 2,
+        "cost": 11000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 3,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 4,
+        "cost": 27000000,
+        "resource": "Gold",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000074": {
+    "id": "pet-house",
+    "name": "Pet House",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 14000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 2,
+        "cost": 15000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 3,
+        "cost": 16000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 4,
+        "cost": 17000000,
+        "resource": "Elixir",
+        "thRequired": 14
+      },
+      {
+        "level": 5,
+        "cost": 18000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 6,
+        "cost": 19000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 7,
+        "cost": 20000000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 8,
+        "cost": 20500000,
+        "resource": "Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 9,
+        "cost": 21000000,
+        "resource": "Elixir",
+        "thRequired": 16
+      },
+      {
+        "level": 10,
+        "cost": 22000000,
+        "resource": "Elixir",
+        "thRequired": 17
+      }
+    ]
+  },
+  "1000077": {
+    "id": "monolith",
+    "name": "Monolith",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 200000,
+        "resource": "Dark Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 2,
+        "cost": 250000,
+        "resource": "Dark Elixir",
+        "thRequired": 15
+      },
+      {
+        "level": 3,
+        "cost": 260000,
+        "resource": "Dark Elixir",
+        "thRequired": 16
+      },
+      {
+        "level": 4,
+        "cost": 300000,
+        "resource": "Dark Elixir",
+        "thRequired": 17
+      },
+      {
+        "level": 5,
+        "cost": 470000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 220000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 200000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000078": {
+    "id": "ottos-outpost",
+    "name": "O.T.T.O's Outpost",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 0,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 2,
+        "cost": 1000000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 3,
+        "cost": 1250000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 4,
+        "cost": 1500000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 5,
+        "cost": 1750000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 6,
+        "cost": 2000000,
+        "resource": "Builder Gold",
+        "thRequired": 6
+      },
+      {
+        "level": 7,
+        "cost": 3000000,
+        "resource": "Builder Gold",
+        "thRequired": 7
+      },
+      {
+        "level": 8,
+        "cost": 4000000,
+        "resource": "Builder Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 9,
+        "cost": 5000000,
+        "resource": "Builder Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 10,
+        "cost": 6000000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000079": {
+    "id": "multi-gear-tower",
+    "name": "Multi-Gear Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 17000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 2,
+        "cost": 18000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 3,
+        "cost": 28000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000081": {
+    "id": "x-bow",
+    "name": "X-Bow",
+    "base": "builder",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 4400000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 2,
+        "cost": 4800000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 3,
+        "cost": 5200000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 4,
+        "cost": 5600000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 5,
+        "cost": 6000000,
+        "resource": "Builder Gold",
+        "thRequired": 10
+      }
+    ]
+  },
+  "1000084": {
+    "id": "multi-archer-tower",
+    "name": "Multi-Archer Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 2,
+        "cost": 13000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 3,
+        "cost": 17500000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 4,
+        "cost": 27000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000085": {
+    "id": "ricochet-cannon",
+    "name": "Ricochet Cannon",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 2,
+        "cost": 13000000,
+        "resource": "Gold",
+        "thRequired": 16
+      },
+      {
+        "level": 3,
+        "cost": 17500000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 4,
+        "cost": 26500000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 10000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000086": {
+    "id": "revenge-tower",
+    "name": "Revenge Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 430000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 460000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 220000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 200000,
+        "resource": "Dark Elixir",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000087": {
+    "id": "blacksmith",
+    "name": "Blacksmith",
+    "base": "home",
+    "category": "building",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 750000,
+        "resource": "Gold",
+        "thRequired": 8
+      },
+      {
+        "level": 2,
+        "cost": 1500000,
+        "resource": "Gold",
+        "thRequired": 9
+      },
+      {
+        "level": 3,
+        "cost": 2500000,
+        "resource": "Gold",
+        "thRequired": 10
+      },
+      {
+        "level": 4,
+        "cost": 4000000,
+        "resource": "Gold",
+        "thRequired": 11
+      },
+      {
+        "level": 5,
+        "cost": 6000000,
+        "resource": "Gold",
+        "thRequired": 12
+      },
+      {
+        "level": 6,
+        "cost": 8500000,
+        "resource": "Gold",
+        "thRequired": 13
+      },
+      {
+        "level": 7,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 14
+      },
+      {
+        "level": 8,
+        "cost": 15000000,
+        "resource": "Gold",
+        "thRequired": 15
+      },
+      {
+        "level": 9,
+        "cost": 18000000,
+        "resource": "Gold",
+        "thRequired": 16
+      }
+    ]
+  },
+  "1000089": {
+    "id": "firespitter",
+    "name": "Firespitter",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 17000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 2,
+        "cost": 18000000,
+        "resource": "Gold",
+        "thRequired": 17
+      },
+      {
+        "level": 3,
+        "cost": 29000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 14000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000097": {
+    "id": "crafting-station",
+    "name": "Crafting Station",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 0,
+        "resource": "Elixir",
+        "thRequired": 18
+      }
+    ]
+  },
+  "1000102": {
+    "id": "super-wizard-tower",
+    "name": "Super Wizard Tower",
+    "base": "home",
+    "category": "defense",
+    "levels": [
+      {
+        "level": 1,
+        "cost": 29000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 30000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 1,
+        "cost": 12000000,
+        "resource": "Gold",
+        "thRequired": 18
+      },
+      {
+        "level": 2,
+        "cost": 14000000,
+        "resource": "Gold",
+        "thRequired": 18
+      }
+    ]
+  }
+}

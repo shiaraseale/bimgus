@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public clan data (war status, roster summary, leaderboards)
+    match /clans/{clanTag} {
+      allow read: if true;
+      allow write: if false; // Only Cloud Functions (Admin SDK) can write
+
+      // Members subcollection
+      match /members/{memberTag} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      // Wars subcollection
+      match /wars/{warId} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      // Private configuration (Webhook URLs, alert settings)
+      match /config/{document=**} {
+        // Only authenticated co-leaders / leaders can read or edit config
+        allow read, write: if request.auth != null && 
+          request.auth.token.role in ['leader', 'coLeader'];
+      }
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
