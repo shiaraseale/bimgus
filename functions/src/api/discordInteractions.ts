@@ -32,17 +32,19 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
   const publicKey = config.discord.publicKey;
 
-  // If public key is set, verify cryptographic signature
-  if (publicKey) {
-    if (!signature || !timestamp) {
-      console.warn('[Discord Interactions] Missing signature or timestamp');
-      return res.status(401).send('Missing signature headers');
-    }
-    const isValid = await verifyKey(rawBody, signature, timestamp, publicKey);
-    if (!isValid) {
-      console.warn('[Discord Interactions] Invalid request signature');
-      return res.status(401).send('Invalid request signature');
-    }
+  // Always verify the cryptographic signature; without a public key, reject every request
+  if (!publicKey) {
+    console.error('[Discord Interactions] DISCORD_PUBLIC_KEY is not configured; rejecting request');
+    return res.status(401).send('Interactions endpoint not configured');
+  }
+  if (!signature || !timestamp) {
+    console.warn('[Discord Interactions] Missing signature or timestamp');
+    return res.status(401).send('Missing signature headers');
+  }
+  const isValid = await verifyKey(rawBody, signature, timestamp, publicKey);
+  if (!isValid) {
+    console.warn('[Discord Interactions] Invalid request signature');
+    return res.status(401).send('Invalid request signature');
   }
 
   const interaction = req.body;
