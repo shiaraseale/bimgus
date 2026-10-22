@@ -57,7 +57,7 @@ export class DiscordService {
 
     if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
       const sanitizedTarget = target.replace(
-        /(discord\.com\/api\/webhooks\/\d+\/)[^/?\s]+/i,
+        /(discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/)[^/?\s]+/i,
         '$1[REDACTED]'
       );
       console.log(`[DiscordService DRY_RUN] Would send webhook to target "${sanitizedTarget}":`, JSON.stringify(payload, null, 2));
