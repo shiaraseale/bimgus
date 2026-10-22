@@ -262,7 +262,7 @@ export class FirestoreService {
    */
   static async getAllUsers(): Promise<UserDoc[]> {
     const snapshot = await this.usersCol.get();
-    return snapshot.docs.map((doc: any) => doc.data() as UserDoc);
+    return snapshot.docs.map((doc) => doc.data() as UserDoc);
   }
 
   /**
