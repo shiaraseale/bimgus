@@ -5,6 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "lint": "echo \"No linter configured\"",
+    "prebuild": "rm -rf lib",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
