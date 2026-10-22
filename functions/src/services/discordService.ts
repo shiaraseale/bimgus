@@ -55,6 +55,11 @@ export class DiscordService {
   static async sendWebhook(target: string, payload: DiscordWebhookPayload, retries = 3): Promise<boolean> {
     if (!target) return false;
 
+    if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
+      console.log(`[DiscordService DRY_RUN] Would send webhook to target "${target}":`, JSON.stringify(payload, null, 2));
+      return true;
+    }
+
     const botToken = process.env.DISCORD_BOT_TOKEN;
 
     // 1. Send directly from the official Bimgus Discord Bot
@@ -256,6 +261,11 @@ export class DiscordService {
     botTokenOverride?: string,
     retries = 2
   ): Promise<boolean> {
+    if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
+      console.log(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
+      return true;
+    }
+
     const token = botTokenOverride || process.env.DISCORD_BOT_TOKEN;
     if (!token) {
       console.warn('[Discord DM] Skipping DM: No DISCORD_BOT_TOKEN configured');
