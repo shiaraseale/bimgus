@@ -1,4 +1,5 @@
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import {
   ClanSnapshotDoc,
   WarSnapshotDoc,
@@ -11,11 +12,11 @@ import { UserDoc, LinkedAccount, ActiveUpgrade, ApprenticeTimer } from '../types
 import { config } from '../config';
 
 // Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
-export const db = admin.firestore();
+export const db = getFirestore();
 
 export class FirestoreService {
   private static clansCol = db.collection('clans');
@@ -261,7 +262,7 @@ export class FirestoreService {
    */
   static async getAllUsers(): Promise<UserDoc[]> {
     const snapshot = await this.usersCol.get();
-    return snapshot.docs.map((doc) => doc.data() as UserDoc);
+    return snapshot.docs.map((doc: any) => doc.data() as UserDoc);
   }
 
   /**
