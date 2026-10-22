@@ -17,7 +17,7 @@ export function buildCapitalConqueredEmbed(
     raidsCompleted?: number;
   },
   isPartialWeekendEnd: boolean = false,
-  clanTag: string = '#ABC123'
+  _clanTag: string = '#ABC123'
 ): DiscordEmbed {
   const totalLoot = raid.districts.reduce((sum, d) => sum + (d.totalLooted || 0), 0);
   const percentCleared =

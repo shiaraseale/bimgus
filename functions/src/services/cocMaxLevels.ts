@@ -143,7 +143,7 @@ export function getHeroMaxLevelForHall(name: string, isBuilder: boolean, hallLev
 /**
  * Returns the maximum level of Hero Equipment for a given Town Hall.
  */
-export function getEquipmentMaxLevelForTh(name: string, townHallLevel: number, apiMaxLevel: number): number {
+export function getEquipmentMaxLevelForTh(name: string, townHallLevel: number, _apiMaxLevel?: number): number {
   const isEpic = EPIC_EQUIPMENT.has(name);
   if (isEpic) {
     const epicCaps: Record<number, number> = {
