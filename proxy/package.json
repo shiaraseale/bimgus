@@ -1,0 +1,14 @@
+{
+  "name": "clash-api-proxy",
+  "version": "2.0.0",
+  "description": "Hardened Clash of Clans API reverse proxy with shared secret authentication",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/server.test.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "express": "^4.21.2"
+  }
+}

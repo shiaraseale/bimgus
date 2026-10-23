@@ -1,21 +1,41 @@
 import axios, { AxiosInstance } from 'axios';
+import { defineSecret } from 'firebase-functions/params';
 import { config } from '../config';
 import { ClanResponse, CurrentWarResponse, CapitalRaidResponse } from '../types/coc';
+
+export const proxyKeySecret = defineSecret('PROXY_KEY');
+
+export function getExpectedProxyKey(): string {
+  try {
+    return process.env.PROXY_KEY || (proxyKeySecret.value ? proxyKeySecret.value() : '');
+  } catch {
+    return process.env.PROXY_KEY || '';
+  }
+}
 
 export class CocService {
   private client: AxiosInstance;
 
-  constructor(token?: string, baseUrl?: string) {
-    const apiToken = token || config.coc.token;
+  constructor(token?: string, baseUrl?: string, proxyKey?: string) {
+    const key = proxyKey !== undefined ? proxyKey : getExpectedProxyKey();
     const base = baseUrl || config.coc.baseUrl;
+    const apiToken = token || config.coc.token;
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+
+    if (key) {
+      headers['X-Proxy-Key'] = key;
+    } else if (apiToken) {
+      // Fallback for direct CoC API or during transition before key replacement
+      headers['Authorization'] = `Bearer ${apiToken}`;
+    }
 
     this.client = axios.create({
       baseURL: base,
       timeout: 10000,
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: 'application/json',
-      },
+      headers,
     });
   }
 

@@ -7,6 +7,7 @@ import { CocService } from '../services/cocService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { runPollClanJob } from '../jobs/pollClanJob';
 import { buildCwlSeasonSummary, sendCwlSeasonSummaryDiscord } from '../diff/cwlDiff';
+import { sendWarSummaryDiscord } from '../diff/warDiff';
 
 import { discordInteractionsRouter } from './discordInteractions';
 import { registerDiscordCommands } from '../scripts/registerCommands';
@@ -377,6 +378,30 @@ router.post('/clan/:tag/cwl-summary/broadcast', requireAdminKey, async (req, res
     }
 
     return res.json({ success: true, message: 'CWL Season Summary posted to Discord!', data: summary });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Co-Leader Endpoint: Force generate & broadcast Regular War Summary to Discord (Requires X-Admin-Key)
+router.post('/clan/:tag/war-summary/broadcast', requireAdminKey, async (req, res) => {
+  try {
+    const clanTag = req.params.tag;
+    const coc = new CocService();
+    const config = await FirestoreService.getConfig(clanTag);
+    const webhookUrl = config.webhooks.warRoom;
+
+    if (!webhookUrl) {
+      return res.status(400).json({ success: false, error: 'No Discord webhook configured for War Room.' });
+    }
+
+    const currentWar = await coc.getCurrentWar(clanTag);
+    if (!currentWar || currentWar.state === 'notInWar') {
+      return res.status(400).json({ success: false, error: 'Clan is not currently in war.' });
+    }
+
+    await sendWarSummaryDiscord(webhookUrl, currentWar);
+    return res.json({ success: true, message: 'War summary posted to Discord!' });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

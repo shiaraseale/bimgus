@@ -179,5 +179,12 @@ describe('dashboardApi', () => {
       });
       expect(res.status).toBe(401);
     });
+
+    it('rejects POST /api/clan/:tag/war-summary/broadcast when X-Admin-Key is missing', async () => {
+      const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN/war-summary/broadcast`, {
+        method: 'POST',
+      });
+      expect(res.status).toBe(401);
+    });
   });
 });

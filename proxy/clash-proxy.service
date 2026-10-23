@@ -1,0 +1,22 @@
+[Unit]
+Description=Bimgus Clash Proxy Service
+After=network.target
+
+[Service]
+Type=simple
+User=clashproxy
+Group=clashproxy
+WorkingDirectory=/opt/clash-proxy
+EnvironmentFile=/etc/clash-proxy/env
+ExecStart=/usr/bin/node /opt/clash-proxy/server.js
+Restart=always
+RestartSec=5s
+
+# Process Sandboxing & Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
