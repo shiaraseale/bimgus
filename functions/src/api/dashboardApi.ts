@@ -34,6 +34,9 @@ const router = express.Router();
 dashboardApp.use('/api', router);
 dashboardApp.use('/', router);
 
+// Lightweight warming ping route (returns 204 immediately, no auth or external work)
+router.get('/ping', (_req, res) => res.status(204).end());
+
 // Public Endpoint: Get clan overview and live snapshot
 router.get('/clan/:tag', async (req, res) => {
   try {
