@@ -1,14 +1,25 @@
 import { useState, useEffect } from 'react';
 import type { BotConfig } from '../types';
-import { Settings, Send, Save, Bell, Link2, Bot, Sparkles } from 'lucide-react';
+import { Settings, Send, Save, Bell, Link2, Bot, Sparkles, Key, CheckCircle, ShieldAlert, Trash2 } from 'lucide-react';
 
 interface BotSettingsProps {
   config: BotConfig | null;
   clanTag: string;
+  adminKey: string;
+  onAdminKeyChange: (key: string) => void;
+  onRefreshConfig: (key?: string) => Promise<void>;
   onSave: (updated: Partial<BotConfig>) => Promise<boolean>;
 }
 
-export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
+export const BotSettings: React.FC<BotSettingsProps> = ({
+  config,
+  clanTag,
+  adminKey,
+  onAdminKeyChange,
+  onRefreshConfig,
+  onSave,
+}) => {
+  const [keyInput, setKeyInput] = useState(adminKey);
   const [formData, setFormData] = useState<BotConfig>(
     config || {
       clanTag: '#ABC123',
@@ -31,6 +42,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
   );
 
   useEffect(() => {
+    setKeyInput(adminKey);
+  }, [adminKey]);
+
+  useEffect(() => {
     if (config) {
       setFormData(config);
     }
@@ -41,13 +56,36 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
   const [testingChannel, setTestingChannel] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
+  const handleSaveKey = async () => {
+    const trimmed = keyInput.trim();
+    if (!trimmed) return;
+    onAdminKeyChange(trimmed);
+    await onRefreshConfig(trimmed);
+    setStatusMsg({ text: '✅ Leader key saved! Clan configuration refreshed.', ok: true });
+    setTimeout(() => setStatusMsg(null), 4000);
+  };
+
+  const handleClearKey = () => {
+    setKeyInput('');
+    onAdminKeyChange('');
+    setStatusMsg({ text: 'Leader key removed from browser.', ok: true });
+    setTimeout(() => setStatusMsg(null), 3000);
+  };
+
   const handleRegisterCommands = async () => {
+    if (!adminKey) {
+      setStatusMsg({ text: '❌ Leader key required to deploy slash commands.', ok: false });
+      return;
+    }
     setIsRegistering(true);
     setStatusMsg({ text: 'Registering Discord slash commands...', ok: true });
     try {
       const res = await fetch('/api/discord/register-commands', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Key': adminKey,
+        },
       });
       const data = await res.json();
       if (data.success) {
@@ -84,6 +122,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
   };
 
   const handleSave = async () => {
+    if (!adminKey) {
+      setStatusMsg({ text: '❌ Leader key required. Save your key above before updating settings.', ok: false });
+      return;
+    }
     setIsSaving(true);
     setStatusMsg(null);
     const ok = await onSave(formData);
@@ -96,18 +138,33 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
     setTimeout(() => setStatusMsg(null), 4000);
   };
 
-  const testWebhook = async (url?: string, channelName?: string) => {
-    if (!url) {
+  const testWebhook = async (fieldKey: keyof BotConfig['webhooks'], channelName: string) => {
+    if (!adminKey) {
+      setStatusMsg({ text: '❌ Leader key required to send test webhook.', ok: false });
+      return;
+    }
+    const val = formData.webhooks[fieldKey];
+    const isCustomUrl = typeof val === 'string' && val.trim().length > 0;
+    const isConfigured = val === true || isCustomUrl;
+
+    if (!isConfigured) {
       setStatusMsg({ text: `Please enter a webhook URL for ${channelName} first.`, ok: false });
       return;
     }
-    setTestingChannel(channelName || 'channel');
+    setTestingChannel(channelName);
     setStatusMsg(null);
     try {
       const res = await fetch('/api/test-webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webhookUrl: url, channelName }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Key': adminKey,
+        },
+        body: JSON.stringify(
+          isCustomUrl
+            ? { webhookUrl: (val as string).trim(), channelName }
+            : { webhookKey: fieldKey, clanTag, channelName }
+        ),
       });
       const data = await res.json();
       if (data.success) {
@@ -155,6 +212,73 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
         </button>
       </div>
 
+      {/* Leader Key Authentication Stone Panel */}
+      <div
+        className="coc-panel"
+        style={{
+          padding: '20px 24px',
+          border: adminKey ? '2px solid #38bdf8' : '2px solid #eab308',
+          background: 'linear-gradient(180deg, #182232 0%, #101622 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
+          <h3 className="gold-title" style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Key size={20} style={{ color: adminKey ? '#38bdf8' : '#eab308' }} />
+            Leader Key Authentication
+          </h3>
+          {adminKey ? (
+            <span style={{ fontSize: '0.82rem', color: '#86efac', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle size={15} /> Authenticated (Key saved in browser)
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.82rem', color: '#fcd34d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={15} /> Locked • Read-only visitor mode
+            </span>
+          )}
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '14px', lineHeight: 1.5 }}>
+          Enter your clan's secret <code>ADMIN_API_KEY</code> to unlock Discord webhook management, configuration updates, manual syncing, and slash command registration. Stored strictly in your browser's <code>localStorage</code> and never bundled into the public web application.
+        </p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <input
+            type="password"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            placeholder="Enter secret ADMIN_API_KEY..."
+            style={{
+              flex: '1 1 280px',
+              padding: '10px 14px',
+              background: '#0e141e',
+              border: '2px solid #28374d',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '0.9rem',
+              outline: 'none',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6)',
+            }}
+          />
+          <button
+            onClick={handleSaveKey}
+            disabled={!keyInput.trim()}
+            className="coc-btn coc-btn-green"
+            style={{ padding: '8px 18px', fontSize: '0.88rem' }}
+          >
+            <Key size={14} />
+            Save Key
+          </button>
+          {adminKey && (
+            <button
+              onClick={handleClearKey}
+              className="coc-btn coc-btn-red"
+              style={{ padding: '8px 16px', fontSize: '0.88rem' }}
+            >
+              <Trash2 size={14} />
+              Forget Key
+            </button>
+          )}
+        </div>
+      </div>
+
       {statusMsg && (
         <div
           className="coc-panel"
@@ -180,42 +304,65 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ config, onSave }) => {
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {webhookFields.map((wf) => (
-              <div key={wf.key}>
-                <label className="font-coc" style={{ display: 'block', fontSize: '0.95rem', color: '#cbd5e1', marginBottom: '6px' }}>
-                  {wf.label}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="password"
-                    value={formData.webhooks[wf.key] || ''}
-                    onChange={(e) => handleWebhookChange(wf.key, e.target.value)}
-                    placeholder={wf.placeholder}
-                    style={{
-                      flex: 1,
-                      padding: '10px 14px',
-                      background: '#0e141e',
-                      border: '2px solid #28374d',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6)',
-                    }}
-                  />
-                  <button
-                    onClick={() => testWebhook(formData.webhooks[wf.key], wf.label)}
-                    disabled={testingChannel === wf.label}
-                    className="coc-btn coc-btn-blue"
-                    style={{ padding: '8px 14px', fontSize: '0.8rem' }}
-                    title="Send a test message to this channel"
-                  >
-                    <Send size={14} />
-                    {testingChannel === wf.label ? 'Testing...' : 'Test'}
-                  </button>
+            {webhookFields.map((wf) => {
+              const val = formData.webhooks[wf.key];
+              const isConfigured = val === true || (typeof val === 'string' && val.length > 0);
+              const displayValue = typeof val === 'string' ? val : '';
+
+              return (
+                <div key={wf.key}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="font-coc" style={{ fontSize: '0.95rem', color: '#cbd5e1' }}>
+                      {wf.label}
+                    </label>
+                    {val === true && (
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(34, 197, 94, 0.2)',
+                          color: '#86efac',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                        }}
+                      >
+                        Configured in bot
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="password"
+                      value={displayValue}
+                      onChange={(e) => handleWebhookChange(wf.key, e.target.value)}
+                      placeholder={val === true ? 'Configured • Enter new URL to replace' : wf.placeholder}
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        background: '#0e141e',
+                        border: '2px solid #28374d',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.88rem',
+                        outline: 'none',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6)',
+                      }}
+                    />
+                    <button
+                      onClick={() => testWebhook(wf.key, wf.label)}
+                      disabled={testingChannel === wf.label || !isConfigured}
+                      className="coc-btn coc-btn-blue"
+                      style={{ padding: '8px 14px', fontSize: '0.8rem', opacity: isConfigured ? 1 : 0.5 }}
+                      title="Send a test message to this channel"
+                    >
+                      <Send size={14} />
+                      {testingChannel === wf.label ? 'Testing...' : 'Test'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

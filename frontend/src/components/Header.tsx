@@ -7,6 +7,7 @@ interface HeaderProps {
   setActiveTab: (tab: string) => void;
   onSync: () => void;
   isSyncing: boolean;
+  canSync?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onSync,
   isSyncing,
+  canSync = false,
 }) => {
   const tabs = [
     { id: 'war', label: 'War Room', icon: Swords },
@@ -114,17 +116,19 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Sync Button */}
-        <div>
-          <button
-            onClick={onSync}
-            disabled={isSyncing}
-            className="coc-btn coc-btn-green"
-            style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-          >
-            <RefreshCw size={16} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
-            {isSyncing ? 'Syncing...' : 'Sync Clan Data'}
-          </button>
-        </div>
+        {canSync && (
+          <div>
+            <button
+              onClick={onSync}
+              disabled={isSyncing}
+              className="coc-btn coc-btn-green"
+              style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+            >
+              <RefreshCw size={16} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
+              {isSyncing ? 'Syncing...' : 'Sync Clan Data'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* In-Game Tab Strip */}

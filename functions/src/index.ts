@@ -3,7 +3,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { runPollClanJob } from './jobs/pollClanJob';
 import { runWarPingJob } from './jobs/warPingJob';
-import { dashboardApp } from './api/dashboardApi';
+import { dashboardApp, adminApiKey } from './api/dashboardApi';
 
 /**
  * Scheduled Cloud Function (2nd Gen):
@@ -63,6 +63,7 @@ export const api = onRequest(
     cors: true,
     memory: '512MiB',
     timeoutSeconds: 60,
+    secrets: [adminApiKey],
   },
   dashboardApp
 );

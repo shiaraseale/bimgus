@@ -6,9 +6,11 @@ import { TownHallBadge } from './TownHallBadge';
 interface WarRoomProps {
   war: WarData | null;
   clanTag: string;
+  adminKey?: string;
 }
 
-export const WarRoom: React.FC<WarRoomProps> = ({ war }) => {
+export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
+  const effectiveKey = adminKey || (typeof window !== 'undefined' ? localStorage.getItem('bimgus_admin_key') || '' : '');
   const [isNudging, setIsNudging] = useState(false);
   const [nudgeMessage, setNudgeMessage] = useState<string | null>(null);
 
@@ -121,15 +123,21 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war }) => {
   });
 
   const handleNudge = async () => {
+    if (!effectiveKey) return;
     setIsNudging(true);
     setNudgeMessage(null);
     try {
-      const res = await fetch('/api/clan/%23ABC123/poll', { method: 'POST' });
+      const res = await fetch('/api/clan/%23ABC123/poll', {
+        method: 'POST',
+        headers: {
+          'X-Admin-Key': effectiveKey,
+        },
+      });
       const data = await res.json();
       if (data.success) {
         setNudgeMessage('✅ War check synced and reminder triggered if eligible!');
       } else {
-        setNudgeMessage('Synced clan status.');
+        setNudgeMessage(`Sync error: ${data.error || 'Failed to sync'}`);
       }
     } catch {
       setNudgeMessage('Could not reach bot API');
@@ -339,15 +347,17 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war }) => {
               <ShieldAlert size={20} style={{ color: 'var(--gold)' }} />
               Pending Attacks ({unusedAttackers.length})
             </h3>
-            <button
-              onClick={handleNudge}
-              disabled={isNudging}
-              className="coc-btn coc-btn-yellow"
-              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-            >
-              <BellRing size={14} />
-              {isNudging ? 'Pinging...' : 'Nudge In Discord'}
-            </button>
+            {effectiveKey && (
+              <button
+                onClick={handleNudge}
+                disabled={isNudging}
+                className="coc-btn coc-btn-yellow"
+                style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+              >
+                <BellRing size={14} />
+                {isNudging ? 'Pinging...' : 'Nudge In Discord'}
+              </button>
+            )}
           </div>
 
           {nudgeMessage && (

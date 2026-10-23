@@ -34,6 +34,38 @@ export function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [adminKey, setAdminKey] = useState<string>(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('bimgus_admin_key') || '') : '';
+  });
+
+  const handleAdminKeyChange = (key: string) => {
+    setAdminKey(key);
+    if (key) {
+      localStorage.setItem('bimgus_admin_key', key);
+    } else {
+      localStorage.removeItem('bimgus_admin_key');
+      setConfig(null);
+    }
+  };
+
+  const fetchConfig = async (keyToUse = adminKey) => {
+    if (!keyToUse) return;
+    try {
+      const encodedTag = encodeURIComponent(CLAN_TAG);
+      const configRes = await fetch(`/api/clan/${encodedTag}/config`, {
+        headers: { 'X-Admin-Key': keyToUse },
+      });
+      if (configRes.ok) {
+        const configJson = await configRes.json();
+        if (configJson.success && configJson.data) {
+          setConfig(configJson.data);
+        }
+      }
+    } catch (e: any) {
+      console.warn('Config fetch error:', e.message);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -73,17 +105,9 @@ export function App() {
         console.warn('War data fetch error:', e.message);
       }
 
-      // Fetch bot config
-      try {
-        const configRes = await fetch(`/api/clan/${encodedTag}/config`);
-        if (configRes.ok) {
-          const configJson = await configRes.json();
-          if (configJson.success && configJson.data) {
-            setConfig(configJson.data);
-          }
-        }
-      } catch (e: any) {
-        console.warn('Config fetch error:', e.message);
+      // Fetch bot config only if authenticated (never on public page load)
+      if (adminKey) {
+        await fetchConfig(adminKey);
       }
     } catch (err: any) {
       console.warn('API error:', err.message);
@@ -98,10 +122,14 @@ export function App() {
   }, []);
 
   const handleSync = async () => {
+    if (!adminKey) return;
     setIsSyncing(true);
     try {
       const encodedTag = encodeURIComponent(CLAN_TAG);
-      await fetch(`/api/clan/${encodedTag}/poll`, { method: 'POST' });
+      await fetch(`/api/clan/${encodedTag}/poll`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': adminKey },
+      });
       await fetchData();
     } catch {
       // ignore
@@ -111,11 +139,15 @@ export function App() {
   };
 
   const handleSaveConfig = async (updated: Partial<BotConfig>): Promise<boolean> => {
+    if (!adminKey) return false;
     try {
       const encodedTag = encodeURIComponent(CLAN_TAG);
       const res = await fetch(`/api/clan/${encodedTag}/config`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Key': adminKey,
+        },
         body: JSON.stringify(updated),
       });
       const data = await res.json();
@@ -137,6 +169,7 @@ export function App() {
         setActiveTab={setActiveTab}
         onSync={handleSync}
         isSyncing={isSyncing}
+        canSync={Boolean(adminKey)}
       />
 
       <main style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '0 20px 60px', flex: 1 }}>
@@ -169,12 +202,19 @@ export function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'war' && <WarRoom war={war} clanTag={CLAN_TAG} />}
+            {activeTab === 'war' && <WarRoom war={war} clanTag={CLAN_TAG} adminKey={adminKey} />}
             {activeTab === 'roster' && <RosterAudit members={clan?.memberList || []} />}
             {activeTab === 'capital' && <CapitalRaids clan={clan} />}
             {activeTab === 'games' && <ClanGamesView />}
             {activeTab === 'settings' && (
-              <BotSettings config={config} clanTag={CLAN_TAG} onSave={handleSaveConfig} />
+              <BotSettings
+                config={config}
+                clanTag={CLAN_TAG}
+                adminKey={adminKey}
+                onAdminKeyChange={handleAdminKeyChange}
+                onRefreshConfig={fetchConfig}
+                onSave={handleSaveConfig}
+              />
             )}
           </>
         )}

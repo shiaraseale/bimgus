@@ -81,11 +81,11 @@ export interface WarData {
 export interface BotConfig {
   clanTag: string;
   webhooks: {
-    clanActivity?: string;
-    warRoom?: string;
-    cwlHub?: string;
-    raidWeekend?: string;
-    clanGames?: string;
+    clanActivity?: string | boolean;
+    warRoom?: string | boolean;
+    cwlHub?: string | boolean;
+    raidWeekend?: string | boolean;
+    clanGames?: string | boolean;
   };
   notificationsEnabled: {
     memberJoinedLeft: boolean;
