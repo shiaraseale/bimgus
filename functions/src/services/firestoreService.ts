@@ -22,42 +22,6 @@ export class FirestoreService {
   private static clansCol = db.collection('clans');
   private static usersCol = db.collection('users');
   private static pollsCol = db.collection('warPolls');
-  private static pendingInteractionsCol = db.collection('pendingInteractions');
-
-  /**
-   * Tracks an active/pending deferred interaction token for a user so it can be cancelled if stuck.
-   */
-  static async setPendingInteraction(discordUserId: string, token: string): Promise<void> {
-    try {
-      await this.pendingInteractionsCol.doc(discordUserId).set({
-        token,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (err: any) {
-      console.warn('[Firestore] Failed to save pending interaction:', err.message);
-    }
-  }
-
-  /**
-   * Retrieves any active pending interaction token for a user.
-   */
-  static async getPendingInteraction(discordUserId: string): Promise<string | null> {
-    try {
-      const doc = await this.pendingInteractionsCol.doc(discordUserId).get();
-      return doc.exists ? (doc.data()?.token || null) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Clears the pending interaction token when a command completes.
-   */
-  static async clearPendingInteraction(discordUserId: string): Promise<void> {
-    try {
-      await this.pendingInteractionsCol.doc(discordUserId).delete();
-    } catch {}
-  }
 
   /**
    * Retrieves the current bot configuration for a clan.

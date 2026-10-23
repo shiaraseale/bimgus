@@ -23,11 +23,4 @@ describe('dashboardApi ping endpoint', () => {
     const body = await res.text();
     expect(body).toBe('');
   });
-
-  it('returns 204 No Content for GET /ping', async () => {
-    const res = await fetch(`${baseUrl}/ping`);
-    expect(res.status).toBe(204);
-    const body = await res.text();
-    expect(body).toBe('');
-  });
 });

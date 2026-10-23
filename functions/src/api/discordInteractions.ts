@@ -86,9 +86,6 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
     // Immediately acknowledges the interaction to satisfy Discord's 3-second hard timeout
     const deferReply = (ephemeral: boolean = isGuild) => {
-      if (discordUserId && interactionToken) {
-        FirestoreService.setPendingInteraction(discordUserId, interactionToken).catch(() => {});
-      }
       return res.json({
         type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -100,9 +97,6 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
     // Edits the initial deferred reply with the final content, embeds, and action rows
     const editDeferredReply = async (messageData: any) => {
       try {
-        if (discordUserId) {
-          FirestoreService.clearPendingInteraction(discordUserId).catch(() => {});
-        }
         const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
         await axios.patch(webhookUrl, messageData, {
           headers: { 'Content-Type': 'application/json' },
