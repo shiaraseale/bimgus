@@ -12,7 +12,9 @@ function isOurs(war: CurrentWarResponse, clanTag: string): boolean {
 
 /** Returns the war with our clan as `clan` (CWL wars list either clan first), for the dashboard. */
 export function withOurClanFirst(war: CurrentWarResponse, clanTag: string): CurrentWarResponse {
-  return war.clan.tag.toUpperCase() === clanTag.toUpperCase() ? war : { ...war, clan: war.opponent, opponent: war.clan };
+  return war.clan.tag.toUpperCase() === clanTag.toUpperCase()
+    ? war
+    : { ...war, clan: war.opponent, opponent: war.clan };
 }
 
 /** War tags in a round that exist yet ('#0' means the round hasn't been drawn). */

@@ -19,8 +19,12 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
     return (
       <div className="coc-panel" style={{ padding: '60px 20px', textAlign: 'center', marginTop: '24px' }}>
         <Swords size={56} style={{ color: '#64748b', marginBottom: '16px' }} />
-        <h3 className="gold-title" style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Not Currently in War</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>The clan is currently not participating in an active clan war.</p>
+        <h3 className="gold-title" style={{ fontSize: '1.8rem', marginBottom: '8px' }}>
+          Not Currently in War
+        </h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+          The clan is currently not participating in an active clan war.
+        </p>
       </div>
     );
   }
@@ -155,43 +159,71 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '24px' }}>
       {/* In-Game War Scoreboard Card */}
       <div className="coc-panel coc-panel-gold" style={{ padding: '28px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
           <span className="coc-badge coc-badge-gold" style={{ fontSize: '0.85rem' }}>
-            <Swords size={16} /> {isPrep ? '⏳ Preparation Day Active' : war.state === 'inWar' ? '🔥 Battle Day Live' : '🏁 War Ended'}
+            <Swords size={16} />{' '}
+            {isPrep ? '⏳ Preparation Day Active' : war.state === 'inWar' ? '🔥 Battle Day Live' : '🏁 War Ended'}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1', fontFamily: 'var(--font-coc)', fontSize: '0.95rem' }}>
-            <Clock size={16} style={{ color: 'var(--gold)' }} /> Format: {teamSize} vs {teamSize} ({teamSize * attacksPerMember} Hits Total)
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#cbd5e1',
+              fontFamily: 'var(--font-coc)',
+              fontSize: '0.95rem',
+            }}
+          >
+            <Clock size={16} style={{ color: 'var(--gold)' }} /> Format: {teamSize} vs {teamSize} (
+            {teamSize * attacksPerMember} Hits Total)
           </div>
         </div>
 
         {/* The VS War Clash Arena */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr auto 1fr', 
-          alignItems: 'center', 
-          gap: '24px', 
-          textAlign: 'center',
-          background: 'rgba(9, 14, 22, 0.65)',
-          padding: '24px 18px',
-          borderRadius: '12px',
-          border: '2px solid #28374d',
-          boxShadow: 'inset 0 3px 10px rgba(0, 0, 0, 0.8)'
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            gap: '24px',
+            textAlign: 'center',
+            background: 'rgba(9, 14, 22, 0.65)',
+            padding: '24px 18px',
+            borderRadius: '12px',
+            border: '2px solid #28374d',
+            boxShadow: 'inset 0 3px 10px rgba(0, 0, 0, 0.8)',
+          }}
+        >
           {/* Friendly Clan (Blue Shield) */}
           <div style={{ padding: '0 10px' }}>
-            <h2 className="font-coc" style={{ fontSize: '1.8rem', color: '#93c5fd', margin: 0, textShadow: '0 2px 4px #000' }}>
+            <h2
+              className="font-coc"
+              style={{ fontSize: '1.8rem', color: '#93c5fd', margin: 0, textShadow: '0 2px 4px #000' }}
+            >
               {clan.name}
             </h2>
-            <div className="font-coc" style={{ 
-              fontSize: '3rem', 
-              color: '#ffd700', 
-              margin: '6px 0',
-              textShadow: 'var(--text-shadow-coc)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}>
+            <div
+              className="font-coc"
+              style={{
+                fontSize: '3rem',
+                color: '#ffd700',
+                margin: '6px 0',
+                textShadow: 'var(--text-shadow-coc)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
               {clan.stars} <Star size={30} style={{ fill: '#ffd700', color: '#ffb300' }} />
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -201,53 +233,66 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
             <div className="coc-progress-track" style={{ marginTop: '12px' }}>
               <div className="coc-progress-fill-blue" style={{ width: `${clan.destructionPercentage}%` }} />
             </div>
-            <div className="font-coc" style={{ fontSize: '0.92rem', color: '#93c5fd', marginTop: '6px', textShadow: '0 1px 2px #000' }}>
+            <div
+              className="font-coc"
+              style={{ fontSize: '0.92rem', color: '#93c5fd', marginTop: '6px', textShadow: '0 1px 2px #000' }}
+            >
               {clan.destructionPercentage.toFixed(1)}% Destruction
             </div>
           </div>
 
           {/* Golden 3D VS Shield */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center' 
-          }}>
-            <div style={{ 
-              width: '60px', 
-              height: '60px', 
-              borderRadius: '50%',
-              background: 'linear-gradient(180deg, #ffca28 0%, #ff8f00 100%)',
-              border: '3px solid #5a3800',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.8), inset 0 2px 0 rgba(255, 255, 255, 0.6)',
+          <div
+            style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'var(--font-coc)',
-              fontSize: '1.4rem',
-              color: '#fff',
-              textShadow: '0 2px 2px #5a3800',
-              letterSpacing: '0.04em'
-            }}>
+            }}
+          >
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: 'linear-gradient(180deg, #ffca28 0%, #ff8f00 100%)',
+                border: '3px solid #5a3800',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.8), inset 0 2px 0 rgba(255, 255, 255, 0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'var(--font-coc)',
+                fontSize: '1.4rem',
+                color: '#fff',
+                textShadow: '0 2px 2px #5a3800',
+                letterSpacing: '0.04em',
+              }}
+            >
               VS
             </div>
           </div>
 
           {/* Enemy Clan (Red Shield) */}
           <div style={{ padding: '0 10px' }}>
-            <h2 className="font-coc" style={{ fontSize: '1.8rem', color: '#fca5a5', margin: 0, textShadow: '0 2px 4px #000' }}>
+            <h2
+              className="font-coc"
+              style={{ fontSize: '1.8rem', color: '#fca5a5', margin: 0, textShadow: '0 2px 4px #000' }}
+            >
               {opponent.name}
             </h2>
-            <div className="font-coc" style={{ 
-              fontSize: '3rem', 
-              color: '#f87171', 
-              margin: '6px 0',
-              textShadow: 'var(--text-shadow-coc)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}>
+            <div
+              className="font-coc"
+              style={{
+                fontSize: '3rem',
+                color: '#f87171',
+                margin: '6px 0',
+                textShadow: 'var(--text-shadow-coc)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
               {opponent.stars} <Star size={30} style={{ fill: '#f87171', color: '#b91c1c' }} />
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -257,7 +302,10 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
             <div className="coc-progress-track" style={{ marginTop: '12px' }}>
               <div className="coc-progress-fill-red" style={{ width: `${opponent.destructionPercentage}%` }} />
             </div>
-            <div className="font-coc" style={{ fontSize: '0.92rem', color: '#fca5a5', marginTop: '6px', textShadow: '0 1px 2px #000' }}>
+            <div
+              className="font-coc"
+              style={{ fontSize: '0.92rem', color: '#fca5a5', marginTop: '6px', textShadow: '0 1px 2px #000' }}
+            >
               {opponent.destructionPercentage.toFixed(1)}% Destruction
             </div>
           </div>
@@ -266,7 +314,10 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
 
       {/* War Tactical Audit Wells */}
       <div className="coc-panel" style={{ padding: '24px' }}>
-        <h3 className="gold-title" style={{ fontSize: '1.35rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <h3
+          className="gold-title"
+          style={{ fontSize: '1.35rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}
+        >
           <ShieldAlert size={22} style={{ color: 'var(--gold)' }} />
           War Discipline & Tactical Audit
         </h3>
@@ -274,7 +325,17 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
           {/* Missed Attacks Well */}
           <div className="coc-well" style={{ padding: '16px' }}>
-            <div className="font-coc" style={{ fontSize: '1.05rem', color: '#f87171', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              className="font-coc"
+              style={{
+                fontSize: '1.05rem',
+                color: '#f87171',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
               🚨 Unused Attacks ({unusedAttackers.length})
             </div>
             {unusedAttackers.length === 0 ? (
@@ -282,21 +343,33 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
                 ✅ Flawless! All players have used all their attacks.
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}
+              >
                 {unusedAttackers.map((m) => {
                   const used = m.attacks ? m.attacks.length : 0;
                   return (
-                    <div key={m.tag} style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
-                      fontSize: '0.88rem',
-                      padding: '6px 10px',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      borderRadius: '6px'
-                    }}>
-                      <span style={{ fontWeight: 600 }}>#{m.mapPosition} {m.name}</span>
-                      <TownHallBadge level={m.townhallLevel} size={20} fontSize="0.72rem" style={{ padding: '2px 6px' }} />
+                    <div
+                      key={m.tag}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.88rem',
+                        padding: '6px 10px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '6px',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>
+                        #{m.mapPosition} {m.name}
+                      </span>
+                      <TownHallBadge
+                        level={m.townhallLevel}
+                        size={20}
+                        fontSize="0.72rem"
+                        style={{ padding: '2px 6px' }}
+                      />
                       <span className="coc-badge coc-badge-red" style={{ fontSize: '0.72rem' }}>
                         {used}/2 ({2 - used} left)
                       </span>
@@ -309,7 +382,17 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
 
           {/* Wasted Attacks on Already 3-Starred Bases */}
           <div className="coc-well" style={{ padding: '16px' }}>
-            <div className="font-coc" style={{ fontSize: '1.05rem', color: '#ffb300', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              className="font-coc"
+              style={{
+                fontSize: '1.05rem',
+                color: '#ffb300',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
               🎯 Hit Already 3-Starred Bases ({wastedClanAttacks.length})
             </div>
             {wastedClanAttacks.length === 0 ? (
@@ -317,18 +400,25 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
                 ✅ 100% efficient targeting! No attacks wasted on 3⭐ bases.
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}
+              >
                 {wastedClanAttacks.map((w, idx) => (
-                  <div key={idx} style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    fontSize: '0.88rem',
-                    padding: '6px 10px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '6px'
-                  }}>
-                    <span>#{w.attackerPos} {w.attackerName} ➔ #{w.defenderPos} {w.defenderName}</span>
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.88rem',
+                      padding: '6px 10px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    <span>
+                      #{w.attackerPos} {w.attackerName} ➔ #{w.defenderPos} {w.defenderName}
+                    </span>
                     <span className="coc-badge coc-badge-gold" style={{ fontSize: '0.7rem' }}>
                       Was Already 3 ⭐
                     </span>
@@ -344,8 +434,20 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
         {/* Pending Attacks Card */}
         <div className="coc-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <h3 className="gold-title" style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              flexWrap: 'wrap',
+              gap: '10px',
+            }}
+          >
+            <h3
+              className="gold-title"
+              style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
               <ShieldAlert size={20} style={{ color: 'var(--gold)' }} />
               Pending Attacks ({unusedAttackers.length})
             </h3>
@@ -363,16 +465,18 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
           </div>
 
           {nudgeMessage && (
-            <div style={{ 
-              padding: '10px 14px', 
-              background: 'rgba(34, 197, 94, 0.15)', 
-              border: '2px solid var(--gem-green)', 
-              borderRadius: '8px', 
-              fontSize: '0.88rem', 
-              marginBottom: '14px',
-              fontFamily: 'var(--font-coc)',
-              color: '#bbf7d0'
-            }}>
+            <div
+              style={{
+                padding: '10px 14px',
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: '2px solid var(--gem-green)',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                marginBottom: '14px',
+                fontFamily: 'var(--font-coc)',
+                color: '#bbf7d0',
+              }}
+            >
               {nudgeMessage}
             </div>
           )}
@@ -382,7 +486,9 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
               🎉 All clan members have used all their attacks!
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}
+            >
               {unusedAttackers.map((m) => {
                 const used = m.attacks ? m.attacks.length : 0;
                 return (
@@ -414,7 +520,10 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
 
         {/* Live Attack Feed Card */}
         <div className="coc-panel" style={{ padding: '24px' }}>
-          <h3 className="gold-title" style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3
+            className="gold-title"
+            style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <Swords size={20} style={{ color: 'var(--dark-elixir)' }} />
             War Attack Events ({allAttacks.length})
           </h3>
@@ -427,7 +536,9 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}
+            >
               {allAttacks.map((atk, i) => (
                 <div
                   key={i}
@@ -444,20 +555,42 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
                     <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>
                       #{atk.attackerPos} {atk.attackerName} ➔ #{atk.defenderPos} {atk.defenderName}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <TownHallBadge level={atk.attackerTH} size={18} fontSize="0.7rem" style={{ padding: '1px 6px' }} />
+                    <div
+                      style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--text-dim)',
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <TownHallBadge
+                        level={atk.attackerTH}
+                        size={18}
+                        fontSize="0.7rem"
+                        style={{ padding: '1px 6px' }}
+                      />
                       <span>vs</span>
-                      <TownHallBadge level={atk.defenderTH} size={18} fontSize="0.7rem" style={{ padding: '1px 6px' }} />
+                      <TownHallBadge
+                        level={atk.defenderTH}
+                        size={18}
+                        fontSize="0.7rem"
+                        style={{ padding: '1px 6px' }}
+                      />
                       {atk.duration ? <span>• {atk.duration}s</span> : null}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className="font-coc" style={{ 
-                      color: atk.stars === 3 ? '#ffd700' : '#fff', 
-                      fontSize: '1.05rem', 
-                      letterSpacing: '2px',
-                      textShadow: '0 1px 2px #000' 
-                    }}>
+                    <div
+                      className="font-coc"
+                      style={{
+                        color: atk.stars === 3 ? '#ffd700' : '#fff',
+                        fontSize: '1.05rem',
+                        letterSpacing: '2px',
+                        textShadow: '0 1px 2px #000',
+                      }}
+                    >
                       {'⭐'.repeat(atk.stars)}
                     </div>
                     <div className="font-coc" style={{ fontSize: '0.85rem', color: '#ffb300', marginTop: '2px' }}>

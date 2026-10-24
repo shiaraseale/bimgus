@@ -30,14 +30,15 @@ export async function execute(ctx: CommandContext): Promise<any> {
       content: result.needsTag
         ? `⚠️ You have ${result.remainingAccounts} linked accounts, so please say which one: \`/unlink tag:#TAG\`. Use \`/accounts\` to see them.`
         : tagInput
-        ? `⚠️ Could not find linked account \`${tagInput}\` under your Discord profile. Use \`/accounts\` to check your accounts.`
-        : `⚠️ You do not have any linked Clash of Clans accounts to unlink. Use \`/link\` first!`,
+          ? `⚠️ Could not find linked account \`${tagInput}\` under your Discord profile. Use \`/accounts\` to check your accounts.`
+          : `⚠️ You do not have any linked Clash of Clans accounts to unlink. Use \`/link\` first!`,
     });
   }
 
-  const remainingMsg = result.remainingAccounts > 0
-    ? `You have **${result.remainingAccounts}** linked account(s) remaining. Use \`/accounts\` to view them.`
-    : `You have unlinked all accounts. Automatic upgrade tracking and war roster DMs have been turned off for your profile.`;
+  const remainingMsg =
+    result.remainingAccounts > 0
+      ? `You have **${result.remainingAccounts}** linked account(s) remaining. Use \`/accounts\` to view them.`
+      : `You have unlinked all accounts. Automatic upgrade tracking and war roster DMs have been turned off for your profile.`;
 
   return respondPersonal({
     embeds: [

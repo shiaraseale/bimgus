@@ -91,7 +91,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
       if (data.success) {
         setStatusMsg({ text: `✅ ${data.message}`, ok: true });
       } else {
-        setStatusMsg({ text: `❌ Discord registration failed: ${data.error || 'Check DISCORD_BOT_TOKEN and CLIENT_ID'}`, ok: false });
+        setStatusMsg({
+          text: `❌ Discord registration failed: ${data.error || 'Check DISCORD_BOT_TOKEN and CLIENT_ID'}`,
+          ok: false,
+        });
       }
     } catch {
       setStatusMsg({ text: '❌ Could not connect to API server.', ok: false });
@@ -191,9 +194,22 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '24px' }}>
       {/* Header Stone Panel */}
-      <div className="coc-panel coc-panel-gold" style={{ padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div
+        className="coc-panel coc-panel-gold"
+        style={{
+          padding: '24px 28px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
         <div>
-          <h2 className="gold-title" style={{ fontSize: '1.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2
+            className="gold-title"
+            style={{ fontSize: '1.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
             <Settings size={26} style={{ color: 'var(--gold)' }} />
             Co-Leader Bot Command Center
           </h2>
@@ -221,23 +237,55 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
           background: 'linear-gradient(180deg, #182232 0%, #101622 100%)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
-          <h3 className="gold-title" style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginBottom: '10px',
+          }}
+        >
+          <h3
+            className="gold-title"
+            style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <Key size={20} style={{ color: adminKey ? '#38bdf8' : '#eab308' }} />
             Leader Key Authentication
           </h3>
           {adminKey ? (
-            <span style={{ fontSize: '0.82rem', color: '#86efac', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                fontSize: '0.82rem',
+                color: '#86efac',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               <CheckCircle size={15} /> Authenticated (Key saved in browser)
             </span>
           ) : (
-            <span style={{ fontSize: '0.82rem', color: '#fcd34d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                fontSize: '0.82rem',
+                color: '#fcd34d',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               <ShieldAlert size={15} /> Locked • Read-only visitor mode
             </span>
           )}
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '14px', lineHeight: 1.5 }}>
-          Enter your clan's secret <code>ADMIN_API_KEY</code> to unlock Discord webhook management, configuration updates, manual syncing, and slash command registration. Stored strictly in your browser's <code>localStorage</code> and never bundled into the public web application.
+          Enter your clan's secret <code>ADMIN_API_KEY</code> to unlock Discord webhook management, configuration
+          updates, manual syncing, and slash command registration. Stored strictly in your browser's{' '}
+          <code>localStorage</code> and never bundled into the public web application.
         </p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <input
@@ -298,7 +346,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
         {/* Discord Webhooks Card */}
         <div className="coc-panel" style={{ padding: '24px' }}>
-          <h3 className="gold-title" style={{ fontSize: '1.35rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h3
+            className="gold-title"
+            style={{ fontSize: '1.35rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
             <Link2 size={20} style={{ color: 'var(--dark-elixir)' }} />
             Discord Webhook Channels
           </h3>
@@ -311,7 +362,14 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
 
               return (
                 <div key={wf.key}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '6px',
+                    }}
+                  >
                     <label className="font-coc" style={{ fontSize: '0.95rem', color: '#cbd5e1' }}>
                       {wf.label}
                     </label>
@@ -368,7 +426,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
 
         {/* Notification Switches Card */}
         <div className="coc-panel" style={{ padding: '24px' }}>
-          <h3 className="gold-title" style={{ fontSize: '1.35rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h3
+            className="gold-title"
+            style={{ fontSize: '1.35rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
             <Bell size={20} style={{ color: 'var(--gold)' }} />
             Notification Toggles
           </h3>
@@ -442,14 +503,27 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
 
       {/* Discord Bot Slash Commands & Multi-Account Player DM Hub */}
       <div className="coc-panel coc-panel-gold" style={{ padding: '24px 28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+            marginBottom: '20px',
+          }}
+        >
           <div>
-            <h3 className="gold-title" style={{ fontSize: '1.4rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3
+              className="gold-title"
+              style={{ fontSize: '1.4rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}
+            >
               <Bot size={24} style={{ color: 'var(--gold)' }} />
               Discord Slash Commands & Personal Upgrade DMs
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
-              Bimgus sends direct messages when upgrades finish, apprentice builder is unassigned, and war rosters lock in. Includes "Open CoC" quick-launch buttons!
+              Bimgus sends direct messages when upgrades finish, apprentice builder is unassigned, and war rosters lock
+              in. Includes "Open CoC" quick-launch buttons!
             </p>
           </div>
           <button
@@ -465,32 +539,71 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
           <div className="coc-well" style={{ padding: '16px' }}>
-            <h4 style={{ color: '#67e8f9', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <h4
+              style={{
+                color: '#67e8f9',
+                fontSize: '1rem',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               👤 Multi-Account Management
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
-              <div><code>/link tag:#TAG [primary:true|false]</code> — Link your main or alt accounts to Discord.</div>
-              <div><code>/accounts</code> — View all linked accounts & switch active account for commands.</div>
+              <div>
+                <code>/link tag:#TAG [primary:true|false]</code> — Link your main or alt accounts to Discord.
+              </div>
+              <div>
+                <code>/accounts</code> — View all linked accounts & switch active account for commands.
+              </div>
             </div>
           </div>
 
           <div className="coc-well" style={{ padding: '16px' }}>
-            <h4 style={{ color: '#facc15', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <h4
+              style={{
+                color: '#facc15',
+                fontSize: '1rem',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               🛠️ Progression & Builders
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
-              <div><code>/sixth-builder [account]</code> — Check progress towards unlocking B.O.B (6th Builder).</div>
-              <div><code>/heroes [account] [village]</code> — Track hero maxing progress for current Town/Builder Hall.</div>
-              <div><code>/upgrades [account]</code> — View in-progress & outstanding upgrades by resource.</div>
+              <div>
+                <code>/sixth-builder [account]</code> — Check progress towards unlocking B.O.B (6th Builder).
+              </div>
+              <div>
+                <code>/heroes [account] [village]</code> — Track hero maxing progress for current Town/Builder Hall.
+              </div>
+              <div>
+                <code>/upgrades [account]</code> — View in-progress & outstanding upgrades by resource.
+              </div>
             </div>
           </div>
 
           <div className="coc-well" style={{ padding: '16px' }}>
-            <h4 style={{ color: '#4ade80', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <h4
+              style={{
+                color: '#4ade80',
+                fontSize: '1rem',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               ⏰ Timers & Apprentice
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
-              <div><code>/apprentice [action:assign|status]</code> — Track Apprentice Builder and get DM when idle.</div>
+              <div>
+                <code>/apprentice [action:assign|status]</code> — Track Apprentice Builder and get DM when idle.
+              </div>
             </div>
           </div>
         </div>

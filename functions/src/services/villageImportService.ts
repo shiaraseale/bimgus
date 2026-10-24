@@ -65,10 +65,22 @@ const STALE_EXPORT_MS = 24 * 60 * 60 * 1000;
 
 // Categories whose completions the import is the source for; the live API covers the rest (2.4)
 export const IMPORT_TRACKED_CATEGORIES: readonly GameCategory[] = [
-  'defense', 'resource', 'army', 'other', 'trap', 'wall', 'guardian', 'craftedModule', 'helper',
+  'defense',
+  'resource',
+  'army',
+  'other',
+  'trap',
+  'wall',
+  'guardian',
+  'craftedModule',
+  'helper',
 ];
 
-function hallFor(data: VillageDataV2, village: Village, override?: { townHall?: number; builderHall?: number }): number {
+function hallFor(
+  data: VillageDataV2,
+  village: Village,
+  override?: { townHall?: number; builderHall?: number }
+): number {
   return village === 'builder'
     ? Math.max(override?.builderHall ?? 0, data.builderHallLevel)
     : Math.max(override?.townHall ?? 0, data.townHallLevel);
@@ -82,7 +94,10 @@ export class VillageImportService {
     let clean = rawInput.trim();
     // Strip markdown code fences if pasted like ```json ... ```
     if (clean.startsWith('```')) {
-      clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      clean = clean
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
     }
 
     try {
@@ -111,12 +126,21 @@ export class VillageImportService {
     let builderHallLevel = 0;
     let townHallWeaponLevel: number | undefined;
 
-    const addItem = (code: number, village: Village, level: number, count: number, gearedUp: boolean, timer: number) => {
+    const addItem = (
+      code: number,
+      village: Village,
+      level: number,
+      count: number,
+      gearedUp: boolean,
+      timer: number
+    ) => {
       const item = getById(code);
       if (!item) {
         nameForCode(code); // logs the unknown code once
       } else if (item.village !== village) {
-        log.warn(`[VillageImport] ${item.name} (${code}) is listed in the ${village} village but the data says ${item.village}`);
+        log.warn(
+          `[VillageImport] ${item.name} (${code}) is listed in the ${village} village but the data says ${item.village}`
+        );
       }
       const category = item?.category ?? 'unknown';
       const key = `${village}:${code}:${level}:${gearedUp ? 1 : 0}`;
@@ -168,7 +192,7 @@ export class VillageImportService {
       }
     }
 
-    if (!townHallLevel) throw new Error('The export has no Town Hall, so it can\'t be read.');
+    if (!townHallLevel) throw new Error("The export has no Town Hall, so it can't be read.");
 
     const data: VillageDataV2 = {
       version: VILLAGE_DATA_VERSION,
@@ -236,7 +260,9 @@ export class VillageImportService {
       }
       const keepNew = exp.village.exportTimestamp > existing.village.exportTimestamp;
       const [kept, dropped] = keepNew ? [exp, existing] : [existing, exp];
-      notices.push(`ℹ️ Two exports for **${account.name}**: used **${kept.fileName}** (newer) and skipped **${dropped.fileName}**.`);
+      notices.push(
+        `ℹ️ Two exports for **${account.name}**: used **${kept.fileName}** (newer) and skipped **${dropped.fileName}**.`
+      );
       if (keepNew) byAccount.set(key, { account, ...exp });
     }
 
@@ -537,9 +563,18 @@ export class VillageImportService {
       from.count -= 1;
       if (from.count <= 0) data.items.splice(data.items.indexOf(from), 1);
     }
-    const to = data.items.find((i) => i.code === up.code && i.village === up.village && i.level === up.targetLevel && !i.gearedUp);
+    const to = data.items.find(
+      (i) => i.code === up.code && i.village === up.village && i.level === up.targetLevel && !i.gearedUp
+    );
     if (to) to.count += 1;
-    else data.items.push({ code: up.code, category: from?.category ?? (getById(up.code)?.category ?? 'unknown'), village: up.village, level: up.targetLevel, count: 1 });
+    else
+      data.items.push({
+        code: up.code,
+        category: from?.category ?? getById(up.code)?.category ?? 'unknown',
+        village: up.village,
+        level: up.targetLevel,
+        count: 1,
+      });
   }
 
   /** B.O.B task 3: any Builder Base defense at level 9 or above in the latest import. */

@@ -83,7 +83,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
         '',
         `⚡ **Total Home Hero Levels Remaining**: **${heroSummary.totalHomeLevelsRemaining}**`,
         `⚡ **Total Builder Hero Levels Remaining**: **${heroSummary.totalBuilderLevelsRemaining}**`,
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       fields,
       color: heroSummary.homeMaxed ? COLORS.GOLD : COLORS.BLUE,
       thumbnail: {

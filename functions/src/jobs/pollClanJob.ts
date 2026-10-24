@@ -76,7 +76,8 @@ export async function runPollClanJob(
     const prevClanSnapshot = await FirestoreService.getClanSnapshot(targetTag);
     const newClanSnapshot = await processClanDiff(clanData, prevClanSnapshot, botConfig);
     await FirestoreService.saveRaw(targetTag, 'clan', clanData);
-    if (changedIgnoringUpdatedAt(prevClanSnapshot, newClanSnapshot)) await FirestoreService.saveClanSnapshot(newClanSnapshot);
+    if (changedIgnoringUpdatedAt(prevClanSnapshot, newClanSnapshot))
+      await FirestoreService.saveClanSnapshot(newClanSnapshot);
 
     // 2. The war next, on its own: the war snapshot it saves carries flags that player tracking (the
     // roster DMs) and the reminders set, so those must run after it, not alongside it
@@ -106,60 +107,92 @@ export async function runPollClanJob(
     const work: Array<Promise<void>> = [];
 
     if (tasks.cwl) {
-      work.push(runTask('CWL', async () => {
-        try {
-          const cwlGroup = await cocService.getCwlGroup(targetTag);
-          if (!cwlGroup || cwlGroup.state === 'notInWar') {
-            await FirestoreService.saveRaw(targetTag, 'cwlWar', null);
-            return;
+      work.push(
+        runTask('CWL', async () => {
+          try {
+            const cwlGroup = await cocService.getCwlGroup(targetTag);
+            if (!cwlGroup || cwlGroup.state === 'notInWar') {
+              await FirestoreService.saveRaw(targetTag, 'cwlWar', null);
+              return;
+            }
+            log.info(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
+            const prevCwlSnapshot = await FirestoreService.getCwlSnapshot(targetTag);
+            const newCwlSnapshot = await processCwlDiff(cwlGroup, targetTag, prevCwlSnapshot, botConfig, cocService);
+            if (newCwlSnapshot && changedIgnoringUpdatedAt(prevCwlSnapshot, newCwlSnapshot)) {
+              await FirestoreService.saveCwlSnapshot(targetTag, newCwlSnapshot);
+            }
+            // The active CWL war for the dashboard (one request per round once our war tags are known)
+            const active = await findActiveCwlWar(
+              cwlGroup,
+              targetTag,
+              cocService,
+              ['inWar', 'preparation'],
+              newCwlSnapshot?.ourWarTags
+            );
+            await FirestoreService.saveRaw(
+              targetTag,
+              'cwlWar',
+              active
+                ? {
+                    ...withOurClanFirst(active.war, targetTag),
+                    isCwl: true,
+                    attacksPerMember: 1,
+                    cwlRound: active.roundIndex + 1,
+                    cwlSeason: cwlGroup.season,
+                  }
+                : null
+            );
+          } catch (cwlErr: any) {
+            if (cwlErr.response?.status === 404) {
+              await FirestoreService.saveRaw(targetTag, 'cwlWar', null); // not in CWL
+              return;
+            }
+            throw cwlErr;
           }
-          log.info(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
-          const prevCwlSnapshot = await FirestoreService.getCwlSnapshot(targetTag);
-          const newCwlSnapshot = await processCwlDiff(cwlGroup, targetTag, prevCwlSnapshot, botConfig, cocService);
-          if (newCwlSnapshot && changedIgnoringUpdatedAt(prevCwlSnapshot, newCwlSnapshot)) {
-            await FirestoreService.saveCwlSnapshot(targetTag, newCwlSnapshot);
-          }
-          // The active CWL war for the dashboard (one request per round once our war tags are known)
-          const active = await findActiveCwlWar(cwlGroup, targetTag, cocService, ['inWar', 'preparation'], newCwlSnapshot?.ourWarTags);
-          await FirestoreService.saveRaw(
-            targetTag,
-            'cwlWar',
-            active ? { ...withOurClanFirst(active.war, targetTag), isCwl: true, attacksPerMember: 1, cwlRound: active.roundIndex + 1, cwlSeason: cwlGroup.season } : null
-          );
-        } catch (cwlErr: any) {
-          if (cwlErr.response?.status === 404) {
-            await FirestoreService.saveRaw(targetTag, 'cwlWar', null); // not in CWL
-            return;
-          }
-          throw cwlErr;
-        }
-      }));
+        })
+      );
     }
 
     if (tasks.raids) {
-      work.push(runTask('Raids', async () => {
-        const raidData = await cocService.getCapitalRaidSeasons(targetTag, 1);
-        if (raidData.items && raidData.items.length > 0) {
-          const prevRaidSnapshot = await FirestoreService.getRaidSnapshot(targetTag);
-          const newRaidSnapshot = await processRaidDiff(raidData.items[0], prevRaidSnapshot, botConfig, targetTag);
-          if (changedIgnoringUpdatedAt(prevRaidSnapshot, newRaidSnapshot)) await FirestoreService.saveRaidSnapshot(targetTag, newRaidSnapshot);
-        }
-      }));
+      work.push(
+        runTask('Raids', async () => {
+          const raidData = await cocService.getCapitalRaidSeasons(targetTag, 1);
+          if (raidData.items && raidData.items.length > 0) {
+            const prevRaidSnapshot = await FirestoreService.getRaidSnapshot(targetTag);
+            const newRaidSnapshot = await processRaidDiff(raidData.items[0], prevRaidSnapshot, botConfig, targetTag);
+            if (changedIgnoringUpdatedAt(prevRaidSnapshot, newRaidSnapshot))
+              await FirestoreService.saveRaidSnapshot(targetTag, newRaidSnapshot);
+          }
+        })
+      );
     }
 
     if (tasks.clanGames) {
-      work.push(runTask('Clan Games', async () => {
-        const prevCgSnapshot = await FirestoreService.getClanGamesSnapshot(targetTag);
-        const newCgSnapshot = await processClanGamesDiff(clanData.memberList, prevCgSnapshot, botConfig, cocService, targetTag);
-        if (changedIgnoringUpdatedAt(prevCgSnapshot, newCgSnapshot)) await FirestoreService.saveClanGamesSnapshot(targetTag, newCgSnapshot);
-      }));
+      work.push(
+        runTask('Clan Games', async () => {
+          const prevCgSnapshot = await FirestoreService.getClanGamesSnapshot(targetTag);
+          const newCgSnapshot = await processClanGamesDiff(
+            clanData.memberList,
+            prevCgSnapshot,
+            botConfig,
+            cocService,
+            targetTag
+          );
+          if (changedIgnoringUpdatedAt(prevCgSnapshot, newCgSnapshot))
+            await FirestoreService.saveClanGamesSnapshot(targetTag, newCgSnapshot);
+        })
+      );
     }
 
     if (tasks.playerTracking) {
-      work.push(runTask('Player tracking', async () => {
-        const trackingResult = await runPlayerTrackingJob();
-        log.info(`[Poll] Player tracking completed: ${trackingResult.checkedAccounts} accounts checked, ${trackingResult.dmsSent} DMs sent`);
-      }));
+      work.push(
+        runTask('Player tracking', async () => {
+          const trackingResult = await runPlayerTrackingJob();
+          log.info(
+            `[Poll] Player tracking completed: ${trackingResult.checkedAccounts} accounts checked, ${trackingResult.dmsSent} DMs sent`
+          );
+        })
+      );
     }
 
     await Promise.all(work);

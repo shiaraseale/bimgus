@@ -28,7 +28,7 @@ export async function processWarDiff(
   const webhookUrl = config.webhooks.warRoom;
   const isSameWar = Boolean(prevSnapshot && prevSnapshot.warId === warId);
   const isNewWar = !isSameWar;
-  const loggedOrders = new Set<number>(isSameWar ? (prevSnapshot?.loggedAttackOrders || []) : []);
+  const loggedOrders = new Set<number>(isSameWar ? prevSnapshot?.loggedAttackOrders || [] : []);
   let matchupAnnounced = isSameWar ? Boolean(prevSnapshot?.matchupAnnounced) : false;
 
   // 1. Announce War Matchup if it hasn't been announced yet
@@ -51,7 +51,9 @@ export async function processWarDiff(
   for (const m of currentWar.clan.members) {
     if (m.attacks) {
       for (const atk of m.attacks) {
-        const defender = oppMembersMap.get(atk.defenderTag) || ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
+        const defender =
+          oppMembersMap.get(atk.defenderTag) ||
+          ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
         allAttacks.push({
           ...atk,
           isClanAttack: true,
@@ -66,7 +68,9 @@ export async function processWarDiff(
   for (const m of currentWar.opponent.members) {
     if (m.attacks) {
       for (const atk of m.attacks) {
-        const defender = clanMembersMap.get(atk.defenderTag) || ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
+        const defender =
+          clanMembersMap.get(atk.defenderTag) ||
+          ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
         allAttacks.push({
           ...atk,
           isClanAttack: false,
@@ -104,7 +108,7 @@ export async function processWarDiff(
             `🏰 **Live Score**: ${currentWar.clan.stars} ${EMOJIS.STAR} vs ${currentWar.opponent.stars} ${EMOJIS.STAR}`,
             `💥 **Destruction**: ${currentWar.clan.destructionPercentage.toFixed(1)}% vs ${currentWar.opponent.destructionPercentage.toFixed(1)}%`,
           ].join('\n'),
-          color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : (isThreeStar ? COLORS.RED : COLORS.BLUE),
+          color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
           footer: { text: 'Bimgus • Clash of Clans Tracker' },
           timestamp: new Date().toISOString(),
         };
@@ -187,9 +191,7 @@ function buildWarMatchupEmbed(currentWar: CurrentWarResponse): DiscordEmbed {
   const startUnix = currentWar.startTime
     ? Math.floor(new Date(formatCoCTime(currentWar.startTime)).getTime() / 1000)
     : null;
-  const endUnix = currentWar.endTime
-    ? Math.floor(new Date(formatCoCTime(currentWar.endTime)).getTime() / 1000)
-    : null;
+  const endUnix = currentWar.endTime ? Math.floor(new Date(formatCoCTime(currentWar.endTime)).getTime() / 1000) : null;
 
   const isPrep = currentWar.state === 'preparation';
   const stateLabel = isPrep ? '⏳ Preparation Day' : '🔥 Battle Day Active';
@@ -246,7 +248,12 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
           ...atk,
           isClanAttack: true,
           attacker: m,
-          defender: oppMap.get(atk.defenderTag) || { name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 },
+          defender: oppMap.get(atk.defenderTag) || {
+            name: 'Unknown',
+            mapPosition: 0,
+            tag: atk.defenderTag,
+            townhallLevel: 0,
+          },
         });
       }
     }
@@ -259,7 +266,12 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
           ...atk,
           isClanAttack: false,
           attacker: m,
-          defender: clanMap.get(atk.defenderTag) || { name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 },
+          defender: clanMap.get(atk.defenderTag) || {
+            name: 'Unknown',
+            mapPosition: 0,
+            tag: atk.defenderTag,
+            townhallLevel: 0,
+          },
         });
       }
     }
@@ -275,9 +287,7 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
     destruction: number;
   }> = [];
 
-  const clanAttacksSorted = allAttacks
-    .filter((a) => a.isClanAttack)
-    .sort((a, b) => a.order - b.order);
+  const clanAttacksSorted = allAttacks.filter((a) => a.isClanAttack).sort((a, b) => a.order - b.order);
 
   for (const atk of clanAttacksSorted) {
     const prevBest = oppBestStars.get(atk.defender.tag);
@@ -301,8 +311,21 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
   }
 
   const zeroAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number }> = [];
-  const partialAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number; attacksUsed: number; starsGained: number }> = [];
-  const mvps: Array<{ name: string; mapPosition: number; townhallLevel: number; totalStars: number; avgDestruction: number }> = [];
+  const partialAttacks: Array<{
+    tag: string;
+    name: string;
+    mapPosition: number;
+    townhallLevel: number;
+    attacksUsed: number;
+    starsGained: number;
+  }> = [];
+  const mvps: Array<{
+    name: string;
+    mapPosition: number;
+    townhallLevel: number;
+    totalStars: number;
+    avgDestruction: number;
+  }> = [];
 
   for (const m of currentWar.clan.members) {
     const used = m.attacks ? m.attacks.length : 0;
@@ -312,7 +335,14 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
     if (used === 0) {
       zeroAttacks.push({ tag: m.tag, name: m.name, mapPosition: m.mapPosition, townhallLevel: m.townhallLevel });
     } else if (used < attacksPerMember) {
-      partialAttacks.push({ tag: m.tag, name: m.name, mapPosition: m.mapPosition, townhallLevel: m.townhallLevel, attacksUsed: used, starsGained });
+      partialAttacks.push({
+        tag: m.tag,
+        name: m.name,
+        mapPosition: m.mapPosition,
+        townhallLevel: m.townhallLevel,
+        attacksUsed: used,
+        starsGained,
+      });
     } else if (used === attacksPerMember && starsGained === attacksPerMember * 3) {
       mvps.push({
         name: m.name,
@@ -366,9 +396,11 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
 
   if (zeroAttacks.length > 0) {
     auditLines.push(`🚨 **Missed All Attacks (0/${attacksPerMember})**:`);
-    zeroAttacks.sort((a, b) => a.mapPosition - b.mapPosition).forEach((m) => {
-      auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 0 attacks`);
-    });
+    zeroAttacks
+      .sort((a, b) => a.mapPosition - b.mapPosition)
+      .forEach((m) => {
+        auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 0 attacks`);
+      });
     auditLines.push('');
   } else {
     auditLines.push('✅ **100% Clan Participation**: Every member hit at least once!');
@@ -377,16 +409,22 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
 
   if (partialAttacks.length > 0) {
     auditLines.push(`⚠️ **Partial Attacks (1/${attacksPerMember})**:`);
-    partialAttacks.sort((a, b) => a.mapPosition - b.mapPosition).forEach((m) => {
-      auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 1 hit (${m.starsGained} ${EMOJIS.STAR})`);
-    });
+    partialAttacks
+      .sort((a, b) => a.mapPosition - b.mapPosition)
+      .forEach((m) => {
+        auditLines.push(
+          `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 1 hit (${m.starsGained} ${EMOJIS.STAR})`
+        );
+      });
     auditLines.push('');
   }
 
   if (wastedAttacks.length > 0) {
     auditLines.push(`🎯 **Attacked Bases Already 3-Starred (0 Net Stars)**:`);
     wastedAttacks.forEach((w) => {
-      auditLines.push(`• **#${w.attackerPos} ${w.attackerName}** attacked **#${w.defenderPos} ${w.defenderName}** (was already 3 ${EMOJIS.STAR})`);
+      auditLines.push(
+        `• **#${w.attackerPos} ${w.attackerName}** attacked **#${w.defenderPos} ${w.defenderName}** (was already 3 ${EMOJIS.STAR})`
+      );
     });
     auditLines.push('');
   } else {
@@ -397,7 +435,9 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
   if (mvps.length > 0) {
     auditLines.push(`${EMOJIS.STAR} **War MVPs (Max ${attacksPerMember * 3} ${EMOJIS.STAR} Hitters)**:`);
     mvps.forEach((mvp) => {
-      auditLines.push(`• **#${mvp.mapPosition} ${mvp.name}** (TH${mvp.townhallLevel}) — ${mvp.totalStars} ${EMOJIS.STAR} (${mvp.avgDestruction.toFixed(0)}% avg)`);
+      auditLines.push(
+        `• **#${mvp.mapPosition} ${mvp.name}** (TH${mvp.townhallLevel}) — ${mvp.totalStars} ${EMOJIS.STAR} (${mvp.avgDestruction.toFixed(0)}% avg)`
+      );
     });
   }
 
@@ -419,10 +459,7 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
   };
 }
 
-export async function sendWarSummaryDiscord(
-  webhookUrl: string,
-  currentWar: CurrentWarResponse
-): Promise<boolean> {
+export async function sendWarSummaryDiscord(webhookUrl: string, currentWar: CurrentWarResponse): Promise<boolean> {
   const { endEmbed, auditEmbed } = buildWarEndSummaryMessages(currentWar);
 
   // 1. Send War Recap Embed
@@ -439,4 +476,3 @@ export async function sendWarSummaryDiscord(
 
   return true;
 }
-

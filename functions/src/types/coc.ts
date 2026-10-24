@@ -194,7 +194,6 @@ export interface PlayerResponse {
   leagueTier?: { iconUrls?: Record<string, string> };
 }
 
-
 /**
  * A live player, or one rebuilt from the last snapshot during maintenance (which lacks some fields).
  * Functions that accept either take this; anything needing the full response takes PlayerResponse.

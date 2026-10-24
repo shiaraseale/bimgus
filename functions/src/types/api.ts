@@ -10,8 +10,22 @@ export type { ClanMember, WarAttack, WarClanMember, WarClan } from './coc';
 /** The post-war audit (who missed attacks, wasted hits, MVPs), as stored on the war snapshot. */
 export interface WarAudit {
   zeroAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number }>;
-  partialAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number; attacksUsed: number; starsGained: number }>;
-  wastedAttacks: Array<{ attackerName: string; attackerPos: number; defenderName: string; defenderPos: number; stars: number; destruction: number }>;
+  partialAttacks: Array<{
+    tag: string;
+    name: string;
+    mapPosition: number;
+    townhallLevel: number;
+    attacksUsed: number;
+    starsGained: number;
+  }>;
+  wastedAttacks: Array<{
+    attackerName: string;
+    attackerPos: number;
+    defenderName: string;
+    defenderPos: number;
+    stars: number;
+    destruction: number;
+  }>;
   mvps: Array<{ name: string; mapPosition: number; townhallLevel: number; totalStars: number; avgDestruction: number }>;
 }
 

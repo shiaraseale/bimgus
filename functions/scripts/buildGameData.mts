@@ -12,7 +12,17 @@ import { fileURLToPath } from 'node:url';
 
 const DATAMINE_REPO = 'ClashKingInc/ClashKingAssets';
 const DATAMINE_COMMIT = 'b8f42a707fe92d5293d46088bf536450ae422e7b'; // 2026-09-28 "september update contents"
-const FILES = ['buildings', 'traps', 'heroes', 'troops', 'spells', 'pets', 'equipment', 'helpers', 'guardians'] as const;
+const FILES = [
+  'buildings',
+  'traps',
+  'heroes',
+  'troops',
+  'spells',
+  'pets',
+  'equipment',
+  'helpers',
+  'guardians',
+] as const;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT_FILE = path.resolve(here, '../src/data/gameData.json');
@@ -107,10 +117,12 @@ function unitLevels(levels: any[]): Level[] {
     const ores = typeof l.upgrade_cost === 'object' && l.upgrade_cost !== null ? l.upgrade_cost : null;
     return {
       level: l.level,
-      cost: ores ? 0 : l.upgrade_cost ?? 0,
+      cost: ores ? 0 : (l.upgrade_cost ?? 0),
       hallRequired: l.required_townhall ?? 0,
       ...(l.upgrade_time ? { upgradeSeconds: l.upgrade_time } : {}),
-      ...(ores ? { ores: { shiny: ores.shiny_ore ?? 0, glowy: ores.glowy_ore ?? 0, starry: ores.starry_ore ?? 0 } } : {}),
+      ...(ores
+        ? { ores: { shiny: ores.shiny_ore ?? 0, glowy: ores.glowy_ore ?? 0, starry: ores.starry_ore ?? 0 } }
+        : {}),
     };
   });
 }
@@ -122,7 +134,10 @@ function buildingCategory(b: any): string {
   return BUILDING_CATEGORIES[b.type] ?? 'other';
 }
 
-function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: string; village: Village; displayName: string }>) {
+function build(
+  data: Record<string, any[]>,
+  displayOverrides: Array<{ gameName: string; village: Village; displayName: string }>
+) {
   const items: Record<string, Item> = {};
   const weapons: Record<number, { name: string; resource: Resource; levels: Level[] }> = {};
 
@@ -155,7 +170,14 @@ function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: 
 
     // Crafted defenses and their modules are nested under the Crafting Station
     for (const defense of b.seasonal_defenses ?? []) {
-      add({ id: defense._id, name: defense.name, category: 'craftedDefense', village: 'home', resource: 'other', levels: [] });
+      add({
+        id: defense._id,
+        name: defense.name,
+        category: 'craftedDefense',
+        village: 'home',
+        resource: 'other',
+        levels: [],
+      });
       for (const m of defense.modules ?? []) {
         add({
           id: m._id,
@@ -171,11 +193,25 @@ function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: 
   }
 
   for (const t of data.traps) {
-    add({ id: t._id, name: t.name, category: 'trap', village: toVillage(t.village), resource: toResource(t.upgrade_resource, 'other'), levels: buildingLevels(t.levels) });
+    add({
+      id: t._id,
+      name: t.name,
+      category: 'trap',
+      village: toVillage(t.village),
+      resource: toResource(t.upgrade_resource, 'other'),
+      levels: buildingLevels(t.levels),
+    });
   }
 
   for (const h of data.heroes) {
-    add({ id: h._id, name: h.name, category: 'hero', village: toVillage(h.village), resource: toResource(h.upgrade_resource, 'other'), levels: unitLevels(h.levels) });
+    add({
+      id: h._id,
+      name: h.name,
+      category: 'hero',
+      village: toVillage(h.village),
+      resource: toResource(h.upgrade_resource, 'other'),
+      levels: unitLevels(h.levels),
+    });
   }
 
   for (const t of data.troops) {
@@ -204,24 +240,57 @@ function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: 
   }
 
   for (const p of data.pets) {
-    add({ id: p._id, name: p.name, category: 'pet', village: 'home', resource: toResource(p.upgrade_resource, 'darkElixir'), levels: unitLevels(p.levels) });
+    add({
+      id: p._id,
+      name: p.name,
+      category: 'pet',
+      village: 'home',
+      resource: toResource(p.upgrade_resource, 'darkElixir'),
+      levels: unitLevels(p.levels),
+    });
   }
 
   for (const e of data.equipment) {
     if (e.rarity !== 'Common' && e.rarity !== 'Epic') fail(`unknown equipment rarity "${e.rarity}" on ${e.name}`);
-    add({ id: e._id, name: e.name, category: 'equipment', village: 'home', resource: 'ores', rarity: e.rarity, hero: e.hero, levels: unitLevels(e.levels) });
+    add({
+      id: e._id,
+      name: e.name,
+      category: 'equipment',
+      village: 'home',
+      resource: 'ores',
+      rarity: e.rarity,
+      hero: e.hero,
+      levels: unitLevels(e.levels),
+    });
   }
 
   for (const h of data.helpers) {
-    add({ id: h._id, name: h.name, category: 'helper', village: 'home', resource: toResource(h.upgrade_resource, 'gems'), levels: unitLevels(h.levels) });
+    add({
+      id: h._id,
+      name: h.name,
+      category: 'helper',
+      village: 'home',
+      resource: toResource(h.upgrade_resource, 'gems'),
+      levels: unitLevels(h.levels),
+    });
   }
 
   for (const g of data.guardians) {
-    add({ id: g._id, name: g.name, category: 'guardian', village: 'home', resource: toResource(g.upgrade_resource, 'other'), levels: unitLevels(g.levels) });
+    add({
+      id: g._id,
+      name: g.name,
+      category: 'guardian',
+      village: 'home',
+      resource: toResource(g.upgrade_resource, 'other'),
+      levels: unitLevels(g.levels),
+    });
   }
 
   // How many of each building and trap a hall level allows: the halls list what each level adds
-  for (const [hallId, village] of [[1000001, 'home'], [1000034, 'builder']] as const) {
+  for (const [hallId, village] of [
+    [1000001, 'home'],
+    [1000034, 'builder'],
+  ] as const) {
     const hall = data.buildings.find((b) => b._id === hallId) ?? fail(`hall ${hallId} missing`);
     const running: Record<number, number> = {};
     for (const l of hall.levels) {
@@ -238,7 +307,11 @@ function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: 
   }
 
   // Display names (D3): a Builder Base item whose name also exists in the home village gets " (BB)"
-  const homeNames = new Set(Object.values(items).filter((i) => i.village === 'home').map((i) => i.name));
+  const homeNames = new Set(
+    Object.values(items)
+      .filter((i) => i.village === 'home')
+      .map((i) => i.name)
+  );
   for (const item of Object.values(items)) {
     if (item.village === 'builder' && homeNames.has(item.name)) item.displayName = `${item.name} (BB)`;
   }
@@ -248,7 +321,7 @@ function build(data: Record<string, any[]>, displayOverrides: Array<{ gameName: 
     for (const m of matches) m.displayName = o.displayName;
   }
 
-  const hallLevels = (id: number) => (items[id]?.levels.length ?? fail(`hall ${id} missing`));
+  const hallLevels = (id: number) => items[id]?.levels.length ?? fail(`hall ${id} missing`);
   return {
     meta: {
       source: `https://github.com/${DATAMINE_REPO}/tree/${DATAMINE_COMMIT}/assets/static_data`,
@@ -270,7 +343,11 @@ async function main() {
   await writeFile(OUT_FILE, JSON.stringify(gameData) + '\n');
   const counts: Record<string, number> = {};
   for (const i of Object.values(gameData.items)) counts[i.category] = (counts[i.category] ?? 0) + 1;
-  console.log(`Wrote ${OUT_FILE}: ${Object.keys(gameData.items).length} items`, counts, `TH${gameData.meta.maxTownHall} / BH${gameData.meta.maxBuilderHall}`);
+  console.log(
+    `Wrote ${OUT_FILE}: ${Object.keys(gameData.items).length} items`,
+    counts,
+    `TH${gameData.meta.maxTownHall} / BH${gameData.meta.maxBuilderHall}`
+  );
 }
 
 main().catch((err) => {

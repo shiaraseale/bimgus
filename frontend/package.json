@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "format": "prettier --write src",
-    "format:check": "prettier --check src"
+    "format": "prettier --ignore-path ../.prettierignore --write src",
+    "format:check": "prettier --ignore-path ../.prettierignore --check src"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

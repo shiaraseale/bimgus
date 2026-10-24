@@ -8,13 +8,7 @@ interface TownHallBadgeProps {
   className?: string;
 }
 
-export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
-  level,
-  size = 26,
-  fontSize,
-  style,
-  className = '',
-}) => {
+export const TownHallBadge: React.FC<TownHallBadgeProps> = ({ level, size = 26, fontSize, style, className = '' }) => {
   if (!level && level !== 0) {
     return (
       <span className={`th-badge ${className}`} style={{ fontSize, ...style }}>

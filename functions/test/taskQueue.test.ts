@@ -23,7 +23,13 @@ describe('slow commands are queued as Cloud Tasks', () => {
     privateKey = keys.privateKey;
     config.discord.publicKey = keys.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex');
     const app = express();
-    app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+    app.use(
+      express.json({
+        verify: (req: any, _res, buf) => {
+          req.rawBody = buf;
+        },
+      })
+    );
     app.use('/api/discord', discordInteractionsRouter);
     server = app.listen(0);
     await new Promise<void>((resolve) => server.once('listening', () => resolve()));
@@ -36,12 +42,23 @@ describe('slow commands are queued as Cloud Tasks', () => {
   });
 
   const send = async (payload: any) => {
-    const body = JSON.stringify({ type: 2, token: 'tok', application_id: 'app', guild_id: 'g', member: { user: { id: '42' } }, ...payload });
+    const body = JSON.stringify({
+      type: 2,
+      token: 'tok',
+      application_id: 'app',
+      guild_id: 'g',
+      member: { user: { id: '42' } },
+      ...payload,
+    });
     const timestamp = String(Math.floor(Date.now() / 1000));
     const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
     return fetch(baseUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Signature-Ed25519': signature, 'X-Signature-Timestamp': timestamp },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Signature-Ed25519': signature,
+        'X-Signature-Timestamp': timestamp,
+      },
       body,
     });
   };
@@ -57,10 +74,15 @@ describe('slow commands are queued as Cloud Tasks', () => {
     });
     expect(await res.json()).toEqual({ type: 5, data: { flags: 64 } });
     expect(taskQueue).toHaveBeenCalledWith('importTask');
-    expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({
-      discordUserId: '42', applicationId: 'app', interactionToken: 'tok', isGuild: true,
-      attachments: [{ id: 'a1', url: 'https://cdn.example/x.json', filename: 'x.json' }],
-    }));
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discordUserId: '42',
+        applicationId: 'app',
+        interactionToken: 'tok',
+        isGuild: true,
+        attachments: [{ id: 'a1', url: 'https://cdn.example/x.json', filename: 'x.json' }],
+      })
+    );
     expect(get).not.toHaveBeenCalled();
   });
 
@@ -68,7 +90,9 @@ describe('slow commands are queued as Cloud Tasks', () => {
     const res = await send({ data: { name: 'upgrades', options: [] } });
     expect(await res.json()).toEqual({ type: 5, data: { flags: 64 } });
     expect(taskQueue).toHaveBeenCalledWith('commandTask');
-    expect(enqueue).toHaveBeenCalledWith({ interaction: expect.objectContaining({ token: 'tok', data: { name: 'upgrades', options: [] } }) });
+    expect(enqueue).toHaveBeenCalledWith({
+      interaction: expect.objectContaining({ token: 'tok', data: { name: 'upgrades', options: [] } }),
+    });
   });
 
   it('/help is answered straight away, not queued', async () => {
@@ -79,7 +103,9 @@ describe('slow commands are queued as Cloud Tasks', () => {
   });
 
   it('/roast queues roastTask and replies publicly', async () => {
-    const res = await send({ data: { name: 'roast', options: [{ name: 'user', value: '7' }], resolved: { users: { 7: { username: 'T' } } } } });
+    const res = await send({
+      data: { name: 'roast', options: [{ name: 'user', value: '7' }], resolved: { users: { 7: { username: 'T' } } } },
+    });
     expect(await res.json()).toEqual({ type: 5, data: {} });
     expect(taskQueue).toHaveBeenCalledWith('roastTask');
     expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ targetUserId: '7', targetUsername: 'T' }));

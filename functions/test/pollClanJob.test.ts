@@ -5,7 +5,9 @@ vi.mock('../src/diff/warDiff', () => ({ processWarDiff: vi.fn(async () => null) 
 vi.mock('../src/diff/raidDiff', () => ({ processRaidDiff: vi.fn(async () => ({})) }));
 vi.mock('../src/diff/cwlDiff', () => ({ processCwlDiff: vi.fn(async () => null) }));
 vi.mock('../src/diff/clanGamesDiff', () => ({ processClanGamesDiff: vi.fn(async () => ({})) }));
-vi.mock('../src/jobs/playerTrackingJob', () => ({ runPlayerTrackingJob: vi.fn(async () => ({ success: true, checkedAccounts: 3, dmsSent: 0 })) }));
+vi.mock('../src/jobs/playerTrackingJob', () => ({
+  runPlayerTrackingJob: vi.fn(async () => ({ success: true, checkedAccounts: 3, dmsSent: 0 })),
+}));
 vi.mock('../src/jobs/warPingJob', () => ({ runWarPingJob: vi.fn(async () => ({ success: true, message: 'ok' })) }));
 
 import { runPollClanJob, tasksForTick } from '../src/jobs/pollClanJob';
@@ -28,12 +30,18 @@ describe('tasksForTick (3.1)', () => {
 
   it('runs war reminders at :00 and :30 only', () => {
     const minutes = Array.from({ length: 30 }, (_, i) => i * 2); // every tick in an hour
-    const reminders = minutes.filter((m) => tasksForTick(at(`2026-10-24T12:${String(m).padStart(2, '0')}:05`)).warReminders);
+    const reminders = minutes.filter(
+      (m) => tasksForTick(at(`2026-10-24T12:${String(m).padStart(2, '0')}:05`)).warReminders
+    );
     expect(reminders).toEqual([0, 30]);
   });
 
   it('runs everything (but not reminders) for a manual sync', () => {
-    expect(tasksForTick(at('2026-10-24T12:02:00'), true)).toMatchObject({ cwl: true, raids: true, warReminders: false });
+    expect(tasksForTick(at('2026-10-24T12:02:00'), true)).toMatchObject({
+      cwl: true,
+      raids: true,
+      warReminders: false,
+    });
   });
 });
 
@@ -50,8 +58,23 @@ describe('runPollClanJob', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(CocService, 'shared').mockReturnValue(coc as any);
-    for (const m of ['getConfig', 'getClanSnapshot', 'saveClanSnapshot', 'getWarSnapshot', 'saveWarSnapshot', 'getCwlSnapshot', 'saveCwlSnapshot', 'getRaidSnapshot', 'saveRaidSnapshot', 'getClanGamesSnapshot', 'saveClanGamesSnapshot', 'saveRaw'] as const) {
-      vi.spyOn(FirestoreService, m as any).mockResolvedValue(m === 'getConfig' ? { webhooks: {}, notificationsEnabled: {} } : null);
+    for (const m of [
+      'getConfig',
+      'getClanSnapshot',
+      'saveClanSnapshot',
+      'getWarSnapshot',
+      'saveWarSnapshot',
+      'getCwlSnapshot',
+      'saveCwlSnapshot',
+      'getRaidSnapshot',
+      'saveRaidSnapshot',
+      'getClanGamesSnapshot',
+      'saveClanGamesSnapshot',
+      'saveRaw',
+    ] as const) {
+      vi.spyOn(FirestoreService, m as any).mockResolvedValue(
+        m === 'getConfig' ? { webhooks: {}, notificationsEnabled: {} } : null
+      );
     }
   });
 
@@ -66,9 +89,18 @@ describe('runPollClanJob', () => {
 
   it('saves the war before player tracking and the reminders run (they set flags on it)', async () => {
     const order: string[] = [];
-    (FirestoreService.getWarSnapshot as any).mockImplementation(async () => { order.push('war'); return null; });
-    (runPlayerTrackingJob as any).mockImplementation(async () => { order.push('tracking'); return { checkedAccounts: 0, dmsSent: 0 }; });
-    (runWarPingJob as any).mockImplementation(async () => { order.push('reminders'); return { success: true, message: 'ok' }; });
+    (FirestoreService.getWarSnapshot as any).mockImplementation(async () => {
+      order.push('war');
+      return null;
+    });
+    (runPlayerTrackingJob as any).mockImplementation(async () => {
+      order.push('tracking');
+      return { checkedAccounts: 0, dmsSent: 0 };
+    });
+    (runWarPingJob as any).mockImplementation(async () => {
+      order.push('reminders');
+      return { success: true, message: 'ok' };
+    });
     coc.getCurrentWar.mockResolvedValueOnce({ state: 'inWar' } as any);
     await runPollClanJob(undefined, { scheduleTime: at('2026-10-24T12:30:00') });
     expect(order).toEqual(['war', 'tracking', 'reminders']);

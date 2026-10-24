@@ -35,15 +35,15 @@ export class GeminiRoastService {
   private static readonly TIMEOUT_MS = 8000;
 
   private static readonly GENERIC_CLASH_ROASTS = [
-    "You look like the type of attacker who drops all 10 Electro Dragons in a single pixel and prays to the heavens.",
-    "Your war attack strategy has the tactical depth of a Barbarian attempting to do calculus against a crusher.",
-    "You definitely drop Jump Spells on open grass just to hear the bounce sound effect.",
-    "Even a lone Wall Breaker running backwards into a giant bomb has more combat IQ than your last five war hits combined.",
-    "You are the exact reason Supercell made the tutorial unskippable.",
-    "Your troop funneling is so catastrophic that your Queen gets second-hand embarrassment and shoots a corner wall for 3 minutes.",
+    'You look like the type of attacker who drops all 10 Electro Dragons in a single pixel and prays to the heavens.',
+    'Your war attack strategy has the tactical depth of a Barbarian attempting to do calculus against a crusher.',
+    'You definitely drop Jump Spells on open grass just to hear the bounce sound effect.',
+    'Even a lone Wall Breaker running backwards into a giant bomb has more combat IQ than your last five war hits combined.',
+    'You are the exact reason Supercell made the tutorial unskippable.',
+    'Your troop funneling is so catastrophic that your Queen gets second-hand embarrassment and shoots a corner wall for 3 minutes.',
     "You definitely leave your Grand Warden on air mode during an all-ground smash attack and wonder why he's floating uselessly.",
     "Your war plan is closing your eyes, swiping all ten fingers across your tablet, and blaming lag when it's a 34% one-star.",
-    "You probably donate Wall Breakers when clanmates ask for war defense troops.",
+    'You probably donate Wall Breakers when clanmates ask for war defense troops.',
   ];
 
   /**
@@ -102,19 +102,22 @@ export class GeminiRoastService {
 
   private static buildPrompt(target: RoastTargetProfile): string {
     if (target.accounts && target.accounts.length > 0) {
-      const accountDescriptions = target.accounts.map((p, i) => {
-        const heroes = p.heroes && p.heroes.length > 0
-          ? `Heroes: ${p.heroes.map((h) => `${h.name} Lv${h.level}`).join(', ')}`
-          : '';
-        const warMissed = p.warPerformance ? `War Performance: ${p.warPerformance}` : '';
-        return `Account ${i + 1} ("${p.name}"):
+      const accountDescriptions = target.accounts
+        .map((p, i) => {
+          const heroes =
+            p.heroes && p.heroes.length > 0
+              ? `Heroes: ${p.heroes.map((h) => `${h.name} Lv${h.level}`).join(', ')}`
+              : '';
+          const warMissed = p.warPerformance ? `War Performance: ${p.warPerformance}` : '';
+          return `Account ${i + 1} ("${p.name}"):
 - Town Hall: ${p.townHallLevel}, Builder Hall: ${p.builderHallLevel || 'N/A'}
 - Trophies: ${p.trophies}, War Stars: ${p.warStars}
 - Season Attack Wins: ${p.attackWins ?? 0}, Defense Wins: ${p.defenseWins ?? 0}
 - Donations: Donated ${p.donations} vs Received ${p.donationsReceived}
 ${heroes ? `- ${heroes}` : ''}
 ${warMissed ? `- ${warMissed}` : ''}`.trim();
-      }).join('\n\n');
+        })
+        .join('\n\n');
 
       return `You are Bimgus, a sassy, witty, legendary cat mascot from a Clash of Clans Discord bot.
 The user ${target.discordMention} (${target.discordUsername}) has ${target.accounts.length} linked Clash of Clans account(s):
@@ -147,8 +150,8 @@ RULES:
     if (target.accounts && target.accounts.length > 0) {
       // Pick the account with the funniest/most roastable material
       const sorted = [...target.accounts].sort((a, b) => {
-        const aScore = (a.donationsReceived - a.donations) + (100 - (a.attackWins || 0));
-        const bScore = (b.donationsReceived - b.donations) + (100 - (b.attackWins || 0));
+        const aScore = a.donationsReceived - a.donations + (100 - (a.attackWins || 0));
+        const bScore = b.donationsReceived - b.donations + (100 - (b.attackWins || 0));
         return bScore - aScore;
       });
       const p = sorted[0];

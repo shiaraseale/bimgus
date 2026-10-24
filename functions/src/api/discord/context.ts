@@ -83,7 +83,10 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
       });
       return true;
     } catch (patchErr: any) {
-      log.error('[Discord] Failed to patch deferred reply:', JSON.stringify(patchErr.response?.data) || patchErr.message);
+      log.error(
+        '[Discord] Failed to patch deferred reply:',
+        JSON.stringify(patchErr.response?.data) || patchErr.message
+      );
       return false;
     }
   };
@@ -141,7 +144,8 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
         await FirestoreService.saveUser(commandUserDoc).catch((err: any) =>
           log.warn(`[Discord] Could not record that the DM-pause notice was shown: ${err.message}`)
         );
-        const notice = '📭 *Bimgus couldn\'t DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*';
+        const notice =
+          "📭 *Bimgus couldn't DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*";
         messageData = { ...messageData, content: [notice, messageData.content].filter(Boolean).join('\n') };
       }
       await editDeferredReply(messageData);

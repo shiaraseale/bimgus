@@ -33,9 +33,29 @@ export interface WarSnapshotDoc {
   rosterNotified?: boolean;
   postWarAudit?: {
     zeroAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number }>;
-    partialAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number; attacksUsed: number; starsGained: number }>;
-    wastedAttacks: Array<{ attackerName: string; attackerPos: number; defenderName: string; defenderPos: number; stars: number; destruction: number }>;
-    mvps: Array<{ name: string; mapPosition: number; townhallLevel: number; totalStars: number; avgDestruction: number }>;
+    partialAttacks: Array<{
+      tag: string;
+      name: string;
+      mapPosition: number;
+      townhallLevel: number;
+      attacksUsed: number;
+      starsGained: number;
+    }>;
+    wastedAttacks: Array<{
+      attackerName: string;
+      attackerPos: number;
+      defenderName: string;
+      defenderPos: number;
+      stars: number;
+      destruction: number;
+    }>;
+    mvps: Array<{
+      name: string;
+      mapPosition: number;
+      townhallLevel: number;
+      totalStars: number;
+      avgDestruction: number;
+    }>;
   };
   members?: any[];
   updatedAt: string;
@@ -92,7 +112,13 @@ export interface CwlSeasonSummary {
   avgClanDestruction: number;
   playerSummaries: CwlPlayerSummary[];
   topPerformers: CwlPlayerSummary[];
-  missedAttacksList: Array<{ tag: string; name: string; townhallLevel: number; missedAttacks: number; roundsRostered: number }>;
+  missedAttacksList: Array<{
+    tag: string;
+    name: string;
+    townhallLevel: number;
+    missedAttacks: number;
+    roundsRostered: number;
+  }>;
   underdogHits: CwlUnderdogHit[];
 }
 
@@ -151,4 +177,3 @@ export interface BotConfigDoc {
   };
   warReminderHours: number[]; // e.g. [4, 1]
 }
-

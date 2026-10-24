@@ -18,14 +18,29 @@ import { LinkedAccount, UserDoc } from '../src/types/user';
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 const newUser = (): { user: UserDoc; account: LinkedAccount } => {
-  const account: LinkedAccount = { playerTag: '#ANON12345', name: 'Tester', townHallLevel: 12, builderHallLevel: 9, isPrimary: true };
+  const account: LinkedAccount = {
+    playerTag: '#ANON12345',
+    name: 'Tester',
+    townHallLevel: 12,
+    builderHallLevel: 9,
+    isPrimary: true,
+  };
   const user: UserDoc = { discordUserId: '42', accounts: [account], createdAt: '', updatedAt: '' };
   return { user, account };
 };
 
 const event = (over: Partial<UpgradeEvent> = {}): UpgradeEvent => ({
-  kind: 'upgraded', code: 1000008, name: 'Cannon', assetName: 'Cannon', category: 'defense', village: 'home',
-  oldLevel: 13, newLevel: 14, maxLevel: 17, count: 1, ...over,
+  kind: 'upgraded',
+  code: 1000008,
+  name: 'Cannon',
+  assetName: 'Cannon',
+  category: 'defense',
+  village: 'home',
+  oldLevel: 13,
+  newLevel: 14,
+  maxLevel: 17,
+  count: 1,
+  ...over,
 });
 
 describe('detectApiUpgrades (2.5 level rules)', () => {
@@ -49,15 +64,21 @@ describe('detectApiUpgrades (2.5 level rules)', () => {
   it('reports 0 → 1 as unlocked and 1 → 2 as upgraded', () => {
     const old = snapshot();
     const next = clone(player);
-    const druidish = next.troops.find((t: any) => t.village === 'home' && t.level === 1 && !/Super|Sneaky|Inferno|Ice Hound|Rocket Balloon/.test(t.name));
+    const druidish = next.troops.find(
+      (t: any) => t.village === 'home' && t.level === 1 && !/Super|Sneaky|Inferno|Ice Hound|Rocket Balloon/.test(t.name)
+    );
     expect(druidish, 'fixture has a non-super level-1 troop').toBeTruthy();
     delete old.troops[`home:${druidish.name}`];
     const hero = next.heroes.find((h: any) => h.name === 'Barbarian King');
     hero.level += 1;
 
     const events = PlayerTrackingService.detectApiUpgrades(old, next);
-    expect(events).toContainEqual(expect.objectContaining({ kind: 'unlocked', name: druidish.name, oldLevel: 0, newLevel: 1 }));
-    expect(events).toContainEqual(expect.objectContaining({ kind: 'upgraded', name: 'Barbarian King', newLevel: hero.level, maxLevel: 65 }));
+    expect(events).toContainEqual(
+      expect.objectContaining({ kind: 'unlocked', name: druidish.name, oldLevel: 0, newLevel: 1 })
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ kind: 'upgraded', name: 'Barbarian King', newLevel: hero.level, maxLevel: 65 })
+    );
     expect(events).toHaveLength(2);
   });
 
@@ -87,7 +108,10 @@ describe('detectApiUpgrades (2.5 level rules)', () => {
       expect.objectContaining({ kind: 'unlocked', name: 'Inferno Artillery', newLevel: 1, maxLevel: 5 }),
     ]);
     const lvl2 = { ...th17, townHallWeaponLevel: 2 };
-    expect(PlayerTrackingService.detectApiUpgrades(PlayerTrackingService.createSnapshot(th17), lvl2)[0]).toMatchObject({ kind: 'upgraded', newLevel: 2 });
+    expect(PlayerTrackingService.detectApiUpgrades(PlayerTrackingService.createSnapshot(th17), lvl2)[0]).toMatchObject({
+      kind: 'upgraded',
+      newLevel: 2,
+    });
 
     // A TH12 weapon change is ignored (D9)
     const th12 = { ...clone(player), townHallWeaponLevel: 2 };
@@ -107,9 +131,21 @@ describe('timers and imports', () => {
   });
 
   it('treats a timer from level 0 as built (buildings) or unlocked (everything else)', () => {
-    const t = { code: 1000008, name: 'Cannon', category: 'defense' as const, village: 'home' as const, currentLevel: 0, targetLevel: 1, maxLevel: 17, timerSeconds: 1, finishesAtMs: 1 };
+    const t = {
+      code: 1000008,
+      name: 'Cannon',
+      category: 'defense' as const,
+      village: 'home' as const,
+      currentLevel: 0,
+      targetLevel: 1,
+      maxLevel: 17,
+      timerSeconds: 1,
+      finishesAtMs: 1,
+    };
     expect(eventFromTimer(t)?.kind).toBe('built');
-    expect(eventFromTimer({ ...t, code: 93000000, name: "Builder's Apprentice", category: 'helper' })?.kind).toBe('unlocked');
+    expect(eventFromTimer({ ...t, code: 93000000, name: "Builder's Apprentice", category: 'helper' })?.kind).toBe(
+      'unlocked'
+    );
   });
 
   it('groups 40 walls reaching the same level into one line with totals', () => {
@@ -134,7 +170,12 @@ describe('notifyUpgrades', () => {
 
   it('sends a hero completion once even if it is reported twice', async () => {
     const { user, account } = newUser();
-    const hero = event({ category: 'hero', name: 'Barbarian King', assetName: 'Barbarian King', key: 'hero:home:Barbarian King:37' });
+    const hero = event({
+      category: 'hero',
+      name: 'Barbarian King',
+      assetName: 'Barbarian King',
+      key: 'hero:home:Barbarian King:37',
+    });
     await notifyUpgrades(user, account, [hero]);
     await notifyUpgrades(user, account, [hero]);
     expect(send).toHaveBeenCalledTimes(1);
@@ -151,7 +192,10 @@ describe('notifyUpgrades', () => {
 
   it('words timer events as estimates and unlocks as unlocks', async () => {
     const { user, account } = newUser();
-    await notifyUpgrades(user, account, [event({ kind: 'expected' }), event({ kind: 'unlocked', category: 'troop', name: 'Druid', newLevel: 1, maxLevel: 5 })]);
+    await notifyUpgrades(user, account, [
+      event({ kind: 'expected' }),
+      event({ kind: 'unlocked', category: 'troop', name: 'Druid', newLevel: 1, maxLevel: 5 }),
+    ]);
     const texts = send.mock.calls.map((c) => (c[1] as any).embeds[0].description as string);
     expect(texts[0]).toContain('should now be level 14');
     expect(texts[1]).toContain('🔓 **Druid** unlocked! (Lv 1/5)');
@@ -171,7 +215,15 @@ describe('notifyUpgrades', () => {
 
   it('never DMs hero equipment upgrades or unlocks', async () => {
     const { user, account } = newUser();
-    const puppet = event({ category: 'equipment', name: 'Henchmen Puppet', assetName: 'Henchmen Puppet', oldLevel: 6, newLevel: 7, maxLevel: 15, key: 'equipment:home:Henchmen Puppet:7' });
+    const puppet = event({
+      category: 'equipment',
+      name: 'Henchmen Puppet',
+      assetName: 'Henchmen Puppet',
+      oldLevel: 6,
+      newLevel: 7,
+      maxLevel: 15,
+      key: 'equipment:home:Henchmen Puppet:7',
+    });
     expect(await notifyUpgrades(user, account, [puppet, { ...puppet, kind: 'unlocked', key: 'x' }])).toBe(0);
     expect(send).not.toHaveBeenCalled();
   });
@@ -186,11 +238,31 @@ describe('notifyUpgrades', () => {
 
 describe('hero upgrades: the API shows the new level when the upgrade starts', () => {
   const now = Date.parse('2026-10-24T15:45:00Z');
-  const aqStart = event({ kind: 'upgraded', code: 28000001, name: 'Archer Queen', assetName: 'Archer Queen', category: 'hero', oldLevel: 18, newLevel: 19, maxLevel: 30, key: 'hero:home:Archer Queen:19' });
+  const aqStart = event({
+    kind: 'upgraded',
+    code: 28000001,
+    name: 'Archer Queen',
+    assetName: 'Archer Queen',
+    category: 'hero',
+    oldLevel: 18,
+    newLevel: 19,
+    maxLevel: 30,
+    key: 'hero:home:Archer Queen:19',
+  });
   const importWithAqTimer = (finishesAtMs: number) => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const data = VillageImportService.parseExport(clone(exportFixture));
-    data.inProgressUpgrades.push({ code: 28000001, name: 'Archer Queen', category: 'hero', village: 'home', currentLevel: 18, targetLevel: 19, maxLevel: 30, timerSeconds: 1, finishesAtMs });
+    data.inProgressUpgrades.push({
+      code: 28000001,
+      name: 'Archer Queen',
+      category: 'hero',
+      village: 'home',
+      currentLevel: 18,
+      targetLevel: 19,
+      maxLevel: 30,
+      timerSeconds: 1,
+      finishesAtMs,
+    });
     return data;
   };
 
@@ -203,7 +275,9 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
   it('without an import, waits for the game data upgrade time (24 h for Archer Queen 19)', () => {
     const result = heroUpgradeStarts([aqStart], null, now);
     expect(result.events).toEqual([]);
-    expect(result.pending).toEqual([expect.objectContaining({ code: 28000001, targetLevel: 19, finishesAtMs: now + 24 * 3600_000 })]);
+    expect(result.pending).toEqual([
+      expect.objectContaining({ code: 28000001, targetLevel: 19, finishesAtMs: now + 24 * 3600_000 }),
+    ]);
   });
 
   it('leaves non-hero events alone', () => {

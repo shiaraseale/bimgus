@@ -22,9 +22,7 @@ function buildCapitalConqueredEmbed(
 ): DiscordEmbed {
   const totalLoot = raid.districts.reduce((sum, d) => sum + (d.totalLooted || 0), 0);
   const percentCleared =
-    raid.districtCount > 0
-      ? Math.round((raid.districtsDestroyed / raid.districtCount) * 100)
-      : 100;
+    raid.districtCount > 0 ? Math.round((raid.districtsDestroyed / raid.districtCount) * 100) : 100;
 
   const lines: string[] = [
     isPartialWeekendEnd
@@ -79,16 +77,15 @@ function buildCapitalConqueredEmbed(
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     lines.push(isPartialWeekendEnd ? '📊 **FINAL WEEKEND TOTALS**' : '📊 **CLAN WEEKEND TOTALS**');
     lines.push(`🏰 **Districts Destroyed**: **${weekendTotals.districtsDestroyed}**`);
-    lines.push(`${EMOJIS.CAPITAL_GOLD} **Capital Gold Looted**: **${weekendTotals.capitalTotalLoot.toLocaleString()}**`);
+    lines.push(
+      `${EMOJIS.CAPITAL_GOLD} **Capital Gold Looted**: **${weekendTotals.capitalTotalLoot.toLocaleString()}**`
+    );
     if (weekendTotals.raidsCompleted !== undefined && weekendTotals.raidsCompleted > 0) {
       lines.push(`🏛️ **Capitals Completed**: **${weekendTotals.raidsCompleted}**`);
     }
   }
 
-  const badgeUrl =
-    raid.defender.badgeUrls?.large ||
-    raid.defender.badgeUrls?.medium ||
-    raid.defender.badgeUrls?.small;
+  const badgeUrl = raid.defender.badgeUrls?.large || raid.defender.badgeUrls?.medium || raid.defender.badgeUrls?.small;
 
   // Discord rejects descriptions over 4,096 characters; drop the per-hit lines if needed
   let description = lines.join('\n');
@@ -141,7 +138,7 @@ export async function processRaidDiff(
 
   // 2. Track Completed Clan Capitals
   const completedCapitalTags = new Set<string>(
-    prevSnapshot && !isNewWeekend ? (prevSnapshot.completedCapitalTags || []) : []
+    prevSnapshot && !isNewWeekend ? prevSnapshot.completedCapitalTags || [] : []
   );
 
   // If initial tracking snapshot, establish baseline of already conquered capitals without spamming
@@ -179,8 +176,7 @@ export async function processRaidDiff(
   }
 
   // 3. Raid Weekend Concluded Check (Partial Unfinished Capital)
-  let announcedWeekendEnd =
-    prevSnapshot && !isNewWeekend ? (prevSnapshot.announcedWeekendEnd ?? false) : false;
+  let announcedWeekendEnd = prevSnapshot && !isNewWeekend ? (prevSnapshot.announcedWeekendEnd ?? false) : false;
 
   if (latestRaid.state === 'ended' && !announcedWeekendEnd) {
     if (latestRaid.attackLog && latestRaid.attackLog.length > 0) {

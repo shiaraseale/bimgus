@@ -24,7 +24,12 @@ const LIVE_CALL_TIMEOUT_MS = 2000;
 
 let instanceIsWarm = false;
 
-async function accountRoastData(acc: LinkedAccount, cocService: CocService, warSnap: any, now: number): Promise<{ data: PlayerRoastData; live: boolean }> {
+async function accountRoastData(
+  acc: LinkedAccount,
+  cocService: CocService,
+  warSnap: any,
+  now: number
+): Promise<{ data: PlayerRoastData; live: boolean }> {
   const snap = acc.lastSnapshot;
   const data: PlayerRoastData = {
     name: acc.name || 'Clasher',
@@ -47,7 +52,10 @@ async function accountRoastData(acc: LinkedAccount, cocService: CocService, warS
     data.name = snap.name || data.name;
     data.townHallLevel = snap.townHallLevel;
     data.builderHallLevel = snap.builderHallLevel;
-    data.heroes = Object.entries(snap.heroes || {}).map(([key, h]) => ({ name: h.name ?? key.replace(/^(home|builder):/, ''), level: h.level }));
+    data.heroes = Object.entries(snap.heroes || {}).map(([key, h]) => ({
+      name: h.name ?? key.replace(/^(home|builder):/, ''),
+      level: h.level,
+    }));
   } else {
     live = true;
     try {
@@ -71,7 +79,10 @@ async function accountRoastData(acc: LinkedAccount, cocService: CocService, warS
     } catch (err: any) {
       log.warn(`[Roast] Live lookup for ${acc.playerTag} failed (${err.message}); using the snapshot's heroes`);
       if (snap?.heroes) {
-        data.heroes = Object.entries(snap.heroes).map(([key, h]) => ({ name: h.name ?? key.replace(/^(home|builder):/, ''), level: h.level }));
+        data.heroes = Object.entries(snap.heroes).map(([key, h]) => ({
+          name: h.name ?? key.replace(/^(home|builder):/, ''),
+          level: h.level,
+        }));
       }
     }
   }
@@ -83,7 +94,8 @@ async function accountRoastData(acc: LinkedAccount, cocService: CocService, warS
     const missed = audit.zeroAttacks?.find((m: any) => m.tag.toUpperCase() === tag);
     const partial = audit.partialAttacks?.find((m: any) => m.tag.toUpperCase() === tag);
     if (missed) data.warPerformance = 'Missed all attacks in clan war (0 attacks used)';
-    else if (partial) data.warPerformance = `Only used ${partial.attacksUsed} attack for ${partial.starsGained} stars in clan war`;
+    else if (partial)
+      data.warPerformance = `Only used ${partial.attacksUsed} attack for ${partial.starsGained} stars in clan war`;
   }
   return { data, live };
 }
@@ -126,10 +138,12 @@ export async function runRoastTask(task: RoastTaskData, now: number = Date.now()
     const userDoc = await time('userRead', () => FirestoreService.getUser(task.targetUserId));
     let accounts: PlayerRoastData[] | undefined;
     if (userDoc?.accounts?.length) {
-      const warSnap = await time('warSnapshot', () => FirestoreService.getWarSnapshot(config.coc.clanTag).catch((err: any) => {
-        log.warn(`[Roast] Could not read the war snapshot (${err.message})`);
-        return null;
-      }));
+      const warSnap = await time('warSnapshot', () =>
+        FirestoreService.getWarSnapshot(config.coc.clanTag).catch((err: any) => {
+          log.warn(`[Roast] Could not read the war snapshot (${err.message})`);
+          return null;
+        })
+      );
       const cocService = CocService.shared();
       const results = await time('accounts', () =>
         Promise.all(userDoc.accounts.map((acc) => accountRoastData(acc, cocService, warSnap, now)))

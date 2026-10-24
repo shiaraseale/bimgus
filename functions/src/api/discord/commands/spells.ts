@@ -70,7 +70,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
         totalSpellLevels === 0
           ? '🎉 **All spells are currently maxed for your Town Hall level!**'
           : `⚡ **Total Outstanding Spell Levels**: **${totalSpellLevels}**`,
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       color: totalSpellLevels === 0 ? COLORS.GREEN : COLORS.PURPLE,
       fields,
       thumbnail: { url: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel) },

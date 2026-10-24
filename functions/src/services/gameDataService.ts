@@ -9,9 +9,25 @@ import { log } from '../utils/log';
 export type Village = 'home' | 'builder';
 export type Resource = 'gold' | 'elixir' | 'darkElixir' | 'builderGold' | 'builderElixir' | 'ores' | 'gems' | 'other';
 export type GameCategory =
-  | 'defense' | 'resource' | 'army' | 'other' | 'trap' | 'wall' | 'townHall' | 'builderHall'
-  | 'hero' | 'troop' | 'superTroop' | 'siege' | 'spell' | 'pet' | 'equipment' | 'helper' | 'guardian'
-  | 'craftedDefense' | 'craftedModule';
+  | 'defense'
+  | 'resource'
+  | 'army'
+  | 'other'
+  | 'trap'
+  | 'wall'
+  | 'townHall'
+  | 'builderHall'
+  | 'hero'
+  | 'troop'
+  | 'superTroop'
+  | 'siege'
+  | 'spell'
+  | 'pet'
+  | 'equipment'
+  | 'helper'
+  | 'guardian'
+  | 'craftedDefense'
+  | 'craftedModule';
 
 export interface GameLevel {
   level: number;
@@ -106,7 +122,10 @@ export function nameForCode(code: number | string): string {
 function clampHall(hallLevel: number, village: Village): number {
   const max = village === 'builder' ? MAX_BUILDER_HALL : MAX_TOWN_HALL;
   if (hallLevel > max) {
-    warnOnce(`hall:${village}:${hallLevel}`, `${village === 'builder' ? 'Builder Hall' : 'Town Hall'} ${hallLevel} is above the game data (max ${max}); using ${max}`);
+    warnOnce(
+      `hall:${village}:${hallLevel}`,
+      `${village === 'builder' ? 'Builder Hall' : 'Town Hall'} ${hallLevel} is above the game data (max ${max}); using ${max}`
+    );
     return max;
   }
   return hallLevel;

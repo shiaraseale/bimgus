@@ -12,6 +12,19 @@ import * as roast from './roast';
 import * as importVillage from './importVillage';
 
 /** Every slash command: its Discord definition, whether it runs as a task, and its handler. */
-export const COMMANDS = [help, link, unlink, accounts, sixthBuilder, heroes, upgrades, defenses, spells, troops, roast, importVillage];
+export const COMMANDS = [
+  help,
+  link,
+  unlink,
+  accounts,
+  sixthBuilder,
+  heroes,
+  upgrades,
+  defenses,
+  spells,
+  troops,
+  roast,
+  importVillage,
+];
 
 export const COMMANDS_BY_NAME = new Map(COMMANDS.map((c) => [c.definition.name, c]));

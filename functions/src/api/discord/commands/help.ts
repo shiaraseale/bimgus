@@ -18,16 +18,19 @@ export async function execute(ctx: CommandContext): Promise<any> {
     embeds: [
       {
         title: '🤖 Bimgus — Clash of Clans Discord Assistant',
-        description: 'Hi! I am **Bimgus**, your automated Clash of Clans assistant. I track your accounts, keep you ready for Clan Wars, and deliver personalized insights across all your linked accounts!\n\nHere are all available slash commands:',
+        description:
+          'Hi! I am **Bimgus**, your automated Clash of Clans assistant. I track your accounts, keep you ready for Clan Wars, and deliver personalized insights across all your linked accounts!\n\nHere are all available slash commands:',
         fields: [
           {
             name: '🔥 `/roast [user]`',
-            value: 'Tag another member to let Bimgus deliver a witty, personalized Clash of Clans roast in the channel!\n\u200b',
+            value:
+              'Tag another member to let Bimgus deliver a witty, personalized Clash of Clans roast in the channel!\n\u200b',
             inline: false,
           },
           {
             name: '🔗 `/link [tag] [dms]`',
-            value: 'Link a Clash of Clans account to your Discord profile. All linked accounts have equal status!\n\u200b',
+            value:
+              'Link a Clash of Clans account to your Discord profile. All linked accounts have equal status!\n\u200b',
             inline: false,
           },
           {
@@ -42,7 +45,8 @@ export async function execute(ctx: CommandContext): Promise<any> {
           },
           {
             name: '🔨 `/sixth-builder [account]`',
-            value: 'Check your real-time checklist and progress towards unlocking B.O.B (sends a report for each linked account).\n\u200b',
+            value:
+              'Check your real-time checklist and progress towards unlocking B.O.B (sends a report for each linked account).\n\u200b',
             inline: false,
           },
           {
@@ -52,12 +56,14 @@ export async function execute(ctx: CommandContext): Promise<any> {
           },
           {
             name: '🏰 `/upgrades [account]`',
-            value: 'View live progression and all outstanding upgrades (sends a report for each linked account).\n\u200b',
+            value:
+              'View live progression and all outstanding upgrades (sends a report for each linked account).\n\u200b',
             inline: false,
           },
           {
             name: '🛡️ `/defenses [account]`',
-            value: 'Check defense max caps, gear-ups, and Hall upgrade status for your Town Hall / Builder Hall.\n\u200b',
+            value:
+              'Check defense max caps, gear-ups, and Hall upgrade status for your Town Hall / Builder Hall.\n\u200b',
             inline: false,
           },
           {
@@ -72,7 +78,8 @@ export async function execute(ctx: CommandContext): Promise<any> {
           },
           {
             name: '📥 `/import-village [file] [json_text] [account]`',
-            value: 'Import your in-game village JSON export to track exact building levels, timers and costs. One export per account; it includes both villages.\n\u200b',
+            value:
+              'Import your in-game village JSON export to track exact building levels, timers and costs. One export per account; it includes both villages.\n\u200b',
             inline: false,
           },
         ],

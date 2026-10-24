@@ -30,7 +30,12 @@ describe('parseExport (one file, both villages)', () => {
     expect(total(data, 1000009)).toBe(8); // Archer Towers
     expect(total(data, 1000010)).toBe(300); // Walls
     expect(total(data, 1000015)).toBe(5); // Builder's Huts
-    expect(data.items.filter((i) => i.gearedUp).map((i) => i.code).sort()).toEqual([1000008, 1000009, 1000013]);
+    expect(
+      data.items
+        .filter((i) => i.gearedUp)
+        .map((i) => i.code)
+        .sort()
+    ).toEqual([1000008, 1000009, 1000013]);
   });
 
   it('finds all 7 timers, including both Spring Traps, the Star Laboratory and the Rage Spell', () => {
@@ -91,11 +96,16 @@ describe('parseExport (one file, both villages)', () => {
   });
 
   it('fits Discord limits when split into embeds', () => {
-    const fields = VillageImportService.importSections(data).flatMap((s) => VillageImportService.linesToFields(s.title, s.lines));
+    const fields = VillageImportService.importSections(data).flatMap((s) =>
+      VillageImportService.linesToFields(s.title, s.lines)
+    );
     const embeds = VillageImportService.fieldsToEmbeds({ title: 'T', description: 'D', color: 0 }, fields);
     for (const e of embeds) {
       expect(e.fields.length).toBeLessThanOrEqual(25);
-      const size = e.title.length + (e.description?.length ?? 0) + e.fields.reduce((n: number, f: any) => n + f.name.length + f.value.length, 0);
+      const size =
+        e.title.length +
+        (e.description?.length ?? 0) +
+        e.fields.reduce((n: number, f: any) => n + f.name.length + f.value.length, 0);
       expect(size).toBeLessThanOrEqual(6000);
       for (const f of e.fields) expect(f.value.length).toBeLessThanOrEqual(1024);
     }
@@ -138,7 +148,10 @@ describe('matching exports to accounts', () => {
   });
 
   it('never puts an export with another tag on a linked account', () => {
-    const result = VillageImportService.matchExportsToAccounts([{ fileName: 'x.json', village: parse('#ZZZ', 1) }], [accounts[0]]);
+    const result = VillageImportService.matchExportsToAccounts(
+      [{ fileName: 'x.json', village: parse('#ZZZ', 1) }],
+      [accounts[0]]
+    );
     expect(result.byAccount.size).toBe(0);
     expect(result.unmapped).toHaveLength(1);
   });
@@ -150,7 +163,9 @@ describe('detectImportChanges', () => {
     return VillageImportService.parseExport(clone(exportFixture));
   };
   const bump = (data: VillageDataV2, code: number, fromLevel: number, count: number) => {
-    const from = data.items.find((i) => i.code === code && i.level === fromLevel && i.village === 'home' && i.count >= count)!;
+    const from = data.items.find(
+      (i) => i.code === code && i.level === fromLevel && i.village === 'home' && i.count >= count
+    )!;
     from.count -= count;
     data.items.push({ ...from, level: fromLevel + 1, count, gearedUp: undefined });
   };
@@ -160,7 +175,9 @@ describe('detectImportChanges', () => {
     const after = base();
     bump(after, 1000008, 13, 1);
     const changes = VillageImportService.detectImportChanges(before, after);
-    expect(changes).toEqual([expect.objectContaining({ kind: 'upgraded', code: 1000008, oldLevel: 13, newLevel: 14, count: 1, maxLevel: 17 })]);
+    expect(changes).toEqual([
+      expect.objectContaining({ kind: 'upgraded', code: 1000008, oldLevel: 13, newLevel: 14, count: 1, maxLevel: 17 }),
+    ]);
   });
 
   it('reports 40 walls going up a level as one change', () => {

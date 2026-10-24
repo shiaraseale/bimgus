@@ -49,11 +49,13 @@ export const requireAdminKey: express.RequestHandler = (req, res, next) => {
 
 export const dashboardApp = express();
 dashboardApp.use(cors({ origin: true }));
-dashboardApp.use(express.json({
-  verify: (req: any, _res, buf) => {
-    req.rawBody = buf;
-  },
-}));
+dashboardApp.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // Prevent Google Cloud CDN / Firebase Hosting from caching dynamic API responses
 dashboardApp.use((_req, res, next) => {
@@ -82,7 +84,8 @@ router.get('/ping', (_req, res) => res.status(204).end());
 
 // The poll saves full responses every 2–4 minutes; older than this, the dashboard goes live instead
 const RAW_MAX_AGE_MS = 10 * 60 * 1000;
-const isFresh = (raw: { updatedAt: string } | null) => Boolean(raw && Date.now() - new Date(raw.updatedAt).getTime() <= RAW_MAX_AGE_MS);
+const isFresh = (raw: { updatedAt: string } | null) =>
+  Boolean(raw && Date.now() - new Date(raw.updatedAt).getTime() <= RAW_MAX_AGE_MS);
 
 // Public data changes at most every 2 minutes, so the CDN may cache it briefly (3.6)
 const publicCache: express.RequestHandler = (_req, res, next) => {
@@ -379,7 +382,12 @@ router.post('/clan/:tag/cwl-summary/broadcast', requireAdminKey, async (req, res
         if (warTags.length > 0) {
           const rounds = warTags.map((wt) => ({ warTags: [wt] }));
           summary = await buildCwlSeasonSummary(
-            { state: 'ended', season: prevSnapshot.season || '2026-10-01', clans: prevSnapshot.clans || [], rounds } as any,
+            {
+              state: 'ended',
+              season: prevSnapshot.season || '2026-10-01',
+              clans: prevSnapshot.clans || [],
+              rounds,
+            } as any,
             clanTag,
             coc
           );
@@ -388,7 +396,9 @@ router.post('/clan/:tag/cwl-summary/broadcast', requireAdminKey, async (req, res
     }
 
     if (!summary) {
-      return res.status(400).json({ success: false, error: 'Unable to build CWL summary (no completed rounds found).' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'Unable to build CWL summary (no completed rounds found).' });
     }
 
     await sendCwlSeasonSummaryDiscord(summary, webhookUrl);
@@ -441,4 +451,3 @@ router.post('/discord/register-commands', requireAdminKey, async (req, res) => {
     return res.status(500).json({ success: false, error: err.message, details: err.response?.data });
   }
 });
-

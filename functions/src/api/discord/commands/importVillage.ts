@@ -63,7 +63,8 @@ export const definition = {
 export const runsAsTask = false;
 
 export async function execute(ctx: CommandContext): Promise<any> {
-  const { optionsMap, data, discordUserId, isGuild, applicationId, interactionToken, respondPersonal, deferReply } = ctx;
+  const { optionsMap, data, discordUserId, isGuild, applicationId, interactionToken, respondPersonal, deferReply } =
+    ctx;
   const jsonText = optionsMap['json_text'];
   const targetTag = optionsMap['account'];
 
@@ -81,9 +82,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     }
   }
 
-  const attachments = attachmentIds
-    .map((id) => resolvedAttachments[id])
-    .filter((att) => att && att.url);
+  const attachments = attachmentIds.map((id) => resolvedAttachments[id]).filter((att) => att && att.url);
 
   if (attachments.length === 0 && !jsonText) {
     return respondPersonal({

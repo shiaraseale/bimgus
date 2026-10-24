@@ -59,7 +59,21 @@ describe('game data', () => {
   it('resolves every code in the real export except equipment newer than the datamine', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const unknown = new Set<number>();
-    const sections = ['helpers', 'buildings', 'traps', 'units', 'siege_machines', 'heroes', 'spells', 'pets', 'equipment', 'buildings2', 'traps2', 'units2', 'heroes2'];
+    const sections = [
+      'helpers',
+      'buildings',
+      'traps',
+      'units',
+      'siege_machines',
+      'heroes',
+      'spells',
+      'pets',
+      'equipment',
+      'buildings2',
+      'traps2',
+      'units2',
+      'heroes2',
+    ];
     for (const section of sections) {
       for (const entry of (exportFixture as any)[section] ?? []) {
         if (!getById(entry.data)) unknown.add(entry.data);
@@ -75,7 +89,12 @@ describe('game data', () => {
   });
 
   it('puts every export item in the village its section implies', () => {
-    for (const [section, village] of [['buildings', 'home'], ['buildings2', 'builder'], ['units2', 'builder'], ['heroes2', 'builder']] as const) {
+    for (const [section, village] of [
+      ['buildings', 'home'],
+      ['buildings2', 'builder'],
+      ['units2', 'builder'],
+      ['heroes2', 'builder'],
+    ] as const) {
       for (const entry of (exportFixture as any)[section]) {
         expect(getById(entry.data)?.village, `${section} ${entry.data}`).toBe(village);
       }
@@ -95,11 +114,26 @@ describe('game data', () => {
   });
 
   it('adds "(BB)" to the 12 Builder Base names that also exist at home, and only those', () => {
-    const bb = Object.values(itemsIn('builder', ['defense', 'resource', 'army', 'trap', 'wall', 'troop', 'hero', 'other', 'builderHall']))
+    const bb = Object.values(
+      itemsIn('builder', ['defense', 'resource', 'army', 'trap', 'wall', 'troop', 'hero', 'other', 'builderHall'])
+    )
       .filter((i) => i.displayName.endsWith(' (BB)'))
       .map((i) => i.name)
       .sort();
-    expect(bb).toEqual(['Archer Tower', 'Army Camp', 'Baby Dragon', 'Cannon', 'Elixir Collector', 'Elixir Storage', 'Gold Mine', 'Gold Storage', 'Hidden Tesla', 'Spring Trap', 'Wall', 'X-Bow']);
+    expect(bb).toEqual([
+      'Archer Tower',
+      'Army Camp',
+      'Baby Dragon',
+      'Cannon',
+      'Elixir Collector',
+      'Elixir Storage',
+      'Gold Mine',
+      'Gold Storage',
+      'Hidden Tesla',
+      'Spring Trap',
+      'Wall',
+      'X-Bow',
+    ]);
     expect(getByName('Cannon', 'home')!.displayName).toBe('Cannon');
     expect(getByName('Crusher', 'builder')!.displayName).toBe('Crusher');
   });
@@ -119,7 +153,11 @@ describe('game data', () => {
 describe('caps from the live API fixture (TH12 / BH9)', () => {
   const player = apiFixture as any;
   const capOf = (list: 'heroes' | 'troops' | 'spells', name: string) =>
-    apiCap(list, player[list].find((x: any) => x.name === name), player);
+    apiCap(
+      list,
+      player[list].find((x: any) => x.name === name),
+      player
+    );
 
   it('matches the datamine for heroes', () => {
     expect(capOf('heroes', 'Barbarian King')).toBe(65);

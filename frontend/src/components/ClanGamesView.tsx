@@ -15,7 +15,15 @@ export const ClanGamesView: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '24px' }}>
       {/* Clan Games Caravan Banner */}
       <div className="coc-panel coc-panel-gold" style={{ padding: '28px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
           <div>
             <span className="coc-badge coc-badge-gold" style={{ marginBottom: '10px' }}>
               <Trophy size={15} /> Monthly Event (22nd – 28th)
@@ -24,7 +32,8 @@ export const ClanGamesView: React.FC = () => {
               Clan Games Caravan
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-              Individual Max Cap: <strong style={{ color: 'var(--gold-bright)' }}>4,000 Points</strong> • Clan Goal: <strong style={{ color: 'var(--gem-green)' }}>50,000 Points</strong>
+              Individual Max Cap: <strong style={{ color: 'var(--gold-bright)' }}>4,000 Points</strong> • Clan Goal:{' '}
+              <strong style={{ color: 'var(--gem-green)' }}>50,000 Points</strong>
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -36,7 +45,10 @@ export const ClanGamesView: React.FC = () => {
       </div>
 
       {/* Reward Tier Milestones */}
-      <h3 className="gold-title" style={{ fontSize: '1.4rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <h3
+        className="gold-title"
+        style={{ fontSize: '1.4rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}
+      >
         <Award size={20} style={{ color: 'var(--dark-elixir)' }} />
         Reward Tier Milestones
       </h3>
@@ -53,12 +65,17 @@ export const ClanGamesView: React.FC = () => {
                 borderLeft: isMax ? '5px solid #ffc107' : '5px solid #3d4f66',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span className="font-coc" style={{ 
-                  fontSize: '1.25rem', 
-                  color: isMax ? '#ffd700' : '#ffffff',
-                  textShadow: '0 1px 2px #000'
-                }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}
+              >
+                <span
+                  className="font-coc"
+                  style={{
+                    fontSize: '1.25rem',
+                    color: isMax ? '#ffd700' : '#ffffff',
+                    textShadow: '0 1px 2px #000',
+                  }}
+                >
                   {t.label}
                 </span>
                 <span className="coc-badge coc-badge-gold" style={{ fontSize: '0.78rem' }}>
@@ -66,19 +83,22 @@ export const ClanGamesView: React.FC = () => {
                 </span>
               </div>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-                {isMax 
-                  ? 'Unlocks bonus extra reward slot for 4k max point contributors!' 
+                {isMax
+                  ? 'Unlocks bonus extra reward slot for 4k max point contributors!'
                   : 'Unlocks clan magic items, potions, and resource rewards.'}
               </p>
-              <div className="coc-well" style={{ 
-                marginTop: '14px', 
-                padding: '8px 12px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                fontSize: '0.8rem',
-                color: '#94a3b8'
-              }}>
+              <div
+                className="coc-well"
+                style={{
+                  marginTop: '14px',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '0.8rem',
+                  color: '#94a3b8',
+                }}
+              >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Flame size={14} style={{ color: 'var(--gold)' }} /> Goal
                 </span>

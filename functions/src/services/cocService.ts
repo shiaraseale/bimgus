@@ -75,7 +75,9 @@ export class CocService {
       cfg.__retryCount = (cfg.__retryCount ?? 0) + 1;
       if (cfg.__retryCount > MAX_RETRIES) throw err;
       const delay = retryDelayMs(err, cfg.__retryCount - 1);
-      log.warn(`[CocService] ${err.response?.status} on ${cfg.url}; retry ${cfg.__retryCount}/${MAX_RETRIES} in ${delay}ms`);
+      log.warn(
+        `[CocService] ${err.response?.status} on ${cfg.url}; retry ${cfg.__retryCount}/${MAX_RETRIES} in ${delay}ms`
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
       return this.client.request(cfg);
     });

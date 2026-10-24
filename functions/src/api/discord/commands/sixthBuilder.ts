@@ -45,9 +45,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
       ? '🎉 **Congratulations! You have unlocked the 6th Builder (B.O.B)!**'
       : `⏳ **Overall Progress**: ${formatProgressBar(bob.overallPercentage)}`;
 
-    const bbJsonNotice = village && village.builderHallLevel > 0
-      ? getVillageJsonTimestampNotice(village, 'Builder Base defenses based on the export taken')
-      : null;
+    const bbJsonNotice =
+      village && village.builderHallLevel > 0
+        ? getVillageJsonTimestampNotice(village, 'Builder Base defenses based on the export taken')
+        : null;
 
     const embed = {
       title: `🛠️ [${account.name}] 6th Builder (B.O.B) Tracker`,

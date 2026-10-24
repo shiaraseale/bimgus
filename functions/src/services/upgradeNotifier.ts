@@ -43,7 +43,8 @@ const KIND_TITLES: Record<UpgradeKind, string> = {
 };
 
 function thumbnailCategory(category: string): string {
-  if (['hero', 'equipment', 'spell', 'townHall', 'builderHall', 'trap', 'pet', 'guardian'].includes(category)) return category;
+  if (['hero', 'equipment', 'spell', 'townHall', 'builderHall', 'trap', 'pet', 'guardian'].includes(category))
+    return category;
   if (['troop', 'siege', 'superTroop'].includes(category)) return 'troop';
   return 'building';
 }
@@ -100,7 +101,14 @@ export function groupWalls(events: UpgradeEvent[]): UpgradeEvent[] {
 // Heroes aren't here: the API shows a hero's new level as soon as its upgrade *starts* (seen in
 // production on 2026-10-24), so hero completions come from timers (see heroUpgradeStarts).
 export const API_COVERED_CATEGORIES = new Set([
-  'troop', 'superTroop', 'siege', 'pet', 'spell', 'equipment', 'townHall', 'builderHall',
+  'troop',
+  'superTroop',
+  'siege',
+  'pet',
+  'spell',
+  'equipment',
+  'townHall',
+  'builderHall',
 ]);
 
 const BUILT_CATEGORIES = new Set(['defense', 'resource', 'army', 'other', 'trap', 'wall', 'guardian']);
@@ -142,7 +150,8 @@ export function eventsFromImportChanges(changes: ImportChange[], newData: Villag
 export function eventFromTimer(up: InProgressUpgrade): UpgradeEvent | null {
   if (API_COVERED_CATEGORIES.has(up.category)) return null;
   const item = up.code ? getById(up.code) : undefined;
-  const kind: UpgradeKind = up.currentLevel === 0 ? (BUILT_CATEGORIES.has(up.category) ? 'built' : 'unlocked') : 'expected';
+  const kind: UpgradeKind =
+    up.currentLevel === 0 ? (BUILT_CATEGORIES.has(up.category) ? 'built' : 'unlocked') : 'expected';
   return {
     kind,
     code: up.code,
@@ -155,13 +164,17 @@ export function eventFromTimer(up: InProgressUpgrade): UpgradeEvent | null {
     maxLevel: up.maxLevel,
     count: 1,
     // A hero reaches each level once, so one key covers both its import timer and its API-start timer
-    key: up.category === 'hero'
-      ? `upgrade:${up.code ?? up.name}:${up.village}:${up.targetLevel}`
-      : `timer:${up.code ?? up.name}:${up.village}:${up.targetLevel}:${up.finishesAtMs}`,
+    key:
+      up.category === 'hero'
+        ? `upgrade:${up.code ?? up.name}:${up.village}:${up.targetLevel}`
+        : `timer:${up.code ?? up.name}:${up.village}:${up.targetLevel}:${up.finishesAtMs}`,
   };
 }
 
-function sameUpgrade(a: { code?: number; village: string; targetLevel: number }, b: { code?: number; village: string; targetLevel: number }): boolean {
+function sameUpgrade(
+  a: { code?: number; village: string; targetLevel: number },
+  b: { code?: number; village: string; targetLevel: number }
+): boolean {
   return a.code !== undefined && a.code === b.code && a.village === b.village && a.targetLevel === b.targetLevel;
 }
 
@@ -191,15 +204,25 @@ export function heroUpgradeStarts(
       continue;
     }
     pending.push({
-      code: e.code, name: e.name, category: 'hero', village: e.village, currentLevel: e.oldLevel,
-      targetLevel: e.newLevel, maxLevel: e.maxLevel, timerSeconds: seconds, finishesAtMs: now + seconds * 1000,
+      code: e.code,
+      name: e.name,
+      category: 'hero',
+      village: e.village,
+      currentLevel: e.oldLevel,
+      targetLevel: e.newLevel,
+      maxLevel: e.maxLevel,
+      timerSeconds: seconds,
+      finishesAtMs: now + seconds * 1000,
     });
   }
   return { events: remaining, pending };
 }
 
 /** Pending API-start timers that an import now covers (the import's own timer is more accurate). */
-export function withoutImportedTimers(pending: PendingUpgrade[] | undefined, village: VillageDataV2 | null): PendingUpgrade[] {
+export function withoutImportedTimers(
+  pending: PendingUpgrade[] | undefined,
+  village: VillageDataV2 | null
+): PendingUpgrade[] {
   if (!pending || !village) return pending ?? [];
   return pending.filter((p) => !village.inProgressUpgrades.some((u) => sameUpgrade(u, p)));
 }
@@ -252,10 +275,14 @@ export async function notifyUpgrades(
             describeEvent(e),
             '',
             `📊 **Level ${e.newLevel}/${e.maxLevel}** for ${hallTag(account, e.village)}`,
-            e.kind === 'expected' ? '*Estimated from your import\'s timer; boosts may have finished it sooner.*' : '',
-          ].filter(Boolean).join('\n'),
+            e.kind === 'expected' ? "*Estimated from your import's timer; boosts may have finished it sooner.*" : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
           color: COLORS.GOLD,
-          thumbnail: { url: CocAssetService.getThumbnail(e.assetName, thumbnailCategory(e.category), e.newLevel, e.village) },
+          thumbnail: {
+            url: CocAssetService.getThumbnail(e.assetName, thumbnailCategory(e.category), e.newLevel, e.village),
+          },
           footer,
           timestamp: new Date(now).toISOString(),
         }));

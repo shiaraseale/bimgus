@@ -6,7 +6,9 @@ import { CocService } from '../src/services/cocService';
 
 const US = '#US';
 const war = (tag: string, ours: boolean, state: string) => ({
-  tag, state, teamSize: 15,
+  tag,
+  state,
+  teamSize: 15,
   clan: { tag: ours ? US : `#A${tag}`, name: 'Clan', stars: 0, destructionPercentage: 0, attacks: 0, members: [] },
   opponent: { tag: `#B${tag}`, name: 'Them', stars: 0, destructionPercentage: 0, attacks: 0, members: [] },
 });
@@ -17,7 +19,9 @@ const group: any = {
   state: 'inWar',
   season: '2026-10',
   clans: [],
-  rounds: [0, 1, 2, 3, 4, 5, 6].map((r) => ({ warTags: r < 4 ? [0, 1, 2, 3].map((i) => `#${r}${i}`) : ['#0', '#0', '#0', '#0'] })),
+  rounds: [0, 1, 2, 3, 4, 5, 6].map((r) => ({
+    warTags: r < 4 ? [0, 1, 2, 3].map((i) => `#${r}${i}`) : ['#0', '#0', '#0', '#0'],
+  })),
 };
 
 describe('CWL war lookups (3.3)', () => {
@@ -57,7 +61,14 @@ describe('CWL war lookups (3.3)', () => {
 
   it('marks an ended round as done even with round summaries switched off', async () => {
     vi.spyOn(DiscordService, 'sendWebhook').mockResolvedValue(true);
-    const prev: any = { season: '2026-10', state: 'inWar', clans: [], announcedGroup: true, loggedRoundIndices: [], updatedAt: '' };
+    const prev: any = {
+      season: '2026-10',
+      state: 'inWar',
+      clans: [],
+      announcedGroup: true,
+      loggedRoundIndices: [],
+      updatedAt: '',
+    };
     const snapshot = await processCwlDiff(group, US, prev, { webhooks: {}, notificationsEnabled: {} } as any, coc);
     expect(snapshot?.loggedRoundIndices.sort()).toEqual([0, 1]);
   });
@@ -66,8 +77,13 @@ describe('CWL war lookups (3.3)', () => {
     vi.spyOn(DiscordService, 'sendWebhook').mockResolvedValue(true);
     const config: any = { webhooks: {}, notificationsEnabled: {} };
     const prev: any = {
-      season: '2026-10', state: 'inWar', clans: [], announcedGroup: true,
-      loggedRoundIndices: [0, 1], ourWarTags: { 2: '#21' }, updatedAt: '',
+      season: '2026-10',
+      state: 'inWar',
+      clans: [],
+      announcedGroup: true,
+      loggedRoundIndices: [0, 1],
+      ourWarTags: { 2: '#21' },
+      updatedAt: '',
     };
     const snapshot = await processCwlDiff(group, US, prev, config, coc);
     const fetched = getCwlWar.mock.calls.map(([t]) => t);

@@ -35,7 +35,11 @@ export function getVillageJsonTimestampNotice(
  * Upgrades still running, soonest first: the import's timers plus hero upgrades seen starting in the
  * API that the import doesn't cover. Each timer is its own upgrade (two traps can both be going to 6).
  */
-export function activeInProgress(account: LinkedAccount, village: VillageDataV2 | null, now: number = Date.now()): InProgressUpgrade[] {
+export function activeInProgress(
+  account: LinkedAccount,
+  village: VillageDataV2 | null,
+  now: number = Date.now()
+): InProgressUpgrade[] {
   const heroTimers = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
   return [...(village?.inProgressUpgrades || []), ...heroTimers]
     .filter((u) => u.finishesAtMs > now)
@@ -53,7 +57,11 @@ export function numberedFields(title: string, count: number, lines: string[], li
   const flush = () => {
     if (chunk.length === 0) return;
     const part = fields.length + 1;
-    fields.push({ name: part === 1 ? `${title} (${count})` : `${title} (Cont. ${part})`, value: chunk.join('\n'), inline: false });
+    fields.push({
+      name: part === 1 ? `${title} (${count})` : `${title} (Cont. ${part})`,
+      value: chunk.join('\n'),
+      inline: false,
+    });
     chunk = [];
     length = 0;
   };

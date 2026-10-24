@@ -48,7 +48,10 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         account.name = freshPlayer.name;
 
         // Hero level-ups in the API are upgrade starts; they become timers rather than DMs
-        const detected = heroUpgradeStarts(PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer), village);
+        const detected = heroUpgradeStarts(
+          PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer),
+          village
+        );
         events.push(...detected.events);
         if (detected.pending.length > 0) {
           account.pendingUpgrades = [...(account.pendingUpgrades ?? []), ...detected.pending];
@@ -58,7 +61,9 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         // Keep the stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast, but only
         // write it when it changed or is getting old (/roast treats one over 15 minutes old as stale)
         const nextSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
-        const prevAge = account.lastSnapshot ? Date.now() - new Date(account.lastSnapshot.updatedAt).getTime() : Infinity;
+        const prevAge = account.lastSnapshot
+          ? Date.now() - new Date(account.lastSnapshot.updatedAt).getTime()
+          : Infinity;
         if (changedIgnoringUpdatedAt(account.lastSnapshot, nextSnapshot) || prevAge >= SNAPSHOT_REFRESH_MS) {
           account.lastSnapshot = nextSnapshot;
           userModified = true;
@@ -102,7 +107,6 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         dmsSent += await notifyUpgrades(user, account, events);
         userModified = true;
       }
-
     }
 
     if (userModified) {
@@ -121,12 +125,14 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
 
         // If we haven't already notified users about this war's roster
         if (!warSnap?.rosterNotified || warSnap.warId !== warId) {
-          const ourClan = warData.clan.tag.toUpperCase() === config.formatTag(clanTag).toUpperCase()
-            ? warData.clan
-            : warData.opponent;
-          const opponent = warData.clan.tag.toUpperCase() === config.formatTag(clanTag).toUpperCase()
-            ? warData.opponent
-            : warData.clan;
+          const ourClan =
+            warData.clan.tag.toUpperCase() === config.formatTag(clanTag).toUpperCase()
+              ? warData.clan
+              : warData.opponent;
+          const opponent =
+            warData.clan.tag.toUpperCase() === config.formatTag(clanTag).toUpperCase()
+              ? warData.opponent
+              : warData.clan;
 
           const warStartTimeMs = warData.startTime
             ? new Date(
@@ -141,9 +147,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
             if (isDmPaused(user)) continue;
             for (const account of user.accounts) {
               if (account.dmsEnabled === false) continue;
-              const warMember = ourClan.members.find(
-                (m) => m.tag.toUpperCase() === account.playerTag.toUpperCase()
-              );
+              const warMember = ourClan.members.find((m) => m.tag.toUpperCase() === account.playerTag.toUpperCase());
 
               if (warMember) {
                 await DiscordService.sendDm(user.discordUserId, {

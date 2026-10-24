@@ -106,13 +106,7 @@ export async function processClanDiff(
     for (const tag of currentTags) {
       const prev = prevTags.has(tag) ? prevMap[tag] : undefined;
       const curr = currentMembersMap[tag];
-      if (
-        prev &&
-        curr &&
-        prev.townHallLevel &&
-        curr.townHallLevel &&
-        curr.townHallLevel > prev.townHallLevel
-      ) {
+      if (prev && curr && prev.townHallLevel && curr.townHallLevel && curr.townHallLevel > prev.townHallLevel) {
         embedsToSend.push({
           title: '🏛️ Town Hall Upgraded!',
           description: [
@@ -143,7 +137,11 @@ export async function processClanDiff(
         components: [
           DiscordService.createActionRow([
             DiscordService.createLinkButton('Open CoC', DiscordService.openGameLink(), '⚔️'),
-            DiscordService.createLinkButton('Clash of Stats', DiscordService.clashOfStatsClanLink(currentClan.tag), '📊'),
+            DiscordService.createLinkButton(
+              'Clash of Stats',
+              DiscordService.clashOfStatsClanLink(currentClan.tag),
+              '📊'
+            ),
           ]),
         ],
       });

@@ -21,11 +21,13 @@ describe('Discord interactions signature check', () => {
 
     // Same body parsing as dashboardApp, so the raw body is available for verification
     const app = express();
-    app.use(express.json({
-      verify: (req: any, _res, buf) => {
-        req.rawBody = buf;
-      },
-    }));
+    app.use(
+      express.json({
+        verify: (req: any, _res, buf) => {
+          req.rawBody = buf;
+        },
+      })
+    );
     app.use('/api/discord', discordInteractionsRouter);
     server = app.listen(0);
     await new Promise<void>((resolve) => server.once('listening', () => resolve()));

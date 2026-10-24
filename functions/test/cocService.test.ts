@@ -15,7 +15,10 @@ describe('CocService retries (3.8)', () => {
     app.get('/v1/players/:tag', (_req, res) => {
       calls++;
       const next = responses.shift() ?? { status: 200, body: { tag: '#P', name: 'P' } };
-      res.set(next.headers ?? {}).status(next.status).json(next.body ?? {});
+      res
+        .set(next.headers ?? {})
+        .status(next.status)
+        .json(next.body ?? {});
     });
     server = app.listen(0);
     await new Promise<void>((resolve) => server.once('listening', () => resolve()));

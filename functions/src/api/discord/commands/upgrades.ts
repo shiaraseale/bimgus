@@ -6,7 +6,16 @@ import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService, ParsedDefenseGroup } from '../../../services/villageImportService';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
-import { formatProgressBar, getVillageJsonTimestampNotice, NO_IMPORT_TEXT, HOME_DEFENSE_CATEGORIES, BB_DEFENSE_CATEGORIES, BUILDING_CATEGORIES, activeInProgress, numberedFields } from '../ui';
+import {
+  formatProgressBar,
+  getVillageJsonTimestampNotice,
+  NO_IMPORT_TEXT,
+  HOME_DEFENSE_CATEGORIES,
+  BB_DEFENSE_CATEGORIES,
+  BUILDING_CATEGORIES,
+  activeInProgress,
+  numberedFields,
+} from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
 export const definition = {
@@ -115,7 +124,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
       homeBuildingFields.push(...numberedFields('🏛️ Buildings & Storages', totalBuildingsCount, homeBuildingLines));
     }
 
-    const bbBuildingText = formatItems(bb.buildings, `✅ Builder Hall maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`);
+    const bbBuildingText = formatItems(
+      bb.buildings,
+      `✅ Builder Hall maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`
+    );
 
     const homeDefFields: any[] = [];
     if (importedHome.length > 0) {
@@ -234,12 +246,18 @@ export async function execute(ctx: CommandContext): Promise<any> {
       ...bbDefFields,
       {
         name: `${EMOJIS.CROWN} BB Heroes (${bb.heroes.length})`,
-        value: formatItems(bb.heroes, `✅ All BB heroes maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`),
+        value: formatItems(
+          bb.heroes,
+          `✅ All BB heroes maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`
+        ),
         inline: false,
       },
       {
         name: `⚔️ BB Troops (${bb.troops.length})`,
-        value: formatItems(bb.troops, `✅ All BB troops maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`),
+        value: formatItems(
+          bb.troops,
+          `✅ All BB troops maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`
+        ),
         inline: false,
       }
     );
@@ -258,15 +276,18 @@ export async function execute(ctx: CommandContext): Promise<any> {
         'Real-time progression synchronized directly from official Clash of Clans API.',
         jsonNotice || '',
         `*Total Outstanding Levels: **${totalOutstandingLevels}***`,
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       fields,
       color: COLORS.GOLD,
       thumbnail: {
         url:
-          CocAssetService.getPlayerLeagueUrl(freshPlayer) ||
-          CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
+          CocAssetService.getPlayerLeagueUrl(freshPlayer) || CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
       },
-      footer: { text: `Town Hall ${freshPlayer.townHallLevel} • Builder Hall ${freshPlayer.builderHallLevel || 'N/A'} • Account: ${account.name} (${account.playerTag})` },
+      footer: {
+        text: `Town Hall ${freshPlayer.townHallLevel} • Builder Hall ${freshPlayer.builderHallLevel || 'N/A'} • Account: ${account.name} (${account.playerTag})`,
+      },
       timestamp: new Date().toISOString(),
     };
 

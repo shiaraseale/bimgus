@@ -27,48 +27,57 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header style={{ 
-      borderBottom: '3px solid #3c2c19', 
-      background: 'linear-gradient(180deg, #1b2432 0%, #111822 100%)',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.7)'
-    }}>
+    <header
+      style={{
+        borderBottom: '3px solid #3c2c19',
+        background: 'linear-gradient(180deg, #1b2432 0%, #111822 100%)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.7)',
+      }}
+    >
       {/* Top Clan Profile Bar */}
-      <div style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '20px 20px 14px', 
-        display: 'flex', 
-        flexWrap: 'wrap', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        gap: '20px' 
-      }}>
+      <div
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '20px 20px 14px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '20px',
+        }}
+      >
         {/* Clan Identity */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ position: 'relative' }}>
             <img
-              src={clan?.badgeUrls?.medium || 'https://raw.githubusercontent.com/Bush1Root/Clash-of-Clans-Assets/master/Town%20Hall%20Logos/TH16.png'}
+              src={
+                clan?.badgeUrls?.medium ||
+                'https://raw.githubusercontent.com/Bush1Root/Clash-of-Clans-Assets/master/Town%20Hall%20Logos/TH16.png'
+              }
               alt="Clan Badge"
-              style={{ 
-                width: '74px', 
-                height: '74px', 
-                filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 10px rgba(245, 166, 35, 0.3))' 
+              style={{
+                width: '74px',
+                height: '74px',
+                filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 10px rgba(245, 166, 35, 0.3))',
               }}
             />
-            <div style={{
-              position: 'absolute',
-              bottom: '-4px',
-              right: '-4px',
-              background: 'linear-gradient(180deg, #ffd700 0%, #b8860b 100%)',
-              border: '2px solid #5a3d0b',
-              borderRadius: '6px',
-              padding: '1px 6px',
-              fontFamily: 'var(--font-coc)',
-              fontSize: '0.72rem',
-              color: '#fff',
-              textShadow: '0 1px 2px #000',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.6)'
-            }}>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-4px',
+                right: '-4px',
+                background: 'linear-gradient(180deg, #ffd700 0%, #b8860b 100%)',
+                border: '2px solid #5a3d0b',
+                borderRadius: '6px',
+                padding: '1px 6px',
+                fontFamily: 'var(--font-coc)',
+                fontSize: '0.72rem',
+                color: '#fff',
+                textShadow: '0 1px 2px #000',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.6)',
+              }}
+            >
               Lvl {clan?.clanLevel || 4}
             </div>
           </div>
@@ -83,24 +92,28 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '14px', 
-              marginTop: '6px', 
-              color: 'var(--text-muted)', 
-              fontSize: '0.9rem',
-              flexWrap: 'wrap'
-            }}>
-              <span style={{ 
-                fontFamily: 'monospace', 
-                fontWeight: 700, 
-                color: 'var(--dark-elixir)', 
-                background: 'rgba(6, 182, 212, 0.12)', 
-                padding: '2px 8px', 
-                borderRadius: '4px',
-                border: '1px solid rgba(6, 182, 212, 0.3)'
-              }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                marginTop: '6px',
+                color: 'var(--text-muted)',
+                fontSize: '0.9rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: 'var(--dark-elixir)',
+                  background: 'rgba(6, 182, 212, 0.12)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(6, 182, 212, 0.3)',
+                }}
+              >
                 {clan?.tag || ''}
               </span>
               <span>•</span>
@@ -132,19 +145,23 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* In-Game Tab Strip */}
-      <div style={{ 
-        background: '#0d131d', 
-        borderTop: '2px solid #283547', 
-        boxShadow: 'inset 0 4px 8px rgba(0, 0, 0, 0.5)' 
-      }}>
-        <div style={{ 
-          maxWidth: '1200px', 
-          margin: '0 auto', 
-          padding: '0 20px', 
-          display: 'flex', 
-          gap: '6px', 
-          overflowX: 'auto' 
-        }}>
+      <div
+        style={{
+          background: '#0d131d',
+          borderTop: '2px solid #283547',
+          boxShadow: 'inset 0 4px 8px rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 20px',
+            display: 'flex',
+            gap: '6px',
+            overflowX: 'auto',
+          }}
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -157,9 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
                   alignItems: 'center',
                   gap: '8px',
                   padding: '12px 20px 10px',
-                  background: isActive 
-                    ? 'linear-gradient(180deg, #2b394e 0%, #1a2330 100%)' 
-                    : 'transparent',
+                  background: isActive ? 'linear-gradient(180deg, #2b394e 0%, #1a2330 100%)' : 'transparent',
                   border: 'none',
                   borderTop: isActive ? '3px solid #ffc107' : '3px solid transparent',
                   borderLeft: isActive ? '1px solid #3d4f66' : '1px solid transparent',
@@ -171,8 +186,8 @@ export const Header: React.FC<HeaderProps> = ({
                   fontSize: '1rem',
                   letterSpacing: '0.03em',
                   textTransform: 'uppercase',
-                  textShadow: isActive 
-                    ? '-1px -1px 0 #3a2200, 1px -1px 0 #3a2200, -1px 1px 0 #3a2200, 1px 1px 0 #3a2200, 0 2px 0 #000' 
+                  textShadow: isActive
+                    ? '-1px -1px 0 #3a2200, 1px -1px 0 #3a2200, -1px 1px 0 #3a2200, 1px 1px 0 #3a2200, 0 2px 0 #000'
                     : '0 1px 2px #000',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',

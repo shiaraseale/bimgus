@@ -20,10 +20,15 @@ describe('/roast task', () => {
     discordUserId: '7',
     createdAt: '',
     updatedAt: '',
-    accounts: [{
-      playerTag: '#ANON12345', name: 'Tester', townHallLevel: 12, isPrimary: true,
-      lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture, new Date(now - ageMs)),
-    }],
+    accounts: [
+      {
+        playerTag: '#ANON12345',
+        name: 'Tester',
+        townHallLevel: 12,
+        isPrimary: true,
+        lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture, new Date(now - ageMs)),
+      },
+    ],
   });
 
   beforeEach(() => {
@@ -32,16 +37,23 @@ describe('/roast task', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     config.gemini.apiKey = 'test-key';
     patched = [];
-    vi.spyOn(axios, 'patch').mockImplementation(async (url: string, body: any) => { patched.push({ url, body }); return {} as any; });
+    vi.spyOn(axios, 'patch').mockImplementation(async (url: string, body: any) => {
+      patched.push({ url, body });
+      return {} as any;
+    });
     vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue(null as any);
     getPlayer = vi.spyOn(CocService.prototype, 'getPlayer').mockResolvedValue(apiFixture as any);
-    return () => { config.gemini.apiKey = originalKey; };
+    return () => {
+      config.gemini.apiKey = originalKey;
+    };
   });
 
   it('uses the snapshot, not the CoC API, and edits the original reply', async () => {
     vi.spyOn(FirestoreService, 'getUser').mockResolvedValue(userWithSnapshot(60_000));
     const post = vi.spyOn(axios, 'post').mockResolvedValue({
-      data: { steps: [{ type: 'model_output', content: [{ type: 'text', text: '<@7> your walls are a welcome mat.' }] }] },
+      data: {
+        steps: [{ type: 'model_output', content: [{ type: 'text', text: '<@7> your walls are a welcome mat.' }] }],
+      },
     } as any);
 
     await runRoastTask(task, now);
@@ -50,7 +62,12 @@ describe('/roast task', () => {
     const body = post.mock.calls[0][1] as any;
     expect(body.generation_config).toEqual({ thinking_level: 'minimal', max_output_tokens: 1024 });
     expect(body.input).toContain(`War Stars: ${apiFixture.warStars}`);
-    expect(patched).toEqual([{ url: expect.stringContaining('/webhooks/app/tok/messages/@original'), body: { content: '<@7> your walls are a welcome mat.' } }]);
+    expect(patched).toEqual([
+      {
+        url: expect.stringContaining('/webhooks/app/tok/messages/@original'),
+        body: { content: '<@7> your walls are a welcome mat.' },
+      },
+    ]);
   });
 
   it('only mentions missed attacks once the war has ended', async () => {

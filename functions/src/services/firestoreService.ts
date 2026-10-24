@@ -68,7 +68,11 @@ export class FirestoreService {
       webhooks: {
         clanActivity: saved.webhooks?.clanActivity || defaultConfig.webhooks.clanActivity,
         warRoom: saved.webhooks?.warRoom || defaultConfig.webhooks.warRoom,
-        cwlHub: saved.webhooks?.cwlHub || defaultConfig.webhooks.cwlHub || saved.webhooks?.warRoom || defaultConfig.webhooks.warRoom,
+        cwlHub:
+          saved.webhooks?.cwlHub ||
+          defaultConfig.webhooks.cwlHub ||
+          saved.webhooks?.warRoom ||
+          defaultConfig.webhooks.warRoom,
         raidWeekend: saved.webhooks?.raidWeekend || defaultConfig.webhooks.raidWeekend,
         clanGames: saved.webhooks?.clanGames || defaultConfig.webhooks.clanGames,
       },
@@ -120,7 +124,10 @@ export class FirestoreService {
    * Full API responses saved by the poll so the dashboard can show them without live calls (3.6):
    * 'clan' (the clan), 'war' (the regular war) and 'cwlWar' (the active CWL war, or null).
    */
-  static async getRaw<T = any>(clanTag: string, key: 'clan' | 'war' | 'cwlWar'): Promise<{ data: T | null; updatedAt: string } | null> {
+  static async getRaw<T = any>(
+    clanTag: string,
+    key: 'clan' | 'war' | 'cwlWar'
+  ): Promise<{ data: T | null; updatedAt: string } | null> {
     try {
       const doc = await this.clansCol.doc(config.formatTag(clanTag)).collection('raw').doc(key).get();
       return doc.exists ? (doc.data() as { data: T | null; updatedAt: string }) : null;
@@ -131,7 +138,11 @@ export class FirestoreService {
   }
 
   static async saveRaw(clanTag: string, key: 'clan' | 'war' | 'cwlWar', data: unknown): Promise<void> {
-    await this.clansCol.doc(config.formatTag(clanTag)).collection('raw').doc(key).set({ data: data ?? null, updatedAt: new Date().toISOString() });
+    await this.clansCol
+      .doc(config.formatTag(clanTag))
+      .collection('raw')
+      .doc(key)
+      .set({ data: data ?? null, updatedAt: new Date().toISOString() });
   }
 
   static async saveClanSnapshot(snapshot: ClanSnapshotDoc): Promise<void> {
@@ -229,12 +240,15 @@ export class FirestoreService {
       if (rest.villageData && rest.villageData.version !== 2) delete rest.villageData; // pre-2.3 imports
       return rest;
     });
-    await this.usersCol.doc(user.discordUserId).set({
-      ...user,
-      accounts,
-      activeAccountTag: FieldValue.delete(),
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await this.usersCol.doc(user.discordUserId).set(
+      {
+        ...user,
+        accounts,
+        activeAccountTag: FieldValue.delete(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
   }
 
   /**
@@ -262,10 +276,7 @@ export class FirestoreService {
   /**
    * Links or updates a player account for a Discord user.
    */
-  static async linkAccount(
-    discordUserId: string,
-    account: LinkedAccount
-  ): Promise<UserDoc> {
+  static async linkAccount(discordUserId: string, account: LinkedAccount): Promise<UserDoc> {
     const existing = await this.getUser(discordUserId);
     const now = new Date().toISOString();
 
@@ -281,9 +292,7 @@ export class FirestoreService {
       return newUser;
     }
 
-    const index = existing.accounts.findIndex(
-      (a) => a.playerTag.toUpperCase() === account.playerTag.toUpperCase()
-    );
+    const index = existing.accounts.findIndex((a) => a.playerTag.toUpperCase() === account.playerTag.toUpperCase());
 
     let updatedAccounts = [...existing.accounts];
     if (index >= 0) {
@@ -310,7 +319,13 @@ export class FirestoreService {
   static async unlinkAccount(
     discordUserId: string,
     playerTag?: string
-  ): Promise<{ success: boolean; removedTag: string; remainingAccounts: number; removedName?: string; needsTag?: boolean }> {
+  ): Promise<{
+    success: boolean;
+    removedTag: string;
+    remainingAccounts: number;
+    removedName?: string;
+    needsTag?: boolean;
+  }> {
     const user = await this.getUser(discordUserId);
     if (!user || user.accounts.length === 0) {
       return { success: false, removedTag: '', remainingAccounts: 0 };
@@ -322,9 +337,7 @@ export class FirestoreService {
     }
     const tagToRemove = playerTag ? config.formatTag(playerTag) : user.accounts[0].playerTag;
 
-    const index = user.accounts.findIndex(
-      (a) => a.playerTag.toUpperCase() === tagToRemove.toUpperCase()
-    );
+    const index = user.accounts.findIndex((a) => a.playerTag.toUpperCase() === tagToRemove.toUpperCase());
 
     if (index === -1) {
       return { success: false, removedTag: tagToRemove, remainingAccounts: user.accounts.length };
@@ -349,11 +362,7 @@ export class FirestoreService {
   /**
    * Saves imported village data for an account.
    */
-  static async saveVillageData(
-    discordUserId: string,
-    playerTag: string,
-    villageData: any
-  ): Promise<boolean> {
+  static async saveVillageData(discordUserId: string, playerTag: string, villageData: any): Promise<boolean> {
     const user = await this.getUser(discordUserId);
     if (!user) return false;
 

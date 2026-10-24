@@ -22,15 +22,16 @@ describe('DiscordService DRY_RUN_DISCORD', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const axiosPostSpy = vi.spyOn(axios, 'post');
 
-    const result = await DiscordService.sendWebhook(
-      'https://discord.com/api/webhooks/123456789/secret-webhook-token',
-      { content: 'Test notification' }
-    );
+    const result = await DiscordService.sendWebhook('https://discord.com/api/webhooks/123456789/secret-webhook-token', {
+      content: 'Test notification',
+    });
 
     expect(result).toBe(true);
     expect(axiosPostSpy).not.toHaveBeenCalled();
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[DiscordService DRY_RUN] Would send webhook to target "https://discord.com/api/webhooks/123456789/[REDACTED]"'),
+      expect.stringContaining(
+        '[DiscordService DRY_RUN] Would send webhook to target "https://discord.com/api/webhooks/123456789/[REDACTED]"'
+      ),
       expect.stringContaining('Test notification')
     );
     // Ensure the secret token was not logged
@@ -38,10 +39,9 @@ describe('DiscordService DRY_RUN_DISCORD', () => {
     expect(loggedMessage).not.toContain('secret-webhook-token');
 
     // Test discordapp.com and /api/v10/ URLs
-    await DiscordService.sendWebhook(
-      'https://discordapp.com/api/v10/webhooks/987654321/another-secret-token',
-      { content: 'Versioned notification' }
-    );
+    await DiscordService.sendWebhook('https://discordapp.com/api/v10/webhooks/987654321/another-secret-token', {
+      content: 'Versioned notification',
+    });
     const versionedLog = logSpy.mock.calls[1]?.[0] || '';
     expect(versionedLog).toContain('https://discordapp.com/api/v10/webhooks/987654321/[REDACTED]');
     expect(versionedLog).not.toContain('another-secret-token');

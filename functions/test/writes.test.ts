@@ -17,11 +17,18 @@ describe('only write when something changed (3.4)', () => {
   describe('player tracking', () => {
     let save: ReturnType<typeof vi.spyOn>;
     const userWithSnapshotAge = (ageMs: number): UserDoc => ({
-      discordUserId: '42', createdAt: '', updatedAt: '',
-      accounts: [{
-        playerTag: '#ANON12345', name: apiFixture.name, townHallLevel: 12, isPrimary: true,
-        lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture, new Date(Date.now() - ageMs)),
-      }],
+      discordUserId: '42',
+      createdAt: '',
+      updatedAt: '',
+      accounts: [
+        {
+          playerTag: '#ANON12345',
+          name: apiFixture.name,
+          townHallLevel: 12,
+          isPrimary: true,
+          lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture, new Date(Date.now() - ageMs)),
+        },
+      ],
     });
 
     beforeEach(() => {
@@ -55,9 +62,20 @@ describe('saveUser removes fields nothing reads any more (4.1)', () => {
     const set = vi.fn(async () => {});
     vi.spyOn((FirestoreService as any).usersCol, 'doc').mockReturnValue({ set });
     await FirestoreService.saveUser({
-      discordUserId: '42', createdAt: '', updatedAt: '', activeAccountTag: 'ALL',
+      discordUserId: '42',
+      createdAt: '',
+      updatedAt: '',
+      activeAccountTag: 'ALL',
       accounts: [
-        { playerTag: '#A', name: 'A', townHallLevel: 12, isPrimary: true, activeUpgrades: [], apprenticeTimer: {}, villageData: { homeDefenses: [] } },
+        {
+          playerTag: '#A',
+          name: 'A',
+          townHallLevel: 12,
+          isPrimary: true,
+          activeUpgrades: [],
+          apprenticeTimer: {},
+          villageData: { homeDefenses: [] },
+        },
         { playerTag: '#B', name: 'B', townHallLevel: 9, isPrimary: false, villageData: { version: 2, items: [] } },
       ],
     } as any);
@@ -70,8 +88,13 @@ describe('saveUser removes fields nothing reads any more (4.1)', () => {
 
   it('/unlink without a tag only works for a single account', async () => {
     vi.spyOn(FirestoreService, 'getUser').mockResolvedValue({
-      discordUserId: '42', createdAt: '', updatedAt: '',
-      accounts: [{ playerTag: '#A', name: 'A', townHallLevel: 1, isPrimary: true }, { playerTag: '#B', name: 'B', townHallLevel: 1, isPrimary: false }],
+      discordUserId: '42',
+      createdAt: '',
+      updatedAt: '',
+      accounts: [
+        { playerTag: '#A', name: 'A', townHallLevel: 1, isPrimary: true },
+        { playerTag: '#B', name: 'B', townHallLevel: 1, isPrimary: false },
+      ],
     } as any);
     const result = await FirestoreService.unlinkAccount('42');
     expect(result).toMatchObject({ success: false, needsTag: true, remainingAccounts: 2 });

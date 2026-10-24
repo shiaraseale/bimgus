@@ -8,7 +8,10 @@ const ENQUEUE_TIMEOUT_MS = 1500;
  * Queues slow command work as a Cloud Task, which gets full CPU (3.7). Returns false if queueing
  * fails or is slow, in which case the caller replies and runs the work inline instead.
  */
-export async function queueTask(functionName: 'roastTask' | 'importTask' | 'commandTask', data: Record<string, any>): Promise<boolean> {
+export async function queueTask(
+  functionName: 'roastTask' | 'importTask' | 'commandTask',
+  data: Record<string, any>
+): Promise<boolean> {
   return Promise.race([
     getFunctions()
       .taskQueue(functionName)

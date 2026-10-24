@@ -46,9 +46,9 @@ export async function processClanGamesDiff(
   }
 
   const isNewEvent = !prevSnapshot || prevSnapshot.month !== currentMonth;
-  const unlockedTiers = new Set<number>(isNewEvent ? [] : (prevSnapshot?.unlockedTiers || []));
-  const maxedTags = new Set<string>(isNewEvent ? [] : (prevSnapshot?.maxedMemberTags || []));
-  const baselineMap = { ...(isNewEvent ? {} : (prevSnapshot?.memberBaselinePoints || {})) };
+  const unlockedTiers = new Set<number>(isNewEvent ? [] : prevSnapshot?.unlockedTiers || []);
+  const maxedTags = new Set<string>(isNewEvent ? [] : prevSnapshot?.maxedMemberTags || []);
+  const baselineMap = { ...(isNewEvent ? {} : prevSnapshot?.memberBaselinePoints || {}) };
 
   // 1. Announce Start of Clan Games
   if ((isNewEvent || !prevSnapshot?.announcedStart) && webhookUrl && config.notificationsEnabled.clanGamesStart) {

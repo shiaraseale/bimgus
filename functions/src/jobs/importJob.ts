@@ -8,7 +8,13 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
-import { describeEvent, eventsFromImportChanges, groupWalls, notifyUpgrades, withoutImportedTimers } from '../services/upgradeNotifier';
+import {
+  describeEvent,
+  eventsFromImportChanges,
+  groupWalls,
+  notifyUpgrades,
+  withoutImportedTimers,
+} from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
 import { log } from '../utils/log';
 
@@ -22,7 +28,10 @@ export interface ImportTaskData {
   targetTag?: string;
 }
 
-export async function runImportTask(task: ImportTaskData, reply: InteractionReply = interactionReply(task)): Promise<void> {
+export async function runImportTask(
+  task: ImportTaskData,
+  reply: InteractionReply = interactionReply(task)
+): Promise<void> {
   try {
     // 1. Download all attachment files
     const rawInputs: Array<{ name: string; raw: string }> = [];
@@ -123,11 +132,20 @@ export async function runImportTask(task: ImportTaskData, reply: InteractionRepl
         );
       }
       if (events.length > 0) {
-        fields.push(...VillageImportService.linesToFields(`🎉 Changes Since Your Last Import (${events.length})`, groupWalls(events).map(describeEvent)));
+        fields.push(
+          ...VillageImportService.linesToFields(
+            `🎉 Changes Since Your Last Import (${events.length})`,
+            groupWalls(events).map(describeEvent)
+          )
+        );
       }
       const weapon = VillageImportService.weaponFor(village);
       if (weapon) {
-        fields.push({ name: '🔥 Town Hall Weapon', value: `• **${weapon.name}**: Lv ${weapon.level}/${weapon.maxLevel}`, inline: false });
+        fields.push({
+          name: '🔥 Town Hall Weapon',
+          value: `• **${weapon.name}**: Lv ${weapon.level}/${weapon.maxLevel}`,
+          inline: false,
+        });
       }
       for (const section of VillageImportService.importSections(village)) {
         fields.push(...VillageImportService.linesToFields(section.title, section.lines));
@@ -172,7 +190,10 @@ export async function runImportTask(task: ImportTaskData, reply: InteractionRepl
       components,
     });
     if (!ok) {
-      await reply.edit({ content: '✅ Your export was imported, but Bimgus couldn\'t display the summary. Try `/upgrades` or `/defenses`.' });
+      await reply.edit({
+        content:
+          "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/upgrades` or `/defenses`.",
+      });
       return;
     }
     for (const embeds of rest) {

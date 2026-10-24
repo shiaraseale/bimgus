@@ -211,7 +211,9 @@ export function App() {
 
         {loading ? (
           <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-            <div className="gold-title" style={{ fontSize: '1.8rem' }}>Loading Clan Bingo Data...</div>
+            <div className="gold-title" style={{ fontSize: '1.8rem' }}>
+              Loading Clan Bingo Data...
+            </div>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>
               Fetching real-time village & war stats from Supercell API...
             </p>
@@ -236,15 +238,17 @@ export function App() {
         )}
       </main>
 
-      <footer style={{ 
-        borderTop: '2px solid #283547', 
-        background: '#0a0e16',
-        padding: '24px 20px', 
-        textAlign: 'center', 
-        color: 'var(--text-dim)', 
-        fontSize: '0.85rem',
-        boxShadow: 'inset 0 4px 8px rgba(0,0,0,0.6)'
-      }}>
+      <footer
+        style={{
+          borderTop: '2px solid #283547',
+          background: '#0a0e16',
+          padding: '24px 20px',
+          textAlign: 'center',
+          color: 'var(--text-dim)',
+          fontSize: '0.85rem',
+          boxShadow: 'inset 0 4px 8px rgba(0,0,0,0.6)',
+        }}
+      >
         <p className="font-coc" style={{ letterSpacing: '0.04em', color: '#64748b' }}>
           ⚔️ Bimgus • Clash of Clans Command Portal • {clan?.name || 'Clan'} ({clanTag})
         </p>

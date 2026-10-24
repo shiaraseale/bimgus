@@ -210,8 +210,8 @@ export class PlayerTrackingService {
           description: defenseDone
             ? 'Completed (BB defense upgraded to Lv 9)'
             : bhLevel < 9
-            ? `Requires Builder Hall 9+ (Current: BH${bhLevel})`
-            : 'Upgrade any BB defense to Lv 9 (e.g. Mega Tesla, Multi Mortar)',
+              ? `Requires Builder Hall 9+ (Current: BH${bhLevel})`
+              : 'Upgrade any BB defense to Lv 9 (e.g. Mega Tesla, Multi Mortar)',
         },
         bbHeroesLv45: {
           name: 'BB Heroes Total Level 45',
@@ -269,7 +269,10 @@ export class PlayerTrackingService {
       const remaining = Math.max(0, maxLvl - h.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const resType = outstandingResource(data?.resource ?? (isBb ? 'builderElixir' : 'darkElixir'), isBb ? 'builder' : 'home');
+        const resType = outstandingResource(
+          data?.resource ?? (isBb ? 'builderElixir' : 'darkElixir'),
+          isBb ? 'builder' : 'home'
+        );
 
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? h.name,
@@ -325,7 +328,10 @@ export class PlayerTrackingService {
       const remaining = Math.max(0, maxLvl - tr.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const resType = outstandingResource(data?.resource ?? (isBb ? 'builderElixir' : 'elixir'), isBb ? 'builder' : 'home');
+        const resType = outstandingResource(
+          data?.resource ?? (isBb ? 'builderElixir' : 'elixir'),
+          isBb ? 'builder' : 'home'
+        );
 
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? tr.name,
@@ -409,7 +415,7 @@ export class PlayerTrackingService {
       };
       byResource.gold.push(item);
       byCategory.home.buildings.push(item);
-      totalRemainingLevels += (3 - gearUpsCount);
+      totalRemainingLevels += 3 - gearUpsCount;
     }
 
     // Builder Hall always only has 1 upgrade (0/1) to reach the next Builder Hall level
@@ -457,8 +463,17 @@ export class PlayerTrackingService {
     const th = newPlayer.townHallLevel;
     if (th > oldSnapshot.townHallLevel) {
       events.push({
-        kind: 'upgraded', code: 1000001, name: nameForCode(1000001), assetName: 'Town Hall', category: 'townHall', village: 'home',
-        oldLevel: oldSnapshot.townHallLevel, newLevel: th, maxLevel: MAX_TOWN_HALL, count: 1, key: `townHall:home:${th}`,
+        kind: 'upgraded',
+        code: 1000001,
+        name: nameForCode(1000001),
+        assetName: 'Town Hall',
+        category: 'townHall',
+        village: 'home',
+        oldLevel: oldSnapshot.townHallLevel,
+        newLevel: th,
+        maxLevel: MAX_TOWN_HALL,
+        count: 1,
+        key: `townHall:home:${th}`,
       });
     }
 
@@ -466,8 +481,16 @@ export class PlayerTrackingService {
     const oldBh = oldSnapshot.builderHallLevel || 0;
     if (bh > oldBh && (oldBh > 0 || bh === 1)) {
       events.push({
-        kind: oldBh > 0 ? 'upgraded' : 'unlocked', code: 1000034, name: nameForCode(1000034), assetName: 'Builder Hall',
-        category: 'builderHall', village: 'builder', oldLevel: oldBh, newLevel: bh, maxLevel: MAX_BUILDER_HALL, count: 1,
+        kind: oldBh > 0 ? 'upgraded' : 'unlocked',
+        code: 1000034,
+        name: nameForCode(1000034),
+        assetName: 'Builder Hall',
+        category: 'builderHall',
+        village: 'builder',
+        oldLevel: oldBh,
+        newLevel: bh,
+        maxLevel: MAX_BUILDER_HALL,
+        count: 1,
         key: `builderHall:builder:${bh}`,
       });
     }
@@ -480,8 +503,15 @@ export class PlayerTrackingService {
       const oldWeapon = oldSnapshot.townHallWeaponLevel ?? 0;
       if (weaponLevel > oldWeapon) {
         events.push({
-          kind: oldWeapon === 0 ? 'unlocked' : 'upgraded', name: weapon.name, assetName: 'Town Hall', category: 'townHall',
-          village: 'home', oldLevel: oldWeapon, newLevel: weaponLevel, maxLevel: weapon.levels.length, count: 1,
+          kind: oldWeapon === 0 ? 'unlocked' : 'upgraded',
+          name: weapon.name,
+          assetName: 'Town Hall',
+          category: 'townHall',
+          village: 'home',
+          oldLevel: oldWeapon,
+          newLevel: weaponLevel,
+          maxLevel: weapon.levels.length,
+          count: 1,
           key: `weapon:home:${th}:${weaponLevel}`,
         });
       }

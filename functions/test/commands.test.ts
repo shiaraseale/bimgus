@@ -31,7 +31,13 @@ describe('slash commands end to end (mocked services)', () => {
     privateKey = keys.privateKey;
     config.discord.publicKey = keys.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32).toString('hex');
     const app = express();
-    app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
+    app.use(
+      express.json({
+        verify: (req: any, _res, buf) => {
+          req.rawBody = buf;
+        },
+      })
+    );
     app.use('/api/discord', discordInteractionsRouter);
     server = app.listen(0);
     await new Promise<void>((resolve) => server.once('listening', () => resolve()));
@@ -56,12 +62,20 @@ describe('slash commands end to end (mocked services)', () => {
       updatedAt: '',
     };
     vi.spyOn(FirestoreService, 'getUser').mockImplementation(async () => user);
-    vi.spyOn(FirestoreService, 'saveUser').mockImplementation(async (u: any) => { user = clone(u); });
+    vi.spyOn(FirestoreService, 'saveUser').mockImplementation(async (u: any) => {
+      user = clone(u);
+    });
     vi.spyOn(CocService.prototype, 'getPlayer').mockImplementation(async () => clone(apiFixture) as any);
     vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
     vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(exportFixture) }) as any);
-    vi.spyOn(axios, 'patch').mockImplementation(async (_url: string, body: any) => { patches.push(body); return {} as any; });
-    vi.spyOn(axios, 'post').mockImplementation(async (_url: string, body: any) => { followups.push(body); return {} as any; });
+    vi.spyOn(axios, 'patch').mockImplementation(async (_url: string, body: any) => {
+      patches.push(body);
+      return {} as any;
+    });
+    vi.spyOn(axios, 'post').mockImplementation(async (_url: string, body: any) => {
+      followups.push(body);
+      return {} as any;
+    });
   });
 
   const command = async (name: string, options: any[] = [], resolved: any = undefined) => {
@@ -76,7 +90,11 @@ describe('slash commands end to end (mocked services)', () => {
     const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
     const res = await fetch(baseUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Signature-Ed25519': signature, 'X-Signature-Timestamp': timestamp },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Signature-Ed25519': signature,
+        'X-Signature-Timestamp': timestamp,
+      },
       body,
     });
     expect(res.status).toBe(200);
@@ -143,7 +161,10 @@ describe('slash commands end to end (mocked services)', () => {
   it('a queued command task runs the command and edits the reply', async () => {
     const { runCommandTask } = await import('../src/api/discord/router');
     await runCommandTask({
-      type: 2, token: 'tok', application_id: 'app', user: { id: '42', username: 'tester' },
+      type: 2,
+      token: 'tok',
+      application_id: 'app',
+      user: { id: '42', username: 'tester' },
       data: { name: 'heroes', options: [] },
     });
     // The task waits for the work, so the reply is already edited when it returns
@@ -165,7 +186,11 @@ describe('slash commands end to end (mocked services)', () => {
 
   it('/spells, /troops and /accounts reply for the linked account', async () => {
     await importFile();
-    for (const [cmd, text] of [['spells', 'Spell Laboratory Upgrades'], ['troops', 'Troop Research'], ['accounts', 'Tester']] as const) {
+    for (const [cmd, text] of [
+      ['spells', 'Spell Laboratory Upgrades'],
+      ['troops', 'Troop Research'],
+      ['accounts', 'Tester'],
+    ] as const) {
       patches = [];
       const reply = await command(cmd);
       expect(allText(reply), cmd).toContain(text);

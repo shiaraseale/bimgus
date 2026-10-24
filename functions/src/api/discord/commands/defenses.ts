@@ -1,11 +1,28 @@
 import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
-import { MAX_BUILDER_HALL, MAX_TOWN_HALL, countForHall, formatLevelCost, formatNextCost, getById, getLevel, getMaxLevelForHall, itemsIn } from '../../../services/gameDataService';
+import {
+  MAX_BUILDER_HALL,
+  MAX_TOWN_HALL,
+  countForHall,
+  formatLevelCost,
+  formatNextCost,
+  getById,
+  getLevel,
+  getMaxLevelForHall,
+  itemsIn,
+} from '../../../services/gameDataService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
-import { getVillageJsonTimestampNotice, NO_IMPORT_TEXT, HOME_DEFENSE_CATEGORIES, BB_DEFENSE_CATEGORIES, BUILDING_CATEGORIES, activeInProgress } from '../ui';
+import {
+  getVillageJsonTimestampNotice,
+  NO_IMPORT_TEXT,
+  HOME_DEFENSE_CATEGORIES,
+  BB_DEFENSE_CATEGORIES,
+  BUILDING_CATEGORIES,
+  activeInProgress,
+} from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
 export const definition = {
@@ -49,22 +66,23 @@ export async function execute(ctx: CommandContext): Promise<any> {
     // Town Hall Status
     const townHall = getById(1000001);
     const thUpgradeCost = townHall ? formatNextCost(townHall, th) : '';
-    const thUpgradeStr = th >= MAX_TOWN_HALL
-      ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
-      : `• **Town Hall**: 0/1${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
+    const thUpgradeStr =
+      th >= MAX_TOWN_HALL
+        ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
+        : `• **Town Hall**: 0/1${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
 
     // High Gear achievement
     const highGear = (freshPlayer.achievements || []).find((a: any) => a.name === 'High Gear');
     const gearUpsCount = highGear ? Math.min(3, highGear.value || 0) : 0;
-    const gearUpsStr = gearUpsCount >= 3
-      ? '✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)'
-      : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
+    const gearUpsStr =
+      gearUpsCount >= 3
+        ? '✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)'
+        : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
 
     // Defense lines: use imported village data if available, otherwise show target caps
     const importedHome = village ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls) : [];
-    const homeCapLines = importedHome.length > 0
-      ? importedHome.map(VillageImportService.formatGroupLine)
-      : hallCapLines('home', th);
+    const homeCapLines =
+      importedHome.length > 0 ? importedHome.map(VillageImportService.formatGroupLine) : hallCapLines('home', th);
 
     const fields: any[] = [];
 
@@ -118,7 +136,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
       }
     }
 
-    const importedBuildings = village ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls) : [];
+    const importedBuildings = village
+      ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls)
+      : [];
     if (importedBuildings.length > 0) {
       fields.push(
         ...VillageImportService.linesToFields(
@@ -132,9 +152,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
     if (bh > 0) {
       const builderHall = getById(1000034);
       const bhUpgradeCost = builderHall ? formatNextCost(builderHall, bh) : '';
-      const bhUpgradeStr = bh >= MAX_BUILDER_HALL
-        ? `🏆 **Builder Hall**: Maxed (BH${MAX_BUILDER_HALL})`
-        : `• **Builder Hall**: 0/1${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
+      const bhUpgradeStr =
+        bh >= MAX_BUILDER_HALL
+          ? `🏆 **Builder Hall**: Maxed (BH${MAX_BUILDER_HALL})`
+          : `• **Builder Hall**: 0/1${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
 
       bob = PlayerTrackingService.calculateSixthBuilderProgress(
         freshPlayer,
@@ -145,10 +166,11 @@ export async function execute(ctx: CommandContext): Promise<any> {
         ? '✅ **B.O.B Defense Lv 9**: Completed'
         : `🔄 **B.O.B Defense Lv 9**: 0/1 (Upgrade any BB defense to Lv 9)`;
 
-      const importedBb = village ? VillageImportService.groupsFor(village, 'builder', BB_DEFENSE_CATEGORIES, halls) : [];
-      const bbCapLines = importedBb.length > 0
-        ? importedBb.map(VillageImportService.formatGroupLine)
-        : hallCapLines('builder', bh);
+      const importedBb = village
+        ? VillageImportService.groupsFor(village, 'builder', BB_DEFENSE_CATEGORIES, halls)
+        : [];
+      const bbCapLines =
+        importedBb.length > 0 ? importedBb.map(VillageImportService.formatGroupLine) : hallCapLines('builder', bh);
 
       const bbHeader = [
         bhUpgradeStr,
@@ -203,12 +225,14 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const desc = [
       isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
       hasImportedHome
-        ? (hasImportedBb
-            ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
-            : `Exact defenses for **Town Hall ${th}**.`)
+        ? hasImportedBb
+          ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
+          : `Exact defenses for **Town Hall ${th}**.`
         : `Defense level limits and Hall upgrade requirements for **Town Hall ${th}**${bh > 0 ? ` and **Builder Hall ${bh}**` : ''}.\n*(The Supercell API doesn't include building levels.)*\n${NO_IMPORT_TEXT}`,
       jsonNotice || '',
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const embed = {
       title: `🛡️ [${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,

@@ -5,12 +5,12 @@ import { EMOJIS } from '../constants/emojis';
 import { log } from '../utils/log';
 
 export const COLORS = {
-  GOLD: 0xFFD700,
-  GREEN: 0x2ECC71,
-  RED: 0xE74C3C,
-  BLUE: 0x3498DB,
-  PURPLE: 0x9B59B6,
-  DISCORD_BLURPLE: 0x5865F2,
+  GOLD: 0xffd700,
+  GREEN: 0x2ecc71,
+  RED: 0xe74c3c,
+  BLUE: 0x3498db,
+  PURPLE: 0x9b59b6,
+  DISCORD_BLURPLE: 0x5865f2,
 };
 
 export class DiscordService {
@@ -63,7 +63,10 @@ export class DiscordService {
         /(discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/)[^/?\s]+/i,
         '$1[REDACTED]'
       );
-      log.info(`[DiscordService DRY_RUN] Would send webhook to target "${sanitizedTarget}":`, JSON.stringify(payload, null, 2));
+      log.info(
+        `[DiscordService DRY_RUN] Would send webhook to target "${sanitizedTarget}":`,
+        JSON.stringify(payload, null, 2)
+      );
       return true;
     }
 
@@ -245,7 +248,6 @@ export class DiscordService {
     ]);
   }
 
-
   /**
    * Standard button to open the Clash of Clans app directly.
    */
@@ -301,9 +303,7 @@ export class DiscordService {
       const dmChannelId = channelRes.data.id;
 
       // 2. Attach components only if explicitly provided
-      const components = payload.components && payload.components.length > 0
-        ? payload.components
-        : undefined;
+      const components = payload.components && payload.components.length > 0 ? payload.components : undefined;
 
       // 3. Send message into DM channel
       await axios.post(
@@ -334,4 +334,3 @@ export class DiscordService {
     }
   }
 }
-

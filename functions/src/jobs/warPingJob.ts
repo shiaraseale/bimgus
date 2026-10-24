@@ -56,10 +56,7 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
     }
 
     const warEndTimeMs = new Date(
-      activeWar.endTime.replace(
-        /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/,
-        '$1-$2-$3T$4:$5:$6.$7Z'
-      )
+      activeWar.endTime.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/, '$1-$2-$3T$4:$5:$6.$7Z')
     ).getTime();
     const nowMs = Date.now();
     const hoursRemaining = (warEndTimeMs - nowMs) / (1000 * 60 * 60);
@@ -80,7 +77,10 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
         const attacksPerMember = 1; // Exactly 1 hit in CWL
         const membersWithUnusedAttacks = ourClan.members
           .filter((m) => !m.attacks || m.attacks.length < attacksPerMember)
-          .map((m) => `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — ${m.attacks?.length || 0}/${attacksPerMember} attacks used`);
+          .map(
+            (m) =>
+              `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — ${m.attacks?.length || 0}/${attacksPerMember} attacks used`
+          );
 
         if (membersWithUnusedAttacks.length > 0) {
           const roundNum = cwlRoundIndex + 1;

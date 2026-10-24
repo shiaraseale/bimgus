@@ -5,7 +5,10 @@ import type { PlayerLike } from '../types/coc';
 /**
  * Fetches a player live, falling back to the last saved snapshot (e.g. during Supercell maintenance).
  */
-export async function getPlayerWithFallback(coc: CocService, account: LinkedAccount): Promise<{ player: PlayerLike; isCached: boolean }> {
+export async function getPlayerWithFallback(
+  coc: CocService,
+  account: LinkedAccount
+): Promise<{ player: PlayerLike; isCached: boolean }> {
   try {
     const fresh = await coc.getPlayer(account.playerTag);
     return { player: fresh, isCached: false };
@@ -40,7 +43,9 @@ export async function getPlayerWithFallback(coc: CocService, account: LinkedAcco
     }
 
     if (isMaintenance) {
-      throw new Error('🛠️ Clash of Clans API is currently down for maintenance by Supercell ("API is currently in maintenance, please come back later"). Please try again once maintenance concludes!');
+      throw new Error(
+        '🛠️ Clash of Clans API is currently down for maintenance by Supercell ("API is currently in maintenance, please come back later"). Please try again once maintenance concludes!'
+      );
     }
     throw err;
   }

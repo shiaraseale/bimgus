@@ -74,7 +74,8 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     if ((villageFilter === 'builder' || villageFilter === 'both') && freshPlayer.builderHallLevel) {
       const formatBuilderList = () => {
-        if (builderTroops.length === 0) return `🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`;
+        if (builderTroops.length === 0)
+          return `🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`;
         const lines = builderTroops.map((t) => {
           const costStr = t.nextCost ? ` — ${t.nextCost}` : '';
           return `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${costStr}`;
@@ -116,7 +117,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
         totalTroopLevels === 0
           ? '🎉 **All troops are currently maxed for your Hall level!**'
           : `⚡ **Total Outstanding Troop Levels**: **${totalTroopLevels}**`,
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       color: totalTroopLevels === 0 ? COLORS.GREEN : COLORS.BLUE,
       fields,
       thumbnail: { url: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel) },

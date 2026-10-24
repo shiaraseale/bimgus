@@ -10,7 +10,11 @@ export interface InteractionReply {
  * Edits and follows up a deferred interaction reply from outside the interaction request
  * (e.g. a Cloud Task). Interaction tokens stay valid for 15 minutes.
  */
-export function interactionReply(task: { applicationId: string; interactionToken: string; isGuild?: boolean }): InteractionReply {
+export function interactionReply(task: {
+  applicationId: string;
+  interactionToken: string;
+  isGuild?: boolean;
+}): InteractionReply {
   const base = `https://discord.com/api/v10/webhooks/${task.applicationId}/${task.interactionToken}`;
   const headers = { 'Content-Type': 'application/json' };
   return {

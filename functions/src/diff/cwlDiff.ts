@@ -14,10 +14,7 @@ interface FlatAttack extends WarAttack {
 
 function formatCoCTime(cocTime: string): string {
   if (cocTime.includes('-')) return cocTime;
-  return cocTime.replace(
-    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/,
-    '$1-$2-$3T$4:$5:$6.$7Z'
-  );
+  return cocTime.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/, '$1-$2-$3T$4:$5:$6.$7Z');
 }
 
 /**
@@ -200,10 +197,7 @@ export async function buildCwlSeasonSummary(
 /**
  * Dispatches the formatted 2-part Discord embed for the CWL Season Summary.
  */
-export async function sendCwlSeasonSummaryDiscord(
-  summary: CwlSeasonSummary,
-  webhookUrl: string
-): Promise<void> {
+export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, webhookUrl: string): Promise<void> {
   const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
   // 1. Season Highlights & Superlatives
@@ -310,8 +304,12 @@ export async function sendCwlSeasonSummaryDiscord(
 
       const hitSublines = sortedHits.map((h) => {
         const starIcons = '⭐'.repeat(h.stars);
-        const isThisGoliathHit = goliathHit && h.round === goliathHit.round && h.defenderName === goliathHit.defenderName && h.thDiff === goliathHit.thDiff;
-        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : (h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '');
+        const isThisGoliathHit =
+          goliathHit &&
+          h.round === goliathHit.round &&
+          h.defenderName === goliathHit.defenderName &&
+          h.thDiff === goliathHit.thDiff;
+        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '';
         return `   └ ⚔️ **R${h.round}**: ${starIcons} (${h.destruction}%) vs **${h.defenderName}** (TH${h.defenderTh}) \`[+${h.thDiff} TH]\`${badge}`;
       });
 
@@ -329,8 +327,12 @@ export async function sendCwlSeasonSummaryDiscord(
 
       const hitSublines = sortedHits.map((h) => {
         const starIcons = '⭐'.repeat(h.stars);
-        const isThisGoliathHit = goliathHit && h.round === goliathHit.round && h.defenderName === goliathHit.defenderName && h.thDiff === goliathHit.thDiff;
-        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : (h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '');
+        const isThisGoliathHit =
+          goliathHit &&
+          h.round === goliathHit.round &&
+          h.defenderName === goliathHit.defenderName &&
+          h.thDiff === goliathHit.thDiff;
+        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '';
         return `   └ ⚔️ **R${h.round}**: ${starIcons} (${h.destruction}%) vs **${h.defenderName}** (TH${h.defenderTh}) \`[+${h.thDiff} TH]\`${badge}`;
       });
 
@@ -344,7 +346,9 @@ export async function sendCwlSeasonSummaryDiscord(
   const missedLines: string[] = [];
   if (summary.missedAttacksList.length > 0) {
     summary.missedAttacksList.forEach((m) => {
-      missedLines.push(`• **${m.name}** (TH${m.townhallLevel}) — missed **${m.missedAttacks}/${m.roundsRostered}** attacks`);
+      missedLines.push(
+        `• **${m.name}** (TH${m.townhallLevel}) — missed **${m.missedAttacks}/${m.roundsRostered}** attacks`
+      );
     });
   } else {
     missedLines.push('✅ **Flawless 100% Attendance!** Zero missed attacks across all 7 rounds!');
@@ -429,9 +433,9 @@ export async function processCwlDiff(
   const webhookUrl = config.webhooks.cwlHub || config.webhooks.warRoom;
   const isNewSeason = !prevSnapshot || prevSnapshot.season !== cwlGroup.season;
   const announcedGroup = !isNewSeason && (prevSnapshot?.announcedGroup ?? false);
-  const loggedRounds = new Set<number>(isNewSeason ? [] : (prevSnapshot?.loggedRoundIndices || []));
-  const announcedMatchups = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedMatchupRounds || []));
-  const announcedBattleDays = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedBattleDayRounds || []));
+  const loggedRounds = new Set<number>(isNewSeason ? [] : prevSnapshot?.loggedRoundIndices || []);
+  const announcedMatchups = new Set<number>(isNewSeason ? [] : prevSnapshot?.announcedMatchupRounds || []);
+  const announcedBattleDays = new Set<number>(isNewSeason ? [] : prevSnapshot?.announcedBattleDayRounds || []);
   const loggedAttackOrders: Record<string, number[]> = isNewSeason ? {} : { ...prevSnapshot?.loggedAttackOrders };
   const ourWarTags: Record<number, string> = isNewSeason ? {} : { ...prevSnapshot?.ourWarTags };
 
@@ -480,7 +484,6 @@ export async function processCwlDiff(
       if (found) ourWarTags[roundIndex] = found.warTag;
       for (const { warTag, war } of found ? [found] : []) {
         try {
-
           currentRoundIndex = roundIndex;
           currentWarTag = warTag;
 
@@ -497,9 +500,7 @@ export async function processCwlDiff(
             const startTimestamp = war.startTime
               ? Math.floor(new Date(formatCoCTime(war.startTime)).getTime() / 1000)
               : null;
-            const endTimestamp = war.endTime
-              ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000)
-              : null;
+            const endTimestamp = war.endTime ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000) : null;
 
             const matchupEmbed: DiscordEmbed = {
               title: `⚔️ CWL Round ${roundNum} Found!`,
@@ -526,14 +527,8 @@ export async function processCwlDiff(
           }
 
           // B. Announce Battle Day Start
-          if (
-            webhookUrl &&
-            war.state === 'inWar' &&
-            !announcedBattleDays.has(roundIndex)
-          ) {
-            const endTimestamp = war.endTime
-              ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000)
-              : null;
+          if (webhookUrl && war.state === 'inWar' && !announcedBattleDays.has(roundIndex)) {
+            const endTimestamp = war.endTime ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000) : null;
 
             const battleEmbed: DiscordEmbed = {
               title: `🔥 CWL Round ${roundNum} Battle Day Has Begun!`,
@@ -570,7 +565,8 @@ export async function processCwlDiff(
           for (const m of ourClan.members) {
             if (m.attacks) {
               for (const atk of m.attacks) {
-                const defender = oppMembersMap.get(atk.defenderTag) ||
+                const defender =
+                  oppMembersMap.get(atk.defenderTag) ||
                   ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
                 allAttacks.push({
                   ...atk,
@@ -585,7 +581,8 @@ export async function processCwlDiff(
           for (const m of enemyClan.members) {
             if (m.attacks) {
               for (const atk of m.attacks) {
-                const defender = ourMembersMap.get(atk.defenderTag) ||
+                const defender =
+                  ourMembersMap.get(atk.defenderTag) ||
                   ({ name: 'Unknown', mapPosition: 0, tag: atk.defenderTag, townhallLevel: 0 } as WarClanMember);
                 allAttacks.push({
                   ...atk,
@@ -613,7 +610,9 @@ export async function processCwlDiff(
                 const isClan = attack.isClanAttack;
 
                 const attackEmbed: DiscordEmbed = {
-                  title: isClan ? `💥 CWL Attack: ${attack.attacker.name}` : `🛡️ Enemy Attack on: ${attack.defender.name}`,
+                  title: isClan
+                    ? `💥 CWL Attack: ${attack.attacker.name}`
+                    : `🛡️ Enemy Attack on: ${attack.defender.name}`,
                   description: [
                     `**#${attack.attacker.mapPosition} ${attack.attacker.name}** (TH${attack.attacker.townhallLevel}) attacked **#${attack.defender.mapPosition} ${attack.defender.name}** (TH${attack.defender.townhallLevel})`,
                     '',
@@ -622,7 +621,7 @@ export async function processCwlDiff(
                     `💥 **Destruction**: ${ourClan.destructionPercentage.toFixed(1)}% vs ${enemyClan.destructionPercentage.toFixed(1)}%`,
                     `🗡️ **Attacks Used**: ${ourClan.attacks}/${war.teamSize}`,
                   ].join('\n'),
-                  color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : (isThreeStar ? COLORS.RED : COLORS.BLUE),
+                  color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
                   footer: { text: `CWL Round ${roundNum} • Bimgus Tracker` },
                   timestamp: new Date().toISOString(),
                 };
@@ -654,14 +653,18 @@ export async function processCwlDiff(
             war.state === 'warEnded' &&
             !loggedRounds.has(roundIndex)
           ) {
-            const won = ourClan.stars > enemyClan.stars ||
+            const won =
+              ourClan.stars > enemyClan.stars ||
               (ourClan.stars === enemyClan.stars && ourClan.destructionPercentage > enemyClan.destructionPercentage);
-            const tied = ourClan.stars === enemyClan.stars && ourClan.destructionPercentage === enemyClan.destructionPercentage;
+            const tied =
+              ourClan.stars === enemyClan.stars && ourClan.destructionPercentage === enemyClan.destructionPercentage;
 
             const outcomeTitle = won
               ? `🏆 CWL Round ${roundNum}: VICTORY!`
-              : (tied ? `🤝 CWL Round ${roundNum}: TIED!` : `💀 CWL Round ${roundNum}: DEFEAT`);
-            const outcomeColor = won ? COLORS.GOLD : (tied ? COLORS.BLUE : COLORS.RED);
+              : tied
+                ? `🤝 CWL Round ${roundNum}: TIED!`
+                : `💀 CWL Round ${roundNum}: DEFEAT`;
+            const outcomeColor = won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED;
 
             const roundEmbed: DiscordEmbed = {
               title: outcomeTitle,
@@ -690,9 +693,7 @@ export async function processCwlDiff(
 
             // Post-Round Audit (Missed attacks & 3-star stars)
             const missedAttacks = ourClan.members.filter((m) => !m.attacks || m.attacks.length === 0);
-            const threeStarMaxers = ourClan.members.filter(
-              (m) => m.attacks && m.attacks.some((a) => a.stars === 3)
-            );
+            const threeStarMaxers = ourClan.members.filter((m) => m.attacks && m.attacks.some((a) => a.stars === 3));
 
             const auditLines: string[] = [];
             if (missedAttacks.length > 0) {
@@ -714,7 +715,9 @@ export async function processCwlDiff(
                 .sort((a, b) => a.mapPosition - b.mapPosition)
                 .forEach((m) => {
                   const atk = m.attacks![0];
-                  auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 3 ⭐ (${atk.destructionPercentage}%)`);
+                  auditLines.push(
+                    `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 3 ⭐ (${atk.destructionPercentage}%)`
+                  );
                 });
             }
 
