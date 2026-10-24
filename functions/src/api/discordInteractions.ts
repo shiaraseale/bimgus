@@ -25,7 +25,7 @@ import { VillageImportService, InProgressUpgrade, ParsedDefenseGroup, VillageDat
 import { RoastTaskData, runRoastTask } from '../jobs/roastJob';
 import { ImportTaskData, runImportTask } from '../jobs/importJob';
 import { getFunctions } from 'firebase-admin/functions';
-import { isDmPaused } from '../services/upgradeNotifier';
+import { isDmPaused, withoutImportedTimers } from '../services/upgradeNotifier';
 
 export const discordInteractionsRouter = Router();
 
@@ -725,7 +725,9 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                     finishesAtMs: new Date(au.finishesAt).getTime(),
                   }));
 
-                const combinedInProg = [...villageInProg, ...legacyInProg];
+                // Hero upgrades seen starting in the API, unless the import already has their timers
+                const heroInProg = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
+                const combinedInProg = [...villageInProg, ...heroInProg, ...legacyInProg];
                 const seenInProg = new Set<string>();
                 const activeInProgress = combinedInProg
                   .filter((u) => {
@@ -1082,7 +1084,9 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                     finishesAtMs: new Date(au.finishesAt).getTime(),
                   }));
 
-                const combinedInProg = [...villageInProg, ...legacyInProg];
+                // Hero upgrades seen starting in the API, unless the import already has their timers
+                const heroInProg = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
+                const combinedInProg = [...villageInProg, ...heroInProg, ...legacyInProg];
                 const seenInProg = new Set<string>();
                 const activeInProgress = combinedInProg
                   .filter((u) => {

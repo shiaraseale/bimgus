@@ -5,9 +5,9 @@
  */
 import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
-import { Village, capFor, getById } from './gameDataService';
+import { Village, capFor, getById, getLevel } from './gameDataService';
 import { ImportChange, InProgressUpgrade, VillageDataV2 } from './villageImportService';
-import { LinkedAccount, UserDoc } from '../types/user';
+import { LinkedAccount, PendingUpgrade, UserDoc } from '../types/user';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
 
@@ -94,9 +94,11 @@ export function groupWalls(events: UpgradeEvent[]): UpgradeEvent[] {
   return out;
 }
 
-// The live API reports these, so their import timers only update stored levels (no DM)
+// The live API reports these when they finish, so their import timers only update stored levels (no DM).
+// Heroes aren't here: the API shows a hero's new level as soon as its upgrade *starts* (seen in
+// production on 2026-10-24), so hero completions come from timers (see heroUpgradeStarts).
 export const API_COVERED_CATEGORIES = new Set([
-  'hero', 'troop', 'superTroop', 'siege', 'pet', 'spell', 'equipment', 'townHall', 'builderHall',
+  'troop', 'superTroop', 'siege', 'pet', 'spell', 'equipment', 'townHall', 'builderHall',
 ]);
 
 const BUILT_CATEGORIES = new Set(['defense', 'resource', 'army', 'other', 'trap', 'wall', 'guardian']);
@@ -150,8 +152,54 @@ export function eventFromTimer(up: InProgressUpgrade): UpgradeEvent | null {
     newLevel: up.targetLevel,
     maxLevel: up.maxLevel,
     count: 1,
-    key: `timer:${up.code ?? up.name}:${up.village}:${up.targetLevel}:${up.finishesAtMs}`,
+    // A hero reaches each level once, so one key covers both its import timer and its API-start timer
+    key: up.category === 'hero'
+      ? `upgrade:${up.code ?? up.name}:${up.village}:${up.targetLevel}`
+      : `timer:${up.code ?? up.name}:${up.village}:${up.targetLevel}:${up.finishesAtMs}`,
   };
+}
+
+function sameUpgrade(a: { code?: number; village: string; targetLevel: number }, b: { code?: number; village: string; targetLevel: number }): boolean {
+  return a.code !== undefined && a.code === b.code && a.village === b.village && a.targetLevel === b.targetLevel;
+}
+
+/**
+ * The API shows a hero's new level as soon as its upgrade starts, so a hero level-up from the API is
+ * a start, not a completion. Each one becomes a pending timer instead of a DM: dropped when the import
+ * already has a timer for it (that timer DMs, and includes boosts), otherwise finishing after the
+ * game data's upgrade time. Returns the remaining events and the new pending timers.
+ */
+export function heroUpgradeStarts(
+  events: UpgradeEvent[],
+  village: VillageDataV2 | null,
+  now: number = Date.now()
+): { events: UpgradeEvent[]; pending: PendingUpgrade[] } {
+  const remaining: UpgradeEvent[] = [];
+  const pending: PendingUpgrade[] = [];
+  for (const e of events) {
+    if (e.category !== 'hero' || e.kind !== 'upgraded') {
+      remaining.push(e);
+      continue;
+    }
+    const target = { code: e.code, village: e.village, targetLevel: e.newLevel };
+    if (village?.inProgressUpgrades.some((u) => u.finishesAtMs > now && sameUpgrade(u, target))) continue;
+    const seconds = e.code ? getLevel(getById(e.code)!, e.newLevel)?.upgradeSeconds : undefined;
+    if (!seconds) {
+      remaining.push(e);
+      continue;
+    }
+    pending.push({
+      code: e.code, name: e.name, category: 'hero', village: e.village, currentLevel: e.oldLevel,
+      targetLevel: e.newLevel, maxLevel: e.maxLevel, timerSeconds: seconds, finishesAtMs: now + seconds * 1000,
+    });
+  }
+  return { events: remaining, pending };
+}
+
+/** Pending API-start timers that an import now covers (the import's own timer is more accurate). */
+export function withoutImportedTimers(pending: PendingUpgrade[] | undefined, village: VillageDataV2 | null): PendingUpgrade[] {
+  if (!pending || !village) return pending ?? [];
+  return pending.filter((p) => !village.inProgressUpgrades.some((u) => sameUpgrade(u, p)));
 }
 
 export function isDmPaused(user: UserDoc, now: number = Date.now()): boolean {

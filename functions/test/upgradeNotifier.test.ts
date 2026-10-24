@@ -9,7 +9,9 @@ import {
   eventFromTimer,
   eventsFromImportChanges,
   groupWalls,
+  heroUpgradeStarts,
   notifyUpgrades,
+  withoutImportedTimers,
 } from '../src/services/upgradeNotifier';
 import { LinkedAccount, UserDoc } from '../src/types/user';
 
@@ -172,5 +174,53 @@ describe('notifyUpgrades', () => {
     account.dmsEnabled = false;
     expect(await notifyUpgrades(user, account, [event()])).toBe(0);
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe('hero upgrades: the API shows the new level when the upgrade starts', () => {
+  const now = Date.parse('2026-10-24T15:45:00Z');
+  const aqStart = event({ kind: 'upgraded', code: 28000001, name: 'Archer Queen', assetName: 'Archer Queen', category: 'hero', oldLevel: 18, newLevel: 19, maxLevel: 30, key: 'hero:home:Archer Queen:19' });
+  const importWithAqTimer = (finishesAtMs: number) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const data = VillageImportService.parseExport(clone(exportFixture));
+    data.inProgressUpgrades.push({ code: 28000001, name: 'Archer Queen', category: 'hero', village: 'home', currentLevel: 18, targetLevel: 19, maxLevel: 30, timerSeconds: 1, finishesAtMs });
+    return data;
+  };
+
+  it('does not DM at the start when the import has a timer for it (the timer will)', () => {
+    const result = heroUpgradeStarts([aqStart], importWithAqTimer(now + 19 * 3600_000), now);
+    expect(result.events).toEqual([]);
+    expect(result.pending).toEqual([]);
+  });
+
+  it('without an import, waits for the game data upgrade time (24 h for Archer Queen 19)', () => {
+    const result = heroUpgradeStarts([aqStart], null, now);
+    expect(result.events).toEqual([]);
+    expect(result.pending).toEqual([expect.objectContaining({ code: 28000001, targetLevel: 19, finishesAtMs: now + 24 * 3600_000 })]);
+  });
+
+  it('leaves non-hero events alone', () => {
+    const cannon = event();
+    expect(heroUpgradeStarts([cannon], null, now).events).toEqual([cannon]);
+  });
+
+  it('sends "should now be level 19" when the timer runs out, once, whichever timer fires', async () => {
+    const send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
+    const { user, account } = newUser();
+    const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
+    const fromPending = eventFromTimer(pending as any)!;
+    const fromImport = eventFromTimer(importWithAqTimer(now).inProgressUpgrades.at(-1)!)!;
+    expect(fromPending.kind).toBe('expected');
+    expect(fromPending.key).toBe(fromImport.key);
+    await notifyUpgrades(user, account, [fromPending]);
+    await notifyUpgrades(user, account, [fromImport]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((send.mock.calls[0][1] as any).embeds[0].description).toContain('Archer Queen** should now be level 19');
+  });
+
+  it('drops a pending timer once an import covers the same upgrade', () => {
+    const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
+    expect(withoutImportedTimers([pending], importWithAqTimer(now + 1000))).toEqual([]);
+    expect(withoutImportedTimers([pending], null)).toEqual([pending]);
   });
 });

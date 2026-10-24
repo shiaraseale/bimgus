@@ -5,8 +5,15 @@ import { PlayerTrackingService } from '../services/playerTrackingService';
 import { CocAssetService } from '../services/cocAssetService';
 import { config } from '../config';
 import { getWarId } from '../diff/warDiff';
-import { VillageImportService } from '../services/villageImportService';
-import { UpgradeEvent, eventFromTimer, isDmPaused, notifyUpgrades } from '../services/upgradeNotifier';
+import { InProgressUpgrade, VillageImportService } from '../services/villageImportService';
+import {
+  UpgradeEvent,
+  eventFromTimer,
+  heroUpgradeStarts,
+  isDmPaused,
+  notifyUpgrades,
+  withoutImportedTimers,
+} from '../services/upgradeNotifier';
 
 export async function runPlayerTrackingJob(): Promise<{ success: boolean; checkedAccounts: number; dmsSent: number }> {
   const users = await FirestoreService.getAllUsers();
@@ -25,6 +32,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
       const account = user.accounts[i];
       checkedAccounts++;
       const events: UpgradeEvent[] = [];
+      const village = VillageImportService.read(account.villageData);
 
       try {
         const freshPlayer = await cocService.getPlayer(account.playerTag);
@@ -32,7 +40,12 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         account.builderHallLevel = freshPlayer.builderHallLevel;
         account.name = freshPlayer.name;
 
-        events.push(...PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer));
+        // Hero level-ups in the API are upgrade starts; they become timers rather than DMs
+        const detected = heroUpgradeStarts(PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer), village);
+        events.push(...detected.events);
+        if (detected.pending.length > 0) {
+          account.pendingUpgrades = [...(account.pendingUpgrades ?? []), ...detected.pending];
+        }
 
         // Keep stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast
         account.lastSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
@@ -41,8 +54,19 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         console.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
       }
 
+      // Hero timers started from the API: DM when they should be done (unless an import now covers them)
+      if (account.pendingUpgrades?.length) {
+        const now = Date.now();
+        const pending = withoutImportedTimers(account.pendingUpgrades, village);
+        for (const up of pending.filter((p) => p.finishesAtMs <= now)) {
+          const event = eventFromTimer(up as InProgressUpgrade);
+          if (event) events.push(event);
+        }
+        account.pendingUpgrades = pending.filter((p) => p.finishesAtMs > now);
+        userModified = true;
+      }
+
       // Timers from the imported export: move the stored level up, and DM for what the API can't see
-      const village = VillageImportService.read(account.villageData);
       if (village) {
         const now = Date.now();
         const due = village.inProgressUpgrades.filter((up) => up.finishesAtMs <= now);

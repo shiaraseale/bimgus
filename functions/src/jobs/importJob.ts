@@ -8,7 +8,7 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
-import { describeEvent, eventsFromImportChanges, groupWalls, notifyUpgrades } from '../services/upgradeNotifier';
+import { describeEvent, eventsFromImportChanges, groupWalls, notifyUpgrades, withoutImportedTimers } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
 
 export interface ImportTaskData {
@@ -108,6 +108,7 @@ export async function runImportTask(task: ImportTaskData, reply: InteractionRepl
       const events = eventsFromImportChanges(changes, village);
 
       account.villageData = village;
+      account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
       const fields: any[] = [];
