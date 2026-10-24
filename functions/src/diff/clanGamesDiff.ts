@@ -116,7 +116,6 @@ export async function processClanGamesDiff(
             description: [
               `**${member.name}** (${member.tag}) has reached the **${MAX_CLAN_GAMES_POINTS.toLocaleString()} maximum points** cap!`,
               '',
-              `🎖️ **Role**: ${member.role}`,
               `🏆 **Achievement**: Maximum individual rewards unlocked!`,
             ].join('\n'),
             color: COLORS.GOLD,
