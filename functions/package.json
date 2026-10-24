@@ -16,7 +16,8 @@
     "register-commands": "npm run build && node -r dotenv/config lib/scripts/registerCommands.js",
     "build:game-data": "node scripts/buildGameData.mts",
     "format": "prettier --ignore-path ../.prettierignore --write src test scripts",
-    "format:check": "prettier --ignore-path ../.prettierignore --check src test scripts"
+    "format:check": "prettier --ignore-path ../.prettierignore --check src test scripts",
+    "import-names": "node scripts/importNameSheet.mts"
   },
   "engines": {
     "node": "22"

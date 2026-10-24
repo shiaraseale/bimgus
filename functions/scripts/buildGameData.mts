@@ -27,6 +27,8 @@ const FILES = [
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT_FILE = path.resolve(here, '../src/data/gameData.json');
 const DISPLAY_NAMES_FILE = path.resolve(here, '../src/data/displayNames.json');
+// A browsable copy for people (opens in Excel or Google Sheets); the bot never reads it
+const REFERENCE_SHEET = path.resolve(here, '../../docs/Clash of Clans Codes (generated).csv');
 
 type Village = 'home' | 'builder';
 type Resource = 'gold' | 'elixir' | 'darkElixir' | 'builderGold' | 'builderElixir' | 'ores' | 'gems' | 'other';
@@ -334,6 +336,33 @@ function build(
   };
 }
 
+/** Every code with its names, category, village and maximum level, as CSV (2.6 step 2.5). */
+function referenceSheet(items: Record<string, Item>): string {
+  const cell = (v: unknown) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = Object.values(items)
+    .sort(
+      (a, b) =>
+        a.village.localeCompare(b.village) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
+    )
+    .map((i) => [
+      i.id,
+      i.name,
+      i.displayName,
+      i.category,
+      i.village,
+      i.levels.length ? Math.max(...i.levels.map((l) => l.level)) : '',
+      i.event ? 'yes' : '',
+    ]);
+  return (
+    [['Code', 'Game Name', 'Display Name', 'Category', 'Village', 'Max Level', 'Event Only'], ...rows]
+      .map((r) => r.map(cell).join(','))
+      .join('\n') + '\n'
+  );
+}
+
 async function main() {
   const fromIdx = process.argv.indexOf('--from');
   const fromDir = fromIdx > 0 ? process.argv[fromIdx + 1] : undefined;
@@ -341,6 +370,7 @@ async function main() {
   const overrides = JSON.parse(await readFile(DISPLAY_NAMES_FILE, 'utf8'));
   const gameData = build(data, overrides);
   await writeFile(OUT_FILE, JSON.stringify(gameData) + '\n');
+  await writeFile(REFERENCE_SHEET, referenceSheet(gameData.items));
   const counts: Record<string, number> = {};
   for (const i of Object.values(gameData.items)) counts[i.category] = (counts[i.category] ?? 0) + 1;
   console.log(
