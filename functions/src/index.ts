@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { runPollClanJob } from './jobs/pollClanJob';
 import { runWarPingJob } from './jobs/warPingJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
 import { proxyKeySecret } from './services/cocService';
+import { RoastTaskData, runRoastTask } from './jobs/roastJob';
 
 /**
  * Scheduled Cloud Function (2nd Gen):
@@ -69,4 +71,21 @@ export const api = onRequest(
     secrets: [adminApiKey, proxyKeySecret],
   },
   dashboardApp
+);
+
+/**
+ * Cloud Task (2nd Gen): writes a /roast queued by the interaction handler and edits its reply.
+ * Runs with full CPU, unlike work done after the interaction's HTTP response (2.7).
+ */
+export const roastTask = onTaskDispatched<RoastTaskData>(
+  {
+    retryConfig: { maxAttempts: 1 },
+    rateLimits: { maxConcurrentDispatches: 5 },
+    memory: '256MiB',
+    timeoutSeconds: 60,
+    secrets: [proxyKeySecret],
+  },
+  async (req) => {
+    await runRoastTask(req.data);
+  }
 );

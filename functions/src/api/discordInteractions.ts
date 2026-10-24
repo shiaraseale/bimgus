@@ -4,7 +4,6 @@ import axios from 'axios';
 import { config } from '../config';
 import { CocService } from '../services/cocService';
 import { FirestoreService } from '../services/firestoreService';
-import { GeminiRoastService } from '../services/geminiRoastService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import {
@@ -23,9 +22,14 @@ import { EMOJIS } from '../constants/emojis';
 import { LinkedAccount, UserDoc } from '../types/user';
 import { PlayerTrackingService } from '../services/playerTrackingService';
 import { VillageImportService, InProgressUpgrade, ParsedDefenseGroup, VillageDataV2 } from '../services/villageImportService';
+import { RoastTaskData, runRoastTask } from '../jobs/roastJob';
+import { getFunctions } from 'firebase-admin/functions';
 import { describeEvent, eventsFromImportChanges, groupWalls, isDmPaused, notifyUpgrades } from '../services/upgradeNotifier';
 
 export const discordInteractionsRouter = Router();
+
+// How long /roast waits to queue its Cloud Task before replying and roasting inline instead
+const ROAST_ENQUEUE_TIMEOUT_MS = 1500;
 
 // Which stored import categories each list shows
 const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];
@@ -1712,108 +1716,31 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
           return respondPersonal({ content: '⚠️ Please mention a user to roast!' });
         }
 
+        const resolvedUser = data.resolved?.users?.[targetUserId];
+        const task: RoastTaskData = {
+          targetUserId,
+          targetUsername: resolvedUser?.global_name || resolvedUser?.username || 'Clasher',
+          applicationId,
+          interactionToken,
+        };
+
+        // Queue the roast as a Cloud Task before replying, because work done after the reply runs
+        // with throttled CPU. If queueing fails or is slow, reply anyway and roast here instead.
+        const queued = await Promise.race([
+          getFunctions()
+            .taskQueue<RoastTaskData>('roastTask')
+            .enqueue(task)
+            .then(() => true)
+            .catch((err: any) => {
+              console.warn(`[Roast] Could not queue the roast task (${err.message}); running it inline`);
+              return false;
+            }),
+          new Promise<false>((resolve) => setTimeout(() => resolve(false), ROAST_ENQUEUE_TIMEOUT_MS)),
+        ]);
+
         // Defer publicly in channel so everyone can enjoy the roast!
         deferReply(false);
-
-        (async () => {
-          try {
-            const resolvedUser = data.resolved?.users?.[targetUserId];
-            const targetUsername = resolvedUser?.global_name || resolvedUser?.username || 'Clasher';
-            const targetMention = `<@${targetUserId}>`;
-
-            // Check if the target user has linked Clash of Clans accounts
-            const targetUserDoc = await FirestoreService.getUser(targetUserId);
-            let roastAccounts: any[] | undefined = undefined;
-
-            if (targetUserDoc?.accounts && targetUserDoc.accounts.length > 0) {
-              const warSnap = await FirestoreService.getWarSnapshot(config.coc.clanTag).catch(() => null);
-
-              const fetchPromises = targetUserDoc.accounts.map(async (acc: LinkedAccount) => {
-                const baseData: any = {
-                  name: acc.name || 'Clasher',
-                  tag: acc.playerTag,
-                  townHallLevel: acc.townHallLevel || 9,
-                  builderHallLevel: acc.builderHallLevel,
-                  trophies: 0,
-                  warStars: 0,
-                  attackWins: 0,
-                  defenseWins: 0,
-                  donations: 0,
-                  donationsReceived: 0,
-                  heroes: [],
-                };
-
-                try {
-                  const fp = await Promise.race([
-                    cocService.getPlayer(acc.playerTag),
-                    new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000)),
-                  ]);
-
-                  if (fp) {
-                    baseData.name = fp.name;
-                    baseData.townHallLevel = fp.townHallLevel;
-                    baseData.builderHallLevel = fp.builderHallLevel;
-                    baseData.trophies = fp.trophies;
-                    baseData.warStars = fp.warStars;
-                    baseData.donations = fp.donations;
-                    baseData.donationsReceived = fp.donationsReceived;
-                    baseData.attackWins = fp.attackWins || 0;
-                    baseData.defenseWins = fp.defenseWins || 0;
-                    baseData.warPreference = fp.warPreference;
-                    baseData.heroes = (fp.heroes || []).map((h: any) => ({ name: h.name, level: h.level }));
-                  }
-                } catch (e: any) {
-                  if (acc.lastSnapshot?.heroes) {
-                    baseData.heroes = Object.entries(acc.lastSnapshot.heroes).map(([key, val]: any) => ({
-                      name: val.name ?? key.replace(/^(home|builder):/, ''),
-                      level: val.level,
-                    }));
-                  }
-                }
-
-                if (warSnap?.postWarAudit) {
-                  const missed = warSnap.postWarAudit.zeroAttacks?.find(
-                    (m: any) => m.tag.toUpperCase() === acc.playerTag.toUpperCase()
-                  );
-                  const partial = warSnap.postWarAudit.partialAttacks?.find(
-                    (m: any) => m.tag.toUpperCase() === acc.playerTag.toUpperCase()
-                  );
-                  if (missed) {
-                    baseData.warPerformance = 'Missed all attacks in clan war (0 attacks used)';
-                  } else if (partial) {
-                    baseData.warPerformance = `Only used ${partial.attacksUsed} attack for ${partial.starsGained} stars in clan war`;
-                  }
-                }
-
-                return baseData;
-              });
-
-              roastAccounts = await Promise.all(fetchPromises);
-            }
-
-            const roast = await GeminiRoastService.generateRoast({
-              discordMention: targetMention,
-              discordUsername: targetUsername,
-              accounts: roastAccounts,
-            });
-
-            // Ensure user mention is present in the text message
-            const finalRoastMessage = roast.includes(targetMention)
-              ? roast
-              : `${targetMention} ${roast}`;
-
-            // Send pure text message with no embed as requested
-            await editDeferredReply({
-              content: finalRoastMessage,
-            });
-          } catch (roastErr: any) {
-            console.error('[Roast] Error executing roast:', roastErr);
-            await editDeferredReply({
-              content: `❌ Bimgus got too heated and fumbled the roast: ${roastErr.message || 'Unknown error'}`,
-            });
-          }
-        })();
-
+        if (!queued) void runRoastTask(task);
         return;
       }
 

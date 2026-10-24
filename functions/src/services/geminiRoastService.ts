@@ -24,7 +24,13 @@ export interface RoastTargetProfile {
 }
 
 export class GeminiRoastService {
+  // Current stable Flash model; checked against https://ai.google.dev/gemini-api/docs/models on 2026-10-24
   private static readonly MODEL = 'gemini-3.8-flash';
+  // "low" is the least thinking gemini-3.8-flash allows. The output cap includes thinking tokens,
+  // so it leaves room for those plus a 1–2 sentence roast.
+  private static readonly THINKING_LEVEL = 'low';
+  private static readonly MAX_OUTPUT_TOKENS = 1024;
+  private static readonly TIMEOUT_MS = 6000;
 
   private static readonly GENERIC_CLASH_ROASTS = [
     "You look like the type of attacker who drops all 10 Electro Dragons in a single pixel and prays to the heavens.",
@@ -58,16 +64,24 @@ export class GeminiRoastService {
           model: this.MODEL,
           input: prompt,
           store: false,
+          generation_config: {
+            thinking_level: this.THINKING_LEVEL,
+            max_output_tokens: this.MAX_OUTPUT_TOKENS,
+          },
         },
         {
           headers: { 'Content-Type': 'application/json' },
-          timeout: 8000,
+          timeout: this.TIMEOUT_MS,
         }
       );
 
       const steps = response.data?.steps || [];
       const modelStep = steps.find((s: any) => s.type === 'model_output');
-      let roastText = modelStep?.content?.[0]?.text?.trim();
+      let roastText = (modelStep?.content || [])
+        .filter((c: any) => c?.type === 'text' || typeof c?.text === 'string')
+        .map((c: any) => c.text)
+        .join('')
+        .trim();
 
       if (!roastText && response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
         roastText = response.data.candidates[0].content.parts[0].text.trim();
@@ -91,7 +105,7 @@ export class GeminiRoastService {
           ? `Heroes: ${p.heroes.map((h) => `${h.name} Lv${h.level}`).join(', ')}`
           : '';
         const warMissed = p.warPerformance ? `War Performance: ${p.warPerformance}` : '';
-        return `Account ${i + 1} ("${p.name}", Tag: ${p.tag}):
+        return `Account ${i + 1} ("${p.name}"):
 - Town Hall: ${p.townHallLevel}, Builder Hall: ${p.builderHallLevel || 'N/A'}
 - Trophies: ${p.trophies}, War Stars: ${p.warStars}
 - Season Attack Wins: ${p.attackWins ?? 0}, Defense Wins: ${p.defenseWins ?? 0}
