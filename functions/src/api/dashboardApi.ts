@@ -10,7 +10,7 @@ import { buildCwlSeasonSummary, sendCwlSeasonSummaryDiscord } from '../diff/cwlD
 import { sendWarSummaryDiscord } from '../diff/warDiff';
 import { findActiveCwlWar, withOurClanFirst } from '../diff/cwlWars';
 
-import { discordInteractionsRouter } from './discordInteractions';
+import { discordInteractionsRouter } from './discord/router';
 import { registerDiscordCommands } from '../scripts/registerCommands';
 
 export const adminApiKey = defineSecret('ADMIN_API_KEY');

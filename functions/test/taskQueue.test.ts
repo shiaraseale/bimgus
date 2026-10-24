@@ -10,7 +10,7 @@ const taskQueue = vi.fn(() => ({ enqueue }));
 vi.mock('firebase-admin/functions', () => ({ getFunctions: () => ({ taskQueue }) }));
 
 import { config } from '../src/config';
-import { discordInteractionsRouter } from '../src/api/discordInteractions';
+import { discordInteractionsRouter } from '../src/api/discord/router';
 
 describe('slow commands are queued as Cloud Tasks', () => {
   const originalPublicKey = config.discord.publicKey;

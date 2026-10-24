@@ -7,7 +7,7 @@ import axios from 'axios';
 import exportFixture from './fixtures/export-th12-bh9.json';
 import apiFixture from './fixtures/api-player-th12.json';
 import { config } from '../src/config';
-import { discordInteractionsRouter } from '../src/api/discordInteractions';
+import { discordInteractionsRouter } from '../src/api/discord/router';
 import { FirestoreService } from '../src/services/firestoreService';
 import { CocService } from '../src/services/cocService';
 import { DiscordService } from '../src/services/discordService';
@@ -141,7 +141,7 @@ describe('slash commands end to end (mocked services)', () => {
   });
 
   it('a queued command task runs the command and edits the reply', async () => {
-    const { runCommandTask } = await import('../src/api/discordInteractions');
+    const { runCommandTask } = await import('../src/api/discord/router');
     await runCommandTask({
       type: 2, token: 'tok', application_id: 'app', user: { id: '42', username: 'tester' },
       data: { name: 'heroes', options: [] },
@@ -149,6 +149,27 @@ describe('slash commands end to end (mocked services)', () => {
     // The task waits for the work, so the reply is already edited when it returns
     expect(patches).toHaveLength(1);
     expect(allText(patches[0])).toContain('Hero Maxing Overview');
+  });
+
+  it('/upgrades lists every running timer, including two of the same trap', async () => {
+    // A copy of the export taken a minute ago, so its timers are still running
+    const recent = { ...clone(exportFixture), timestamp: Math.floor(Date.now() / 1000) - 60 };
+    vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(recent) }) as any);
+    await importFile();
+    patches = [];
+    const reply = await command('upgrades');
+    // The real export has two Spring Traps upgrading to level 6
+    const timers = allText(reply).match(/Spring Trap\*\*: Upgrading/g) ?? [];
+    expect(timers).toHaveLength(2);
+  });
+
+  it('/spells, /troops and /accounts reply for the linked account', async () => {
+    await importFile();
+    for (const [cmd, text] of [['spells', 'Spell Laboratory Upgrades'], ['troops', 'Troop Research'], ['accounts', 'Tester']] as const) {
+      patches = [];
+      const reply = await command(cmd);
+      expect(allText(reply), cmd).toContain(text);
+    }
   });
 
   it('/sixth-builder reads the BB defense task from the import', async () => {

@@ -4,7 +4,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { runPollClanJob } from './jobs/pollClanJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
-import { runCommandTask } from './api/discordInteractions';
+import { runCommandTask } from './api/discord/router';
 import { proxyKeySecret } from './services/cocService';
 import { RoastTaskData, runRoastTask } from './jobs/roastJob';
 import { ImportTaskData, runImportTask } from './jobs/importJob';

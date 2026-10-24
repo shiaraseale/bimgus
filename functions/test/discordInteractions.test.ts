@@ -4,7 +4,7 @@ import { AddressInfo } from 'net';
 import { Server } from 'http';
 import express from 'express';
 import { config } from '../src/config';
-import { discordInteractionsRouter } from '../src/api/discordInteractions';
+import { discordInteractionsRouter } from '../src/api/discord/router';
 
 describe('Discord interactions signature check', () => {
   const originalPublicKey = config.discord.publicKey;
