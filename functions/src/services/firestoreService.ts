@@ -116,6 +116,24 @@ export class FirestoreService {
   /**
    * Saves an updated clan snapshot.
    */
+  /**
+   * Full API responses saved by the poll so the dashboard can show them without live calls (3.6):
+   * 'clan' (the clan), 'war' (the regular war) and 'cwlWar' (the active CWL war, or null).
+   */
+  static async getRaw<T = any>(clanTag: string, key: 'clan' | 'war' | 'cwlWar'): Promise<{ data: T | null; updatedAt: string } | null> {
+    try {
+      const doc = await this.clansCol.doc(config.formatTag(clanTag)).collection('raw').doc(key).get();
+      return doc.exists ? (doc.data() as { data: T | null; updatedAt: string }) : null;
+    } catch (err: any) {
+      console.warn(`[Firestore] Unable to read raw ${key} (${err.message})`);
+      return null;
+    }
+  }
+
+  static async saveRaw(clanTag: string, key: 'clan' | 'war' | 'cwlWar', data: unknown): Promise<void> {
+    await this.clansCol.doc(config.formatTag(clanTag)).collection('raw').doc(key).set({ data: data ?? null, updatedAt: new Date().toISOString() });
+  }
+
   static async saveClanSnapshot(snapshot: ClanSnapshotDoc): Promise<void> {
     const formattedTag = config.formatTag(snapshot.tag);
     await this.clansCol.doc(formattedTag).set(snapshot, { merge: true });

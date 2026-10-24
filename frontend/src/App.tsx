@@ -74,14 +74,16 @@ export function App() {
     }
   }, [activeTab]);
 
-  const fetchData = async () => {
+  // After a sync, skip the CDN's cached copy (public data is cached for up to 60 seconds)
+  const fetchData = async (fresh: boolean = false) => {
     try {
       setError(null);
       const encodedTag = encodeURIComponent(CLAN_TAG);
+      const bust = fresh ? `?fresh=${Date.now()}` : '';
 
       // Fetch clan data
       try {
-        const clanRes = await fetch(`/api/clan/${encodedTag}`);
+        const clanRes = await fetch(`/api/clan/${encodedTag}${bust}`);
         if (clanRes.ok) {
           const clanJson = await clanRes.json();
           if (clanJson.success && clanJson.data) {
@@ -94,7 +96,7 @@ export function App() {
 
       // Fetch war data
       try {
-        const warRes = await fetch(`/api/clan/${encodedTag}/war`);
+        const warRes = await fetch(`/api/clan/${encodedTag}/war${bust}`);
         if (warRes.ok) {
           const warJson = await warRes.json();
           if (warJson.success && warJson.data) {
@@ -130,7 +132,7 @@ export function App() {
         method: 'POST',
         headers: { 'X-Admin-Key': adminKey },
       });
-      await fetchData();
+      await fetchData(true);
     } catch {
       // ignore
     } finally {

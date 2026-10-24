@@ -47,13 +47,14 @@ export async function findActiveCwlWar(
   group: CwlGroupResponse,
   clanTag: string,
   coc: CocService,
-  states: ReadonlyArray<'inWar' | 'preparation'> = ['inWar', 'preparation']
+  states: ReadonlyArray<'inWar' | 'preparation'> = ['inWar', 'preparation'],
+  knownTags?: Record<number, string>
 ): Promise<{ warTag: string; war: CurrentWarResponse; roundIndex: number } | null> {
   let preparation: { warTag: string; war: CurrentWarResponse; roundIndex: number } | null = null;
   for (let r = (group.rounds?.length ?? 0) - 1; r >= 0; r--) {
     const tags = roundWarTags(group, r);
     if (tags.length === 0) continue;
-    const found = await findOurCwlWar(tags, clanTag, coc);
+    const found = await findOurCwlWar(tags, clanTag, coc, knownTags?.[r]);
     if (!found) continue;
     if (found.war.state === 'inWar' && states.includes('inWar')) return { ...found, roundIndex: r };
     if (found.war.state === 'preparation' && states.includes('preparation') && !preparation) {

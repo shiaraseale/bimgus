@@ -9,6 +9,7 @@ import { runPlayerTrackingJob } from './playerTrackingJob';
 import { runWarPingJob } from './warPingJob';
 import { config } from '../config';
 import { changedIgnoringUpdatedAt } from '../utils/changes';
+import { findActiveCwlWar } from '../diff/cwlWars';
 
 const TICK_MS = 2 * 60 * 1000;
 // Each task gets this long before the run stops waiting for it (the function's timeout is longer)
@@ -73,6 +74,7 @@ export async function runPollClanJob(
     const clanData = await cocService.getClan(targetTag);
     const prevClanSnapshot = await FirestoreService.getClanSnapshot(targetTag);
     const newClanSnapshot = await processClanDiff(clanData, prevClanSnapshot, botConfig);
+    await FirestoreService.saveRaw(targetTag, 'clan', clanData);
     if (changedIgnoringUpdatedAt(prevClanSnapshot, newClanSnapshot)) await FirestoreService.saveClanSnapshot(newClanSnapshot);
 
     // 2. Everything else in parallel
@@ -87,6 +89,9 @@ export async function runPollClanJob(
           if (newWarSnapshot && changedIgnoringUpdatedAt(prevWarSnapshot, newWarSnapshot)) {
             await FirestoreService.saveWarSnapshot(targetTag, newWarSnapshot);
           }
+          // The dashboard's War Room shows the full war (members and attacks), not the snapshot summary.
+          // Saved every tick, even when not in war, so the dashboard knows its copy is current.
+          await FirestoreService.saveRaw(targetTag, 'war', warData);
         } catch (warErr: any) {
           if (warErr.response?.status === 403) {
             console.warn('[Poll] Could not fetch current war: the war log is private');
@@ -101,15 +106,28 @@ export async function runPollClanJob(
       work.push(runTask('CWL', async () => {
         try {
           const cwlGroup = await cocService.getCwlGroup(targetTag);
-          if (!cwlGroup || cwlGroup.state === 'notInWar') return;
+          if (!cwlGroup || cwlGroup.state === 'notInWar') {
+            await FirestoreService.saveRaw(targetTag, 'cwlWar', null);
+            return;
+          }
           console.log(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
           const prevCwlSnapshot = await FirestoreService.getCwlSnapshot(targetTag);
           const newCwlSnapshot = await processCwlDiff(cwlGroup, targetTag, prevCwlSnapshot, botConfig, cocService);
           if (newCwlSnapshot && changedIgnoringUpdatedAt(prevCwlSnapshot, newCwlSnapshot)) {
             await FirestoreService.saveCwlSnapshot(targetTag, newCwlSnapshot);
           }
+          // The active CWL war for the dashboard (one request per round once our war tags are known)
+          const active = await findActiveCwlWar(cwlGroup, targetTag, cocService, ['inWar', 'preparation'], newCwlSnapshot?.ourWarTags);
+          await FirestoreService.saveRaw(
+            targetTag,
+            'cwlWar',
+            active ? { ...active.war, isCwl: true, cwlRound: active.roundIndex + 1, cwlSeason: cwlGroup.season } : null
+          );
         } catch (cwlErr: any) {
-          if (cwlErr.response?.status === 404) return; // not in CWL
+          if (cwlErr.response?.status === 404) {
+            await FirestoreService.saveRaw(targetTag, 'cwlWar', null); // not in CWL
+            return;
+          }
           throw cwlErr;
         }
       }));

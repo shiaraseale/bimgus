@@ -50,7 +50,7 @@ describe('runPollClanJob', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(CocService, 'shared').mockReturnValue(coc as any);
-    for (const m of ['getConfig', 'getClanSnapshot', 'saveClanSnapshot', 'getWarSnapshot', 'saveWarSnapshot', 'getCwlSnapshot', 'saveCwlSnapshot', 'getRaidSnapshot', 'saveRaidSnapshot', 'getClanGamesSnapshot', 'saveClanGamesSnapshot'] as const) {
+    for (const m of ['getConfig', 'getClanSnapshot', 'saveClanSnapshot', 'getWarSnapshot', 'saveWarSnapshot', 'getCwlSnapshot', 'saveCwlSnapshot', 'getRaidSnapshot', 'saveRaidSnapshot', 'getClanGamesSnapshot', 'saveClanGamesSnapshot', 'saveRaw'] as const) {
       vi.spyOn(FirestoreService, m as any).mockResolvedValue(m === 'getConfig' ? { webhooks: {}, notificationsEnabled: {} } : null);
     }
   });

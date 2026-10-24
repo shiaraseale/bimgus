@@ -3,6 +3,7 @@ import { AddressInfo } from 'net';
 import { Server } from 'http';
 import { dashboardApp } from '../src/api/dashboardApi';
 import { FirestoreService } from '../src/services/firestoreService';
+import { CocService } from '../src/services/cocService';
 
 describe('dashboardApi', () => {
   let server: Server;
@@ -36,6 +37,44 @@ describe('dashboardApi', () => {
       expect(res.status).toBe(204);
       const body = await res.text();
       expect(body).toBe('');
+    });
+  });
+
+  describe('public data from the poll\'s saved copies (3.6)', () => {
+    const fresh = (data: any) => ({ data, updatedAt: new Date().toISOString() });
+    const stale = (data: any) => ({ data, updatedAt: new Date(Date.now() - 20 * 60_000).toISOString() });
+    let getClan: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      getClan = vi.fn(async () => ({ tag: '#TESTCLAN', name: 'Live' }));
+      vi.spyOn(CocService, 'shared').mockReturnValue({ getClan, getCurrentWar: vi.fn(async () => ({ state: 'notInWar' })), getCwlGroup: vi.fn(async () => ({ state: 'notInWar' })) } as any);
+    });
+
+    it('serves a fresh saved clan without a live call, and lets the CDN cache it', async () => {
+      vi.spyOn(FirestoreService, 'getRaw').mockResolvedValue(fresh({ tag: '#TESTCLAN', name: 'Saved' }));
+      const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN`);
+      expect((await res.json()).data.name).toBe('Saved');
+      expect(getClan).not.toHaveBeenCalled();
+      expect(res.headers.get('cache-control')).toBe('public, max-age=60, s-maxage=60');
+    });
+
+    it('goes live when the saved copy is old (the poll may be failing)', async () => {
+      vi.spyOn(FirestoreService, 'getRaw').mockResolvedValue(stale({ tag: '#TESTCLAN', name: 'Saved' }));
+      const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN`);
+      expect((await res.json()).data.name).toBe('Live');
+    });
+
+    it('shows the active CWL war when there is no regular war', async () => {
+      vi.spyOn(FirestoreService, 'getRaw').mockImplementation(async (_tag: string, key: string) =>
+        key === 'war' ? fresh({ state: 'notInWar' }) : fresh({ state: 'inWar', isCwl: true, cwlRound: 3 })
+      );
+      const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN/war`);
+      expect((await res.json()).data).toMatchObject({ isCwl: true, cwlRound: 3 });
+    });
+
+    it('keeps admin routes uncached', async () => {
+      const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN/config`);
+      expect(res.headers.get('cache-control')).toContain('no-store');
     });
   });
 

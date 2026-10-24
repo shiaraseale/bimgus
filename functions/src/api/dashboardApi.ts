@@ -71,10 +71,26 @@ dashboardApp.use('/api', router);
 // Lightweight warming ping route (returns 204 immediately, no auth or external work)
 router.get('/ping', (_req, res) => res.status(204).end());
 
-// Public Endpoint: Get clan overview and live snapshot
-router.get('/clan/:tag', async (req, res) => {
+// The poll saves full responses every 2–4 minutes; older than this, the dashboard goes live instead
+const RAW_MAX_AGE_MS = 10 * 60 * 1000;
+const isFresh = (raw: { updatedAt: string } | null) => Boolean(raw && Date.now() - new Date(raw.updatedAt).getTime() <= RAW_MAX_AGE_MS);
+
+// Public data changes at most every 2 minutes, so the CDN may cache it briefly (3.6)
+const publicCache: express.RequestHandler = (_req, res, next) => {
+  res.set('Cache-Control', 'public, max-age=60, s-maxage=60');
+  res.removeHeader('Pragma');
+  res.removeHeader('Expires');
+  next();
+};
+
+// Public Endpoint: Get clan overview (from the poll's saved copy, or live if that's missing or old)
+router.get('/clan/:tag', publicCache, async (req, res) => {
   try {
     const clanTag = req.params.tag;
+    const raw = await FirestoreService.getRaw(clanTag, 'clan');
+    if (isFresh(raw) && raw?.data) {
+      return res.json({ success: true, data: raw.data });
+    }
     // Attempt live fetch first for real-time freshness
     try {
       const coc = CocService.shared();
@@ -93,10 +109,17 @@ router.get('/clan/:tag', async (req, res) => {
   }
 });
 
-// Public Endpoint: Get current war status
-router.get('/clan/:tag/war', async (req, res) => {
+// Public Endpoint: Get current war status (regular war first, then the active CWL war)
+router.get('/clan/:tag/war', publicCache, async (req, res) => {
   try {
     const clanTag = req.params.tag;
+    const raw = await FirestoreService.getRaw(clanTag, 'war');
+    if (isFresh(raw) && raw?.data) {
+      if (raw.data.state !== 'notInWar') return res.json({ success: true, data: raw.data });
+      const cwl = await FirestoreService.getRaw(clanTag, 'cwlWar');
+      if (isFresh(cwl) && cwl?.data) return res.json({ success: true, data: cwl.data });
+      return res.json({ success: true, data: raw.data });
+    }
     const coc = CocService.shared();
     try {
       const liveWar = await coc.getCurrentWar(clanTag);
