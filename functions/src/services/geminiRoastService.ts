@@ -24,13 +24,14 @@ export interface RoastTargetProfile {
 }
 
 export class GeminiRoastService {
-  // Current stable Flash model; checked against https://ai.google.dev/gemini-api/docs/models on 2026-10-24
-  private static readonly MODEL = 'gemini-3.8-flash';
-  // "low" is the least thinking gemini-3.8-flash allows. The output cap includes thinking tokens,
-  // so it leaves room for those plus a 1–2 sentence roast.
-  private static readonly THINKING_LEVEL = 'low';
+  // Stable Flash-Lite model (https://ai.google.dev/gemini-api/docs/models, checked 2026-10-24).
+  // gemini-3.8-flash didn't answer within 30–40 s in tests that day, while this took 2.5–5.4 s.
+  private static readonly MODEL = 'gemini-3.5-flash-lite';
+  // "minimal" thinking is enough for a 1–2 sentence roast; the output cap includes any thinking tokens
+  private static readonly THINKING_LEVEL = 'minimal';
   private static readonly MAX_OUTPUT_TOKENS = 1024;
-  private static readonly TIMEOUT_MS = 6000;
+  // The roast runs in a Cloud Task, so it isn't bound by Discord's 3-second deadline
+  private static readonly TIMEOUT_MS = 8000;
 
   private static readonly GENERIC_CLASH_ROASTS = [
     "You look like the type of attacker who drops all 10 Electro Dragons in a single pixel and prays to the heavens.",

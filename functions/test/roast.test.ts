@@ -48,7 +48,7 @@ describe('/roast task', () => {
 
     expect(getPlayer).not.toHaveBeenCalled();
     const body = post.mock.calls[0][1] as any;
-    expect(body.generation_config).toEqual({ thinking_level: 'low', max_output_tokens: 1024 });
+    expect(body.generation_config).toEqual({ thinking_level: 'minimal', max_output_tokens: 1024 });
     expect(body.input).toContain(`War Stars: ${apiFixture.warStars}`);
     expect(patched).toEqual([{ url: expect.stringContaining('/webhooks/app/tok/messages/@original'), body: { content: '<@7> your walls are a welcome mat.' } }]);
   });
@@ -62,7 +62,7 @@ describe('/roast task', () => {
 
   it('falls back to a canned roast when Gemini times out', async () => {
     vi.spyOn(FirestoreService, 'getUser').mockResolvedValue(userWithSnapshot(60_000));
-    vi.spyOn(axios, 'post').mockRejectedValue(new Error('timeout of 6000ms exceeded'));
+    vi.spyOn(axios, 'post').mockRejectedValue(new Error('timeout of 8000ms exceeded'));
     await runRoastTask(task, now);
     expect(patched).toHaveLength(1);
     expect(patched[0].body.content).toMatch(/^<@7> /);
