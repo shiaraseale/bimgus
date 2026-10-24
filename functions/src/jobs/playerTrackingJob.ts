@@ -21,7 +21,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
     return { success: true, checkedAccounts: 0, dmsSent: 0 };
   }
 
-  const cocService = new CocService();
+  const cocService = CocService.shared();
   let checkedAccounts = 0;
   let dmsSent = 0;
 

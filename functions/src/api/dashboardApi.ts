@@ -76,7 +76,7 @@ router.get('/clan/:tag', async (req, res) => {
     const clanTag = req.params.tag;
     // Attempt live fetch first for real-time freshness
     try {
-      const coc = new CocService();
+      const coc = CocService.shared();
       const liveClan = await coc.getClan(clanTag);
       return res.json({ success: true, data: liveClan });
     } catch (apiErr) {
@@ -96,7 +96,7 @@ router.get('/clan/:tag', async (req, res) => {
 router.get('/clan/:tag/war', async (req, res) => {
   try {
     const clanTag = req.params.tag;
-    const coc = new CocService();
+    const coc = CocService.shared();
     try {
       const liveWar = await coc.getCurrentWar(clanTag);
       if (liveWar.state !== 'notInWar') {
@@ -288,7 +288,7 @@ router.get('/clan/:tag/cwl-summary', async (req, res) => {
 
     // Attempt calculation: try live CWL group, or fall back to stored round war tags
     try {
-      const coc = new CocService();
+      const coc = CocService.shared();
       let summary: any = null;
       try {
         const cwlGroup = await coc.getCwlGroup(clanTag);
@@ -333,7 +333,7 @@ router.get('/clan/:tag/cwl-summary', async (req, res) => {
 router.post('/clan/:tag/cwl-summary/broadcast', requireAdminKey, async (req, res) => {
   try {
     const clanTag = req.params.tag;
-    const coc = new CocService();
+    const coc = CocService.shared();
     const config = await FirestoreService.getConfig(clanTag);
     const webhookUrl = config.webhooks.cwlHub || config.webhooks.warRoom;
 
@@ -386,7 +386,7 @@ router.post('/clan/:tag/cwl-summary/broadcast', requireAdminKey, async (req, res
 router.post('/clan/:tag/war-summary/broadcast', requireAdminKey, async (req, res) => {
   try {
     const clanTag = req.params.tag;
-    const coc = new CocService();
+    const coc = CocService.shared();
     const config = await FirestoreService.getConfig(clanTag);
     const webhookUrl = config.webhooks.warRoom;
 

@@ -8,7 +8,7 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
   const targetTag = clanTagOverride || config.coc.clanTag;
   if (!targetTag) return { success: false, message: 'No clan tag configured' };
 
-  const cocService = new CocService();
+  const cocService = CocService.shared();
   const botConfig = await FirestoreService.getConfig(targetTag);
 
   const webhookUrl = botConfig.webhooks.cwlHub || botConfig.webhooks.warRoom;

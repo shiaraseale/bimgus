@@ -14,7 +14,7 @@ export async function runPollClanJob(clanTagOverride?: string): Promise<{ succes
     return { success: false, message: 'No clan tag configured. Set COC_CLAN_TAG in environment or Firestore.' };
   }
 
-  const cocService = new CocService();
+  const cocService = CocService.shared();
   const botConfig = await FirestoreService.getConfig(targetTag);
 
   try {

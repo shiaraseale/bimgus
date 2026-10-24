@@ -106,7 +106,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       }
     }
 
-    const cocService = new CocService();
+    const cocService = CocService.shared();
     const isGuild = Boolean(req.body.guild_id);
     const interactionToken = req.body.token;
     const applicationId = req.body.application_id || config.discord.clientId;

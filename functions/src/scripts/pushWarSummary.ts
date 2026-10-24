@@ -7,7 +7,7 @@ export async function pushWarSummary(targetClanTag?: string): Promise<{ success:
   const clanTag = targetClanTag || config.coc.clanTag || '#ABC123';
   console.log(`[pushWarSummary] Fetching live war status for ${clanTag}...`);
 
-  const coc = new CocService();
+  const coc = CocService.shared();
   const currentWar = await coc.getCurrentWar(clanTag);
 
   if (!currentWar || currentWar.state === 'notInWar') {

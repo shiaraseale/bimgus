@@ -124,7 +124,7 @@ export async function runRoastTask(task: RoastTaskData, now: number = Date.now()
     let accounts: PlayerRoastData[] | undefined;
     if (userDoc?.accounts?.length) {
       const warSnap = await time('warSnapshot', () => FirestoreService.getWarSnapshot(config.coc.clanTag).catch(() => null));
-      const cocService = new CocService();
+      const cocService = CocService.shared();
       const results = await time('accounts', () =>
         Promise.all(userDoc.accounts.map((acc) => accountRoastData(acc, cocService, warSnap, now)))
       );

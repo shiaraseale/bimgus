@@ -1,7 +1,7 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import { defineSecret } from 'firebase-functions/params';
 import { config } from '../config';
-import { ClanResponse, CurrentWarResponse, CapitalRaidResponse } from '../types/coc';
+import { ClanResponse, CurrentWarResponse, CapitalRaidResponse, CwlGroupResponse, PlayerResponse } from '../types/coc';
 
 export const proxyKeySecret = defineSecret('PROXY_KEY');
 
@@ -13,8 +13,37 @@ export function getExpectedProxyKey(): string {
   }
 }
 
+// Rate limits (429) and brief 503s are retried with backoff; maintenance 503s are not
+const MAX_RETRIES = 2;
+const BASE_DELAY_MS = 500;
+const MAX_DELAY_MS = 5000;
+
+function isRetryable(err: AxiosError): boolean {
+  const status = err.response?.status;
+  if (status === 429) return true;
+  if (status === 503) return (err.response?.data as any)?.reason !== 'inMaintenance';
+  return false;
+}
+
+function retryDelayMs(err: AxiosError, attempt: number): number {
+  const retryAfter = Number(err.response?.headers?.['retry-after']);
+  const fromHeader = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 0;
+  return Math.min(MAX_DELAY_MS, Math.max(fromHeader, BASE_DELAY_MS * 2 ** attempt));
+}
+
+let shared: CocService | null = null;
+
 export class CocService {
   private client: AxiosInstance;
+
+  /**
+   * One client per container (3.8), created on first use because the proxy key secret is only
+   * readable at runtime.
+   */
+  static shared(): CocService {
+    shared ??= new CocService();
+    return shared;
+  }
 
   constructor(token?: string, baseUrl?: string, proxyKey?: string) {
     const key = proxyKey !== undefined ? proxyKey : getExpectedProxyKey();
@@ -36,6 +65,17 @@ export class CocService {
       baseURL: base,
       timeout: 10000,
       headers,
+    });
+
+    this.client.interceptors.response.use(undefined, async (err: AxiosError) => {
+      const cfg: any = err.config;
+      if (!cfg || !isRetryable(err)) throw err;
+      cfg.__retryCount = (cfg.__retryCount ?? 0) + 1;
+      if (cfg.__retryCount > MAX_RETRIES) throw err;
+      const delay = retryDelayMs(err, cfg.__retryCount - 1);
+      console.warn(`[CocService] ${err.response?.status} on ${cfg.url}; retry ${cfg.__retryCount}/${MAX_RETRIES} in ${delay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return this.client.request(cfg);
     });
   }
 
@@ -69,9 +109,9 @@ export class CocService {
   /**
    * Fetches CWL group information.
    */
-  async getCwlGroup(clanTag: string): Promise<any> {
+  async getCwlGroup(clanTag: string): Promise<CwlGroupResponse> {
     const encoded = config.encodeTag(clanTag);
-    const response = await this.client.get(`/clans/${encoded}/currentwar/leaguegroup`);
+    const response = await this.client.get<CwlGroupResponse>(`/clans/${encoded}/currentwar/leaguegroup`);
     return response.data;
   }
 
@@ -87,9 +127,9 @@ export class CocService {
   /**
    * Fetches a player profile including achievements.
    */
-  async getPlayer(playerTag: string): Promise<any> {
+  async getPlayer(playerTag: string): Promise<PlayerResponse> {
     const encoded = config.encodeTag(playerTag);
-    const response = await this.client.get(`/players/${encoded}`);
+    const response = await this.client.get<PlayerResponse>(`/players/${encoded}`);
     return response.data;
   }
 }

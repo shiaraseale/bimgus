@@ -156,14 +156,37 @@ export interface PlayerAchievement {
   village: string;
 }
 
+/** A hero, troop, spell or equipment entry in a player response. */
+export interface PlayerUnit {
+  name: string;
+  level: number;
+  maxLevel: number;
+  village: 'home' | 'builderBase';
+  equipment?: PlayerUnit[];
+}
+
 export interface PlayerResponse {
   tag: string;
   name: string;
   townHallLevel: number;
+  townHallWeaponLevel?: number;
+  builderHallLevel?: number;
   expLevel: number;
   trophies: number;
   bestTrophies: number;
   warStars: number;
+  attackWins?: number;
+  defenseWins?: number;
+  donations?: number;
+  donationsReceived?: number;
+  warPreference?: 'in' | 'out';
   achievements: PlayerAchievement[];
+  heroes?: PlayerUnit[];
+  troops?: PlayerUnit[];
+  spells?: PlayerUnit[];
+  heroEquipment?: PlayerUnit[];
+  clan?: { tag: string; name: string };
+  league?: { iconUrls?: Record<string, string> };
+  leagueTier?: { iconUrls?: Record<string, string> };
 }
 
