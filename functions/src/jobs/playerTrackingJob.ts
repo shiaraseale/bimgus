@@ -5,6 +5,7 @@ import { PlayerTrackingService } from '../services/playerTrackingService';
 import { CocAssetService } from '../services/cocAssetService';
 import { config } from '../config';
 import { mapWithConcurrency } from '../utils/concurrency';
+import { changedIgnoringUpdatedAt } from '../utils/changes';
 import { getWarId } from '../diff/warDiff';
 import { InProgressUpgrade, VillageImportService } from '../services/villageImportService';
 import {
@@ -17,6 +18,7 @@ import {
 } from '../services/upgradeNotifier';
 
 const USER_CONCURRENCY = 3;
+const SNAPSHOT_REFRESH_MS = 10 * 60 * 1000;
 
 export async function runPlayerTrackingJob(): Promise<{ success: boolean; checkedAccounts: number; dmsSent: number }> {
   const users = await FirestoreService.getAllUsers();
@@ -49,11 +51,17 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         events.push(...detected.events);
         if (detected.pending.length > 0) {
           account.pendingUpgrades = [...(account.pendingUpgrades ?? []), ...detected.pending];
+          userModified = true;
         }
 
-        // Keep stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast
-        account.lastSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
-        userModified = true;
+        // Keep the stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast, but only
+        // write it when it changed or is getting old (/roast treats one over 15 minutes old as stale)
+        const nextSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
+        const prevAge = account.lastSnapshot ? Date.now() - new Date(account.lastSnapshot.updatedAt).getTime() : Infinity;
+        if (changedIgnoringUpdatedAt(account.lastSnapshot, nextSnapshot) || prevAge >= SNAPSHOT_REFRESH_MS) {
+          account.lastSnapshot = nextSnapshot;
+          userModified = true;
+        }
       } catch (playerErr: any) {
         console.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
       }
@@ -66,8 +74,11 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
           const event = eventFromTimer(up as InProgressUpgrade);
           if (event) events.push(event);
         }
-        account.pendingUpgrades = pending.filter((p) => p.finishesAtMs > now);
-        userModified = true;
+        const stillPending = pending.filter((p) => p.finishesAtMs > now);
+        if (stillPending.length !== account.pendingUpgrades.length) {
+          account.pendingUpgrades = stillPending;
+          userModified = true;
+        }
       }
 
       // Timers from the imported export: move the stored level up, and DM for what the API can't see

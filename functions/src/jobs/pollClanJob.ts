@@ -8,6 +8,7 @@ import { processClanGamesDiff } from '../diff/clanGamesDiff';
 import { runPlayerTrackingJob } from './playerTrackingJob';
 import { runWarPingJob } from './warPingJob';
 import { config } from '../config';
+import { changedIgnoringUpdatedAt } from '../utils/changes';
 
 const TICK_MS = 2 * 60 * 1000;
 // Each task gets this long before the run stops waiting for it (the function's timeout is longer)
@@ -72,7 +73,7 @@ export async function runPollClanJob(
     const clanData = await cocService.getClan(targetTag);
     const prevClanSnapshot = await FirestoreService.getClanSnapshot(targetTag);
     const newClanSnapshot = await processClanDiff(clanData, prevClanSnapshot, botConfig);
-    await FirestoreService.saveClanSnapshot(newClanSnapshot);
+    if (changedIgnoringUpdatedAt(prevClanSnapshot, newClanSnapshot)) await FirestoreService.saveClanSnapshot(newClanSnapshot);
 
     // 2. Everything else in parallel
     const work: Array<Promise<void>> = [];
@@ -83,7 +84,9 @@ export async function runPollClanJob(
           const warData = await cocService.getCurrentWar(targetTag);
           const prevWarSnapshot = await FirestoreService.getWarSnapshot(targetTag);
           const newWarSnapshot = await processWarDiff(warData, prevWarSnapshot, botConfig);
-          if (newWarSnapshot) await FirestoreService.saveWarSnapshot(targetTag, newWarSnapshot);
+          if (newWarSnapshot && changedIgnoringUpdatedAt(prevWarSnapshot, newWarSnapshot)) {
+            await FirestoreService.saveWarSnapshot(targetTag, newWarSnapshot);
+          }
         } catch (warErr: any) {
           if (warErr.response?.status === 403) {
             console.warn('[Poll] Could not fetch current war: the war log is private');
@@ -102,7 +105,9 @@ export async function runPollClanJob(
           console.log(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
           const prevCwlSnapshot = await FirestoreService.getCwlSnapshot(targetTag);
           const newCwlSnapshot = await processCwlDiff(cwlGroup, targetTag, prevCwlSnapshot, botConfig, cocService);
-          if (newCwlSnapshot) await FirestoreService.saveCwlSnapshot(targetTag, newCwlSnapshot);
+          if (newCwlSnapshot && changedIgnoringUpdatedAt(prevCwlSnapshot, newCwlSnapshot)) {
+            await FirestoreService.saveCwlSnapshot(targetTag, newCwlSnapshot);
+          }
         } catch (cwlErr: any) {
           if (cwlErr.response?.status === 404) return; // not in CWL
           throw cwlErr;
@@ -116,7 +121,7 @@ export async function runPollClanJob(
         if (raidData.items && raidData.items.length > 0) {
           const prevRaidSnapshot = await FirestoreService.getRaidSnapshot(targetTag);
           const newRaidSnapshot = await processRaidDiff(raidData.items[0], prevRaidSnapshot, botConfig, targetTag);
-          await FirestoreService.saveRaidSnapshot(targetTag, newRaidSnapshot);
+          if (changedIgnoringUpdatedAt(prevRaidSnapshot, newRaidSnapshot)) await FirestoreService.saveRaidSnapshot(targetTag, newRaidSnapshot);
         }
       }));
     }
@@ -125,7 +130,7 @@ export async function runPollClanJob(
       work.push(runTask('Clan Games', async () => {
         const prevCgSnapshot = await FirestoreService.getClanGamesSnapshot(targetTag);
         const newCgSnapshot = await processClanGamesDiff(clanData.memberList, prevCgSnapshot, botConfig, cocService, targetTag);
-        await FirestoreService.saveClanGamesSnapshot(targetTag, newCgSnapshot);
+        if (changedIgnoringUpdatedAt(prevCgSnapshot, newCgSnapshot)) await FirestoreService.saveClanGamesSnapshot(targetTag, newCgSnapshot);
       }));
     }
 
