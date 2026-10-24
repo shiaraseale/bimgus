@@ -437,6 +437,38 @@ export class VillageImportService {
     return embeds;
   }
 
+  /** Characters Discord counts towards its limit for one embed. */
+  static embedSize(embed: any): number {
+    return (
+      (embed.title?.length ?? 0) +
+      (embed.description?.length ?? 0) +
+      (embed.footer?.text?.length ?? 0) +
+      (embed.fields ?? []).reduce((n: number, f: any) => n + f.name.length + f.value.length, 0)
+    );
+  }
+
+  /**
+   * Groups embeds into messages: Discord allows at most 10 embeds and 6,000 characters across all
+   * the embeds in one message.
+   */
+  static embedsToMessages(embeds: any[], maxChars: number = 5800): any[][] {
+    const messages: any[][] = [];
+    let current: any[] = [];
+    let size = 0;
+    for (const e of embeds) {
+      const s = VillageImportService.embedSize(e);
+      if (current.length > 0 && (current.length >= 10 || size + s > maxChars)) {
+        messages.push(current);
+        current = [];
+        size = 0;
+      }
+      current.push(e);
+      size += s;
+    }
+    if (current.length > 0) messages.push(current);
+    return messages;
+  }
+
   /**
    * Formats in-progress upgrades with dynamic Discord countdown timers.
    */

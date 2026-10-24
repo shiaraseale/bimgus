@@ -12,6 +12,7 @@ import { FirestoreService } from '../src/services/firestoreService';
 import { CocService } from '../src/services/cocService';
 import { DiscordService } from '../src/services/discordService';
 import { UserDoc } from '../src/types/user';
+import { VillageImportService } from '../src/services/villageImportService';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
@@ -100,7 +101,12 @@ describe('slash commands end to end (mocked services)', () => {
     expect(text).toContain('Cannon (BB)');
     expect(text).toContain('Rage Spell');
     expect(text.match(/\(\d{7,}\)/g)).toEqual(['(90000061)']);
-    expect(reply.embeds.length).toBeLessThanOrEqual(10);
+    // Discord's per-message limits: 10 embeds and 6,000 characters across them
+    for (const msg of [reply, ...followups]) {
+      expect(msg.embeds.length).toBeLessThanOrEqual(10);
+      const chars = msg.embeds.reduce((n: number, e: any) => n + VillageImportService.embedSize(e), 0);
+      expect(chars).toBeLessThanOrEqual(6000);
+    }
   });
 
   it('/import-village again with one more upgraded cannon sends one DM and lists the change', async () => {

@@ -115,15 +115,17 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
     };
 
     // Edits the initial deferred reply with the final content, embeds, and action rows
-    const editDeferredReply = async (messageData: any) => {
+    const editDeferredReply = async (messageData: any): Promise<boolean> => {
       try {
         const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
         await axios.patch(webhookUrl, messageData, {
           headers: { 'Content-Type': 'application/json' },
           timeout: 15000,
         });
+        return true;
       } catch (patchErr: any) {
-        console.error('[Discord] Failed to patch deferred reply:', patchErr.response?.data || patchErr.message);
+        console.error('[Discord] Failed to patch deferred reply:', JSON.stringify(patchErr.response?.data) || patchErr.message);
+        return false;
       }
     };
 
@@ -1469,15 +1471,20 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
               notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
             }
 
-            // Discord allows 10 embeds per message; send the rest as follow-ups
+            // Split across messages to stay within Discord's per-message limits; the rest go as follow-ups
             const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])];
-            await editDeferredReply({
+            const [first = [], ...rest] = VillageImportService.embedsToMessages(embedsToSend);
+            const ok = await editDeferredReply({
               content: notices.join('\n').slice(0, 1900) || undefined,
-              embeds: embedsToSend.slice(0, 10),
+              embeds: first,
               components,
             });
-            for (let i = 10; i < embedsToSend.length; i += 10) {
-              await sendFollowup({ embeds: embedsToSend.slice(i, i + 10) });
+            if (!ok) {
+              await editDeferredReply({ content: '✅ Your export was imported, but Bimgus couldn\'t display the summary. Try `/upgrades` or `/defenses`.' });
+              return;
+            }
+            for (const embeds of rest) {
+              await sendFollowup({ embeds });
             }
           } catch (importErr: any) {
             console.error('Failed to execute /import-village:', importErr);
