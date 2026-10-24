@@ -23,13 +23,32 @@ import { LinkedAccount, UserDoc } from '../types/user';
 import { PlayerTrackingService } from '../services/playerTrackingService';
 import { VillageImportService, InProgressUpgrade, ParsedDefenseGroup, VillageDataV2 } from '../services/villageImportService';
 import { RoastTaskData, runRoastTask } from '../jobs/roastJob';
+import { ImportTaskData, runImportTask } from '../jobs/importJob';
 import { getFunctions } from 'firebase-admin/functions';
-import { describeEvent, eventsFromImportChanges, groupWalls, isDmPaused, notifyUpgrades } from '../services/upgradeNotifier';
+import { isDmPaused } from '../services/upgradeNotifier';
 
 export const discordInteractionsRouter = Router();
 
-// How long /roast waits to queue its Cloud Task before replying and roasting inline instead
-const ROAST_ENQUEUE_TIMEOUT_MS = 1500;
+// How long a command waits to queue its Cloud Task before replying and doing the work inline instead
+const ENQUEUE_TIMEOUT_MS = 1500;
+
+/**
+ * Queues slow command work as a Cloud Task, which gets full CPU (3.7). Returns false if queueing
+ * fails or is slow, in which case the caller replies and runs the work inline instead.
+ */
+async function queueTask(functionName: 'roastTask' | 'importTask', data: Record<string, any>): Promise<boolean> {
+  return Promise.race([
+    getFunctions()
+      .taskQueue(functionName)
+      .enqueue(data)
+      .then(() => true)
+      .catch((err: any) => {
+        console.warn(`[Tasks] Could not queue ${functionName} (${err.message}); running it inline`);
+        return false;
+      }),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), ENQUEUE_TIMEOUT_MS)),
+  ]);
+}
 
 // Which stored import categories each list shows
 const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];
@@ -1329,171 +1348,18 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
           });
         }
 
+        const importTask: ImportTaskData = {
+          discordUserId,
+          applicationId,
+          interactionToken,
+          isGuild,
+          attachments: attachments.map((a: any) => ({ id: a.id, url: a.url, filename: a.filename })),
+          ...(jsonText ? { jsonText } : {}),
+          ...(targetTag ? { targetTag } : {}),
+        };
+        const queued = await queueTask('importTask', importTask);
         deferReply();
-
-        (async () => {
-          try {
-            // 1. Download all attachment files
-            const rawInputs: Array<{ name: string; raw: string }> = [];
-            if (jsonText) {
-              rawInputs.push({ name: 'pasted_json_text', raw: jsonText });
-            }
-
-            if (attachments.length > 0) {
-              const downloaded = await Promise.all(
-                attachments.map(async (att) => {
-                  try {
-                    const res = await axios.get(att.url, { responseType: 'text', timeout: 15000 });
-                    const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-                    return { name: att.filename || att.id, raw };
-                  } catch (dlErr: any) {
-                    console.warn(`Failed to download attachment ${att.id}:`, dlErr.message);
-                    return null;
-                  }
-                })
-              );
-              for (const d of downloaded) {
-                if (d) rawInputs.push(d);
-              }
-            }
-
-            if (rawInputs.length === 0) {
-              await editDeferredReply({
-                content: '❌ Failed to read or download the provided file(s). Please check your upload and try again.',
-              });
-              return;
-            }
-
-            // 2. Parse every export; each one is a whole account (both villages)
-            const parsed: Array<{ fileName: string; village: VillageDataV2 }> = [];
-            const parseErrors: string[] = [];
-            for (const item of rawInputs) {
-              try {
-                const json = VillageImportService.parseRawJson(item.raw);
-                parsed.push({ fileName: item.name, village: VillageImportService.parseExport(json) });
-              } catch (pErr: any) {
-                parseErrors.push(`• **${item.name}**: ${pErr.message}`);
-              }
-            }
-
-            if (parsed.length === 0) {
-              await editDeferredReply({
-                content: `❌ Could not read any village exports:\n${parseErrors.join('\n')}`,
-              });
-              return;
-            }
-
-            // 3. Load user's linked accounts
-            const user = discordUserId ? await FirestoreService.getUser(discordUserId) : null;
-            const userAccounts = user?.accounts || [];
-            if (!user || userAccounts.length === 0) {
-              await editDeferredReply({
-                content: '❌ No linked accounts found. Please `/link` your Clash of Clans account first!',
-              });
-              return;
-            }
-
-            // 4. Match each export to an account by its tag (newest export wins per account)
-            const { byAccount, unmapped, notices } = VillageImportService.matchExportsToAccounts(
-              parsed,
-              userAccounts,
-              targetTag ? config.formatTag(targetTag) : undefined
-            );
-
-            if (byAccount.size === 0) {
-              await editDeferredReply({
-                content:
-                  `❌ None of the uploaded files could be matched to your linked accounts (${userAccounts.map((a) => a.playerTag).join(', ')}).\n` +
-                  (unmapped.length > 0 ? `Unmatched: ${unmapped.join(', ')}` : ''),
-              });
-              return;
-            }
-
-            // 5. Each export replaces that account's stored data
-            const embedsToSend: any[] = [];
-            for (const { account, village, fileName } of byAccount.values()) {
-              // Compare with what was stored *before* overwriting it
-              const previous = VillageImportService.read(account.villageData);
-              const changes = VillageImportService.detectImportChanges(previous, village);
-              const events = eventsFromImportChanges(changes, village);
-
-              account.villageData = village;
-              if (events.length > 0) await notifyUpgrades(user, account, events);
-
-              const fields: any[] = [];
-              const activeInProg = village.inProgressUpgrades.filter((u) => u.finishesAtMs > Date.now());
-              if (activeInProg.length > 0) {
-                fields.push(
-                  ...VillageImportService.linesToFields(
-                    `⏳ In-Progress Upgrades (${activeInProg.length})`,
-                    VillageImportService.formatInProgressUpgrades(activeInProg).split('\n')
-                  )
-                );
-              }
-              if (events.length > 0) {
-                fields.push(...VillageImportService.linesToFields(`🎉 Changes Since Your Last Import (${events.length})`, groupWalls(events).map(describeEvent)));
-              }
-              const weapon = VillageImportService.weaponFor(village);
-              if (weapon) {
-                fields.push({ name: '🔥 Town Hall Weapon', value: `• **${weapon.name}**: Lv ${weapon.level}/${weapon.maxLevel}`, inline: false });
-              }
-              for (const section of VillageImportService.importSections(village)) {
-                fields.push(...VillageImportService.linesToFields(section.title, section.lines));
-              }
-
-              const exportSec = Math.floor(village.exportTimestamp / 1000);
-              const staleWarning = VillageImportService.isStale(village)
-                ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
-                : '';
-              embedsToSend.push(
-                ...VillageImportService.fieldsToEmbeds(
-                  {
-                    title: `🛡️ [${account.name}] Imported Village`,
-                    description:
-                      `Town Hall **${village.townHallLevel}**${village.builderHallLevel ? ` and Builder Hall **${village.builderHallLevel}**` : ''}, from one export.\n` +
-                      `📄 *Export taken <t:${exportSec}:f> (<t:${exportSec}:R>)*${staleWarning}`,
-                    color: COLORS.GOLD,
-                    thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
-                    footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
-                  },
-                  fields
-                )
-              );
-            }
-
-            // One save for the whole user (all accounts, notified keys and any DM pause)
-            await FirestoreService.saveUser(user);
-
-            if (unmapped.length > 0) {
-              notices.push(`⚠️ These exports didn't match a linked account and were skipped: ${unmapped.join(', ')}`);
-            }
-            if (parseErrors.length > 0) {
-              notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
-            }
-
-            // Split across messages to stay within Discord's per-message limits; the rest go as follow-ups
-            const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])];
-            const [first = [], ...rest] = VillageImportService.embedsToMessages(embedsToSend);
-            const ok = await editDeferredReply({
-              content: notices.join('\n').slice(0, 1900) || undefined,
-              embeds: first,
-              components,
-            });
-            if (!ok) {
-              await editDeferredReply({ content: '✅ Your export was imported, but Bimgus couldn\'t display the summary. Try `/upgrades` or `/defenses`.' });
-              return;
-            }
-            for (const embeds of rest) {
-              await sendFollowup({ embeds });
-            }
-          } catch (importErr: any) {
-            console.error('Failed to execute /import-village:', importErr);
-            await editDeferredReply({
-              content: `❌ Error importing village data: ${importErr.message || 'Unknown error'}`,
-            });
-          }
-        })();
-
+        if (!queued) void runImportTask(importTask);
         return;
       }
 
@@ -1731,19 +1597,8 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
           interactionToken,
         };
 
-        // Queue the roast as a Cloud Task before replying, because work done after the reply runs
-        // with throttled CPU. If queueing fails or is slow, reply anyway and roast here instead.
-        const queued = await Promise.race([
-          getFunctions()
-            .taskQueue<RoastTaskData>('roastTask')
-            .enqueue(task)
-            .then(() => true)
-            .catch((err: any) => {
-              console.warn(`[Roast] Could not queue the roast task (${err.message}); running it inline`);
-              return false;
-            }),
-          new Promise<false>((resolve) => setTimeout(() => resolve(false), ROAST_ENQUEUE_TIMEOUT_MS)),
-        ]);
+        // Queue the roast before replying: work done after the reply runs with throttled CPU
+        const queued = await queueTask('roastTask', task);
 
         // Defer publicly in channel so everyone can enjoy the roast!
         deferReply(false);

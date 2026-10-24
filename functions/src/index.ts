@@ -7,6 +7,7 @@ import { runWarPingJob } from './jobs/warPingJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
 import { proxyKeySecret } from './services/cocService';
 import { RoastTaskData, runRoastTask } from './jobs/roastJob';
+import { ImportTaskData, runImportTask } from './jobs/importJob';
 
 /**
  * Scheduled Cloud Function (2nd Gen):
@@ -87,5 +88,20 @@ export const roastTask = onTaskDispatched<RoastTaskData>(
   },
   async (req) => {
     await runRoastTask(req.data);
+  }
+);
+
+/**
+ * Cloud Task (2nd Gen): runs a /import-village queued by the interaction handler (3.7).
+ */
+export const importTask = onTaskDispatched<ImportTaskData>(
+  {
+    retryConfig: { maxAttempts: 1 },
+    rateLimits: { maxConcurrentDispatches: 5 },
+    memory: '512MiB',
+    timeoutSeconds: 120,
+  },
+  async (req) => {
+    await runImportTask(req.data);
   }
 );
