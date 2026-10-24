@@ -29,6 +29,8 @@ export interface UpgradeEvent {
 }
 
 const NOTIFIED_KEYS_LIMIT = 200;
+// Categories that never send DMs (still tracked for /upgrades). Hero equipment muted on request, 2026-10-24.
+export const MUTED_CATEGORIES = new Set(['equipment']);
 export const DM_BLOCK_PAUSE_MS = 7 * 24 * 60 * 60 * 1000;
 // Above this many events in one cycle, send a single summary instead of one DM each
 const MAX_SEPARATE_MESSAGES = 3;
@@ -218,9 +220,10 @@ export async function notifyUpgrades(
 ): Promise<number> {
   if (events.length === 0) return 0;
 
-  // Drop anything already sent, and record the rest before sending so a crash can't cause a repeat
+  // Drop muted categories and anything already sent, and record the rest before sending so a crash
+  // can't cause a repeat
   const seen = new Set(account.notifiedKeys ?? []);
-  const fresh = events.filter((e) => !e.key || !seen.has(e.key));
+  const fresh = events.filter((e) => !MUTED_CATEGORIES.has(e.category) && (!e.key || !seen.has(e.key)));
   const newKeys = fresh.map((e) => e.key).filter((k): k is string => Boolean(k));
   if (newKeys.length > 0) {
     account.notifiedKeys = [...(account.notifiedKeys ?? []), ...newKeys].slice(-NOTIFIED_KEYS_LIMIT);

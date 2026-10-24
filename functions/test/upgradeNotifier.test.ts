@@ -169,6 +169,13 @@ describe('notifyUpgrades', () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
+  it('never DMs hero equipment upgrades or unlocks', async () => {
+    const { user, account } = newUser();
+    const puppet = event({ category: 'equipment', name: 'Henchmen Puppet', assetName: 'Henchmen Puppet', oldLevel: 6, newLevel: 7, maxLevel: 15, key: 'equipment:home:Henchmen Puppet:7' });
+    expect(await notifyUpgrades(user, account, [puppet, { ...puppet, kind: 'unlocked', key: 'x' }])).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('respects DMs being turned off for the account', async () => {
     const { user, account } = newUser();
     account.dmsEnabled = false;
