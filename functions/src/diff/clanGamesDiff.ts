@@ -5,6 +5,7 @@ import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
 import { isClanGamesActive } from './clanGamesWindow';
 import { mapWithConcurrency } from '../utils/concurrency';
+import { log } from '../utils/log';
 
 const MAX_CLAN_GAMES_POINTS = 10000;
 
@@ -85,7 +86,10 @@ export async function processClanGamesDiff(
 
   // Fetch a few at a time (3.2), then process in roster order
   const players = await mapWithConcurrency(sampleMembers, 5, (member) =>
-    cocService.getPlayer(member.tag).catch(() => null)
+    cocService.getPlayer(member.tag).catch((err: any) => {
+      log.warn(`[ClanGames] Could not fetch ${member.tag} (${err.message}); skipping them this poll`);
+      return null;
+    })
   );
   for (const [i, member] of sampleMembers.entries()) {
     try {
@@ -125,8 +129,9 @@ export async function processClanGamesDiff(
           });
         }
       }
-    } catch {
-      // Continue next player if individual fetch fails
+    } catch (err: any) {
+      // Continue with the next player
+      log.warn(`[ClanGames] Could not process ${member.tag}: ${err.message}`);
     }
   }
 

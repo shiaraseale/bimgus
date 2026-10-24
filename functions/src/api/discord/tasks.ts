@@ -1,4 +1,5 @@
 import { getFunctions } from 'firebase-admin/functions';
+import { log } from '../../utils/log';
 
 // How long a command waits to queue its Cloud Task before replying and doing the work inline instead
 const ENQUEUE_TIMEOUT_MS = 1500;
@@ -14,7 +15,7 @@ export async function queueTask(functionName: 'roastTask' | 'importTask' | 'comm
       .enqueue(data)
       .then(() => true)
       .catch((err: any) => {
-        console.warn(`[Tasks] Could not queue ${functionName} (${err.message}); running it inline`);
+        log.warn(`[Tasks] Could not queue ${functionName} (${err.message}); running it inline`);
         return false;
       }),
     new Promise<false>((resolve) => setTimeout(() => resolve(false), ENQUEUE_TIMEOUT_MS)),

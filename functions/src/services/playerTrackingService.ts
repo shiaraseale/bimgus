@@ -24,6 +24,7 @@ import {
 } from './gameDataService';
 import { VillageDataV2, VillageImportService } from './villageImportService';
 import type { UpgradeEvent } from './upgradeNotifier';
+import { log } from '../utils/log';
 
 export const SNAPSHOT_VERSION = 2;
 
@@ -43,7 +44,7 @@ export function lookupApiItem(kind: ApiListKind, apiItem: { name: string; villag
   const item = getByName(apiItem.name, village, API_CATEGORIES[kind]);
   if (!item && !warnedUnknown.has(`${kind}:${village}:${apiItem.name}`)) {
     warnedUnknown.add(`${kind}:${village}:${apiItem.name}`);
-    console.warn(`[PlayerTracking] "${apiItem.name}" (${village} ${kind}) is not in the game data`);
+    log.warn(`[PlayerTracking] "${apiItem.name}" (${village} ${kind}) is not in the game data`);
   }
   return item;
 }

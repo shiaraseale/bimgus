@@ -5,6 +5,7 @@ import { createCommandContext } from './context';
 import { COMMANDS_BY_NAME } from './commands';
 import { queueTask } from './tasks';
 import { handleBobDefenseButton, isBobDefenseButton } from './components/bobDefense';
+import { log } from '../../utils/log';
 
 export const discordInteractionsRouter = Router();
 
@@ -38,13 +39,13 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
   if (fromTask) {
     // already verified
   } else if (!publicKey) {
-    console.error('[Discord Interactions] DISCORD_PUBLIC_KEY is not configured; rejecting request');
+    log.error('[Discord Interactions] DISCORD_PUBLIC_KEY is not configured; rejecting request');
     return res.status(401).send('Interactions endpoint not configured');
   } else if (!signature || !timestamp) {
-    console.warn('[Discord Interactions] Missing signature or timestamp');
+    log.warn('[Discord Interactions] Missing signature or timestamp');
     return res.status(401).send('Missing signature headers');
   } else if (!(await verifyKey(rawBody, signature, timestamp, publicKey))) {
-    console.warn('[Discord Interactions] Invalid request signature');
+    log.warn('[Discord Interactions] Invalid request signature');
     return res.status(401).send('Invalid request signature');
   }
 
@@ -67,7 +68,7 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
     try {
       return await command.execute(ctx);
     } catch (cmdErr: any) {
-      console.error(`[Discord Command] Error executing /${ctx.name}: ${cmdErr.message}`);
+      log.error(`[Discord Command] Error executing /${ctx.name}: ${cmdErr.message}`);
       return ctx.respondPersonal({
         content: `❌ An unexpected error occurred while executing \`/${ctx.name}\`: ${cmdErr.message}`,
       });

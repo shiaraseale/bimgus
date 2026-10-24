@@ -10,6 +10,7 @@ import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
 import { describeEvent, eventsFromImportChanges, groupWalls, notifyUpgrades, withoutImportedTimers } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
+import { log } from '../utils/log';
 
 export interface ImportTaskData {
   discordUserId: string;
@@ -37,7 +38,7 @@ export async function runImportTask(task: ImportTaskData, reply: InteractionRepl
             const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
             return { name: att.filename || att.id, raw };
           } catch (dlErr: any) {
-            console.warn(`Failed to download attachment ${att.id}:`, dlErr.message);
+            log.warn(`Failed to download attachment ${att.id}:`, dlErr.message);
             return null;
           }
         })
@@ -178,7 +179,7 @@ export async function runImportTask(task: ImportTaskData, reply: InteractionRepl
       await reply.followup({ embeds });
     }
   } catch (importErr: any) {
-    console.error('Failed to execute /import-village:', importErr);
+    log.error('Failed to execute /import-village:', importErr);
     await reply.edit({
       content: `❌ Error importing village data: ${importErr.message || 'Unknown error'}`,
     });

@@ -10,6 +10,7 @@ import { runWarPingJob } from './warPingJob';
 import { config } from '../config';
 import { changedIgnoringUpdatedAt } from '../utils/changes';
 import { findActiveCwlWar, withOurClanFirst } from '../diff/cwlWars';
+import { log } from '../utils/log';
 
 const TICK_MS = 2 * 60 * 1000;
 // Each task gets this long before the run stops waiting for it (the function's timeout is longer)
@@ -49,7 +50,7 @@ async function runTask(name: string, fn: () => Promise<void>): Promise<void> {
       }),
     ]);
   } catch (err: any) {
-    console.warn(`[Poll] ${name} failed after ${Date.now() - started}ms: ${err.message}`);
+    log.warn(`[Poll] ${name} failed after ${Date.now() - started}ms: ${err.message}`);
   } finally {
     clearTimeout(timer);
   }
@@ -70,7 +71,7 @@ export async function runPollClanJob(
 
   try {
     // 1. Clan roster first: Clan Games needs the member list
-    console.log(`[Poll] Fetching clan ${targetTag}...`);
+    log.info(`[Poll] Fetching clan ${targetTag}...`);
     const clanData = await cocService.getClan(targetTag);
     const prevClanSnapshot = await FirestoreService.getClanSnapshot(targetTag);
     const newClanSnapshot = await processClanDiff(clanData, prevClanSnapshot, botConfig);
@@ -93,7 +94,7 @@ export async function runPollClanJob(
           await FirestoreService.saveRaw(targetTag, 'war', warData);
         } catch (warErr: any) {
           if (warErr.response?.status === 403) {
-            console.warn('[Poll] Could not fetch current war: the war log is private');
+            log.warn('[Poll] Could not fetch current war: the war log is private');
             return;
           }
           throw warErr;
@@ -112,7 +113,7 @@ export async function runPollClanJob(
             await FirestoreService.saveRaw(targetTag, 'cwlWar', null);
             return;
           }
-          console.log(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
+          log.info(`[Poll] Clan is active in CWL! Season: ${cwlGroup.season}, State: ${cwlGroup.state}`);
           const prevCwlSnapshot = await FirestoreService.getCwlSnapshot(targetTag);
           const newCwlSnapshot = await processCwlDiff(cwlGroup, targetTag, prevCwlSnapshot, botConfig, cocService);
           if (newCwlSnapshot && changedIgnoringUpdatedAt(prevCwlSnapshot, newCwlSnapshot)) {
@@ -157,7 +158,7 @@ export async function runPollClanJob(
     if (tasks.playerTracking) {
       work.push(runTask('Player tracking', async () => {
         const trackingResult = await runPlayerTrackingJob();
-        console.log(`[Poll] Player tracking completed: ${trackingResult.checkedAccounts} accounts checked, ${trackingResult.dmsSent} DMs sent`);
+        log.info(`[Poll] Player tracking completed: ${trackingResult.checkedAccounts} accounts checked, ${trackingResult.dmsSent} DMs sent`);
       }));
     }
 
@@ -167,12 +168,12 @@ export async function runPollClanJob(
     if (tasks.warReminders) {
       await runTask('War reminders', async () => {
         const result = await runWarPingJob(targetTag);
-        console.log('[Poll] War reminders:', result.message);
+        log.info('[Poll] War reminders:', result.message);
       });
     }
     return { success: true, message: `Successfully polled clan ${targetTag}` };
   } catch (err: any) {
-    console.error(`[Poll] Error during polling job: ${err.message}`);
+    log.error(`[Poll] Error during polling job: ${err.message}`);
     return { success: false, message: err.message };
   }
 }

@@ -4,6 +4,7 @@
  */
 import gameDataRaw from '../data/gameData.json';
 import { EMOJIS } from '../constants/emojis';
+import { log } from '../utils/log';
 
 export type Village = 'home' | 'builder';
 export type Resource = 'gold' | 'elixir' | 'darkElixir' | 'builderGold' | 'builderElixir' | 'ores' | 'gems' | 'other';
@@ -73,7 +74,7 @@ const warned = new Set<string>();
 function warnOnce(key: string, message: string): void {
   if (warned.has(key)) return;
   warned.add(key);
-  console.warn(`[GameData] ${message}`);
+  log.warn(`[GameData] ${message}`);
 }
 
 /** Converts the API's `village` value ('home' / 'builderBase') to ours. */

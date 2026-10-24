@@ -2,11 +2,12 @@ import { CocService } from '../services/cocService';
 import { FirestoreService } from '../services/firestoreService';
 import { config } from '../config';
 import { sendWarSummaryDiscord } from '../diff/warDiff';
+import { log } from '../utils/log';
 
 export async function pushWarSummary(targetClanTag?: string): Promise<{ success: boolean; message: string }> {
   const clanTag = targetClanTag || config.coc.clanTag;
   if (!clanTag) throw new Error('No clan tag: set COC_CLAN_TAG in functions/.env or pass one');
-  console.log(`[pushWarSummary] Fetching live war status for ${clanTag}...`);
+  log.info(`[pushWarSummary] Fetching live war status for ${clanTag}...`);
 
   const coc = CocService.shared();
   const currentWar = await coc.getCurrentWar(clanTag);
@@ -26,7 +27,7 @@ export async function pushWarSummary(targetClanTag?: string): Promise<{ success:
       webhookUrl = clanConfig.webhooks.warRoom;
     }
   } catch (err: any) {
-    console.warn(`[pushWarSummary] Could not read Firestore config (${err.message}), using env fallback.`);
+    log.warn(`[pushWarSummary] Could not read Firestore config (${err.message}), using env fallback.`);
   }
 
   if (!webhookUrl) {
@@ -36,7 +37,7 @@ export async function pushWarSummary(targetClanTag?: string): Promise<{ success:
     };
   }
 
-  console.log(`[pushWarSummary] Broadcasting war summary to Discord war-room...`);
+  log.info(`[pushWarSummary] Broadcasting war summary to Discord war-room...`);
   await sendWarSummaryDiscord(webhookUrl, currentWar);
 
   return {
@@ -50,11 +51,11 @@ if (require.main === module) {
   const customTag = process.argv[2];
   pushWarSummary(customTag)
     .then((res) => {
-      console.log(res.message);
+      log.info(res.message);
       process.exit(res.success ? 0 : 1);
     })
     .catch((err) => {
-      console.error('[pushWarSummary] Execution error:', err);
+      log.error('[pushWarSummary] Execution error:', err);
       process.exit(1);
     });
 }

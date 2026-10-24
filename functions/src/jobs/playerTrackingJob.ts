@@ -16,6 +16,7 @@ import {
   notifyUpgrades,
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
+import { log } from '../utils/log';
 
 const USER_CONCURRENCY = 3;
 const SNAPSHOT_REFRESH_MS = 10 * 60 * 1000;
@@ -63,7 +64,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
           userModified = true;
         }
       } catch (playerErr: any) {
-        console.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
+        log.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
       }
 
       // Hero timers started from the API: DM when they should be done (unless an import now covers them)
@@ -184,7 +185,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
       }
     }
   } catch (warRosterErr: any) {
-    console.warn(`[PlayerTracking] War roster check skipped: ${warRosterErr.message}`);
+    log.warn(`[PlayerTracking] War roster check skipped: ${warRosterErr.message}`);
   }
 
   return { success: true, checkedAccounts, dmsSent };

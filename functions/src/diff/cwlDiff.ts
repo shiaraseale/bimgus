@@ -4,6 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
+import { log } from '../utils/log';
 
 interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -135,7 +136,7 @@ export async function buildCwlSeasonSummary(
 
         break; // Found our war for this round
       } catch (err: any) {
-        console.warn(`[CWL Season Summary] War tag error for ${warTag}: ${err.message}`);
+        log.warn(`[CWL Season Summary] War tag error for ${warTag}: ${err.message}`);
       }
     }
   }
@@ -431,8 +432,8 @@ export async function processCwlDiff(
   const loggedRounds = new Set<number>(isNewSeason ? [] : (prevSnapshot?.loggedRoundIndices || []));
   const announcedMatchups = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedMatchupRounds || []));
   const announcedBattleDays = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedBattleDayRounds || []));
-  const loggedAttackOrders: Record<string, number[]> = isNewSeason ? {} : { ...(prevSnapshot?.loggedAttackOrders || {}) };
-  const ourWarTags: Record<number, string> = isNewSeason ? {} : { ...(prevSnapshot?.ourWarTags || {}) };
+  const loggedAttackOrders: Record<string, number[]> = isNewSeason ? {} : { ...prevSnapshot?.loggedAttackOrders };
+  const ourWarTags: Record<number, string> = isNewSeason ? {} : { ...prevSnapshot?.ourWarTags };
 
   let currentRoundIndex: number | undefined;
   let currentWarTag: string | undefined;
@@ -735,7 +736,7 @@ export async function processCwlDiff(
           // Found our war for this round, stop checking other warTags in this round
           break;
         } catch (err: any) {
-          console.warn(`[CWL] Could not process warTag ${warTag}: ${err.message}`);
+          log.warn(`[CWL] Could not process warTag ${warTag}: ${err.message}`);
         }
       }
     }
@@ -758,7 +759,7 @@ export async function processCwlDiff(
         announcedSeasonSummary = true;
       }
     } catch (err: any) {
-      console.warn(`[CWL] Failed to generate/send overall season summary: ${err.message}`);
+      log.warn(`[CWL] Failed to generate/send overall season summary: ${err.message}`);
     }
   }
 

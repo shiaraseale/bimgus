@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { log } from '../utils/log';
 
 export interface InteractionReply {
   edit(messageData: any): Promise<boolean>;
@@ -24,7 +25,7 @@ export function interactionReply(task: { applicationId: string; interactionToken
             await new Promise((resolve) => setTimeout(resolve, 1000));
             continue;
           }
-          console.error('[Discord] Failed to edit deferred reply:', JSON.stringify(err.response?.data) || err.message);
+          log.error('[Discord] Failed to edit deferred reply:', JSON.stringify(err.response?.data) || err.message);
           return false;
         }
       }
@@ -34,7 +35,7 @@ export function interactionReply(task: { applicationId: string; interactionToken
       try {
         await axios.post(base, { ...(task.isGuild ? { flags: 64 } : {}), ...messageData }, { headers, timeout: 15000 });
       } catch (err: any) {
-        console.error('[Discord] Failed to send follow-up reply:', JSON.stringify(err.response?.data) || err.message);
+        log.error('[Discord] Failed to send follow-up reply:', JSON.stringify(err.response?.data) || err.message);
       }
     },
   };

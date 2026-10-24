@@ -1,6 +1,7 @@
 import { CocService } from '../services/cocService';
 import { CurrentWarResponse, CwlGroupResponse } from '../types/coc';
 import { mapWithConcurrency } from '../utils/concurrency';
+import { log } from '../utils/log';
 
 const PARALLEL_WAR_FETCHES = 4; // a CWL round has 4 wars
 
@@ -37,7 +38,7 @@ export async function findOurCwlWar(
     try {
       return { warTag, war: await coc.getCwlWar(warTag) };
     } catch (err: any) {
-      console.warn(`[CWL] Could not fetch warTag ${warTag}: ${err.message}`);
+      log.warn(`[CWL] Could not fetch warTag ${warTag}: ${err.message}`);
       return null;
     }
   });

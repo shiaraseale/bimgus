@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { AddressInfo } from 'net';
 import { Server } from 'http';
 import { dashboardApp } from '../src/api/dashboardApi';

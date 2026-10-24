@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../config';
 import { COMMANDS } from '../api/discord/commands';
+import { log } from '../utils/log';
 
 // Built from the command modules, so a definition can't drift from its handler (4.2)
 export const BOT_COMMANDS = COMMANDS.map((c) => c.definition);
@@ -27,7 +28,7 @@ export async function registerDiscordCommands(
     throw new Error('DISCORD_CLIENT_ID is missing. Provide it in .env or request body.');
   }
 
-  console.log(`[RegisterCommands] Registering ${BOT_COMMANDS.length} global commands for DMs & Guilds...`);
+  log.info(`[RegisterCommands] Registering ${BOT_COMMANDS.length} global commands for DMs & Guilds...`);
   const globalEndpoint = `https://discord.com/api/v10/applications/${clientId}/commands`;
   const globalRes = await axios.put(globalEndpoint, BOT_COMMANDS, {
     headers: {
@@ -39,7 +40,7 @@ export async function registerDiscordCommands(
 
   let guildResData: any[] = [];
   if (isRealGuild) {
-    console.log(`[RegisterCommands] Registering ${BOT_COMMANDS.length} guild commands for server ${rawGuildId}...`);
+    log.info(`[RegisterCommands] Registering ${BOT_COMMANDS.length} guild commands for server ${rawGuildId}...`);
     const guildEndpoint = `https://discord.com/api/v10/applications/${clientId}/guilds/${rawGuildId}/commands`;
     const guildRes = await axios.put(guildEndpoint, BOT_COMMANDS, {
       headers: {
@@ -51,7 +52,7 @@ export async function registerDiscordCommands(
     guildResData = guildRes.data;
   }
 
-  console.log(`[RegisterCommands] Successfully registered commands!`);
+  log.info(`[RegisterCommands] Successfully registered commands!`);
   return {
     success: true,
     message: `Registered ${globalRes.data.length} global commands and ${guildResData.length} guild commands successfully!`,
@@ -63,11 +64,11 @@ export async function registerDiscordCommands(
 if (require.main === module) {
   registerDiscordCommands()
     .then((res) => {
-      console.log('Result:', res.message);
+      log.info('Result:', res.message);
       process.exit(0);
     })
     .catch((err) => {
-      console.error('Registration failed:', err.response?.data || err.message);
+      log.error('Registration failed:', err.response?.data || err.message);
       process.exit(1);
     });
 }

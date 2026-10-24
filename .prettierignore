@@ -1,0 +1,9 @@
+node_modules
+lib
+dist
+.firebase
+functions/src/data/gameData.json
+functions/test/fixtures
+frontend/package-lock.json
+functions/package-lock.json
+docs

@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 import { defineSecret } from 'firebase-functions/params';
 import { config } from '../config';
 import { ClanResponse, CurrentWarResponse, CapitalRaidResponse, CwlGroupResponse, PlayerResponse } from '../types/coc';
+import { log } from '../utils/log';
 
 export const proxyKeySecret = defineSecret('PROXY_KEY');
 
@@ -9,6 +10,7 @@ export function getExpectedProxyKey(): string {
   try {
     return process.env.PROXY_KEY || (proxyKeySecret.value ? proxyKeySecret.value() : '');
   } catch {
+    // Secrets can only be read inside Cloud Functions; tests and local scripts use the env var
     return process.env.PROXY_KEY || '';
   }
 }
@@ -73,7 +75,7 @@ export class CocService {
       cfg.__retryCount = (cfg.__retryCount ?? 0) + 1;
       if (cfg.__retryCount > MAX_RETRIES) throw err;
       const delay = retryDelayMs(err, cfg.__retryCount - 1);
-      console.warn(`[CocService] ${err.response?.status} on ${cfg.url}; retry ${cfg.__retryCount}/${MAX_RETRIES} in ${delay}ms`);
+      log.warn(`[CocService] ${err.response?.status} on ${cfg.url}; retry ${cfg.__retryCount}/${MAX_RETRIES} in ${delay}ms`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return this.client.request(cfg);
     });

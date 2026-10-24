@@ -10,6 +10,7 @@ import {
 } from '../types/db';
 import { UserDoc, LinkedAccount } from '../types/user';
 import { config } from '../config';
+import { log } from '../utils/log';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -107,7 +108,7 @@ export class FirestoreService {
       const doc = await this.clansCol.doc(formattedTag).get();
       return doc.exists ? (doc.data() as ClanSnapshotDoc) : null;
     } catch (err: any) {
-      console.warn(`[Firestore] Unable to read clan snapshot (${err.message}). Falling back to live API.`);
+      log.warn(`[Firestore] Unable to read clan snapshot (${err.message}). Falling back to live API.`);
       return null;
     }
   }
@@ -124,7 +125,7 @@ export class FirestoreService {
       const doc = await this.clansCol.doc(config.formatTag(clanTag)).collection('raw').doc(key).get();
       return doc.exists ? (doc.data() as { data: T | null; updatedAt: string }) : null;
     } catch (err: any) {
-      console.warn(`[Firestore] Unable to read raw ${key} (${err.message})`);
+      log.warn(`[Firestore] Unable to read raw ${key} (${err.message})`);
       return null;
     }
   }
@@ -222,7 +223,9 @@ export class FirestoreService {
     // Fields nothing reads any more are removed whenever a user is saved (4.1). The accounts array is
     // replaced as a whole, so dropping a field from each account removes it from the stored document.
     const accounts = user.accounts.map((a: any) => {
-      const { activeUpgrades, apprenticeTimer, ...rest } = a;
+      const rest = { ...a };
+      delete rest.activeUpgrades;
+      delete rest.apprenticeTimer;
       if (rest.villageData && rest.villageData.version !== 2) delete rest.villageData; // pre-2.3 imports
       return rest;
     });

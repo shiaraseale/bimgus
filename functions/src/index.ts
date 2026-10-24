@@ -9,6 +9,7 @@ import { runCommandTask } from './api/discord/router';
 import { proxyKeySecret } from './services/cocService';
 import { RoastTaskData, runRoastTask } from './jobs/roastJob';
 import { ImportTaskData, runImportTask } from './jobs/importJob';
+import { log } from './utils/log';
 
 /**
  * Scheduled Cloud Function (2nd Gen): the only scheduled job (3.1). Every 2 minutes it polls the clan
@@ -24,19 +25,19 @@ export const pollClanScheduled = onSchedule(
     secrets: [proxyKeySecret],
   },
   async (event) => {
-    console.log('[Schedule] Running pollClanScheduled...');
+    log.info('[Schedule] Running pollClanScheduled...');
 
     // Fire API warming ping if configured, without blocking the poll job
     const pingUrl = config.apiPingUrl;
     const pingPromise = pingUrl
       ? axios.get(pingUrl, { timeout: 5000 }).catch((err: any) => {
-          console.warn(`[Ping] Warning: warming ping failed (${err.message})`);
+          log.warn(`[Ping] Warning: warming ping failed (${err.message})`);
         })
       : null;
 
     const scheduleTime = event.scheduleTime ? new Date(event.scheduleTime) : new Date();
     const result = await runPollClanJob(undefined, { scheduleTime });
-    console.log('[Schedule] Result:', result);
+    log.info('[Schedule] Result:', result);
 
     if (pingPromise) {
       await pingPromise;

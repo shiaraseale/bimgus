@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import express from 'express';
 import { config } from '../config';
+import { isExpectedApiMiss, log } from '../utils/log';
 import cors from 'cors';
 import { defineSecret } from 'firebase-functions/params';
 import { FirestoreService } from '../services/firestoreService';
@@ -20,6 +21,7 @@ export function getExpectedAdminKey(): string {
   try {
     return process.env.ADMIN_API_KEY || (adminApiKey.value ? adminApiKey.value() : '');
   } catch {
+    // Secrets can only be read inside Cloud Functions; tests and local scripts use the env var
     return process.env.ADMIN_API_KEY || '';
   }
 }
@@ -152,8 +154,8 @@ router.get('/clan/:tag/war', publicCache, async (req, res) => {
             });
           }
         }
-      } catch {
-        // Not in CWL
+      } catch (err: any) {
+        if (!isExpectedApiMiss(err)) log.warn(`[Dashboard] CWL war lookup failed: ${err.message}`);
       }
 
       return res.json({ success: true, data: liveWar });
@@ -342,8 +344,8 @@ router.get('/clan/:tag/cwl-summary', async (req, res) => {
         }
         return res.json({ success: true, data: summary });
       }
-    } catch {
-      // League group expired or not found
+    } catch (err: any) {
+      if (!isExpectedApiMiss(err)) log.warn(`[Dashboard] CWL summary rebuild failed: ${err.message}`);
     }
 
     return res.status(404).json({ success: false, message: 'No CWL season summary available yet.' });

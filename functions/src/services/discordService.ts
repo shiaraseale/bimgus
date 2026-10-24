@@ -2,6 +2,7 @@ import { config } from '../config';
 import axios from 'axios';
 import { DiscordWebhookPayload } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
+import { log } from '../utils/log';
 
 export const COLORS = {
   GOLD: 0xFFD700,
@@ -42,8 +43,9 @@ export class DiscordService {
           this.webhookToChannelMap[webhookId] = res.data.channel_id;
           return res.data.channel_id;
         }
-      } catch {
-        // Fallback
+      } catch (err: any) {
+        // Falls back to posting through the webhook URL
+        log.warn(`[DiscordService] Could not look up the webhook's channel (${err.message})`);
       }
     }
     return null;
@@ -61,7 +63,7 @@ export class DiscordService {
         /(discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/)[^/?\s]+/i,
         '$1[REDACTED]'
       );
-      console.log(`[DiscordService DRY_RUN] Would send webhook to target "${sanitizedTarget}":`, JSON.stringify(payload, null, 2));
+      log.info(`[DiscordService DRY_RUN] Would send webhook to target "${sanitizedTarget}":`, JSON.stringify(payload, null, 2));
       return true;
     }
 
@@ -91,11 +93,11 @@ export class DiscordService {
         } catch (botErr: any) {
           if (botErr.response?.status === 429 && retries > 0) {
             const retryAfter = (botErr.response.data?.retry_after || 1) * 1000;
-            console.warn(`[DiscordService] Bot rate limited. Waiting ${retryAfter}ms before retry...`);
+            log.warn(`[DiscordService] Bot rate limited. Waiting ${retryAfter}ms before retry...`);
             await new Promise((resolve) => setTimeout(resolve, retryAfter + 100));
             return this.sendWebhook(target, payload, retries - 1);
           }
-          console.warn(`[DiscordService] Direct bot message failed (${botErr.message}). Falling back to webhook URL...`);
+          log.warn(`[DiscordService] Direct bot message failed (${botErr.message}). Falling back to webhook URL...`);
         }
       }
     }
@@ -117,11 +119,11 @@ export class DiscordService {
       } catch (err: any) {
         if (err.response?.status === 429 && retries > 0) {
           const retryAfter = (err.response.data?.retry_after || 1) * 1000;
-          console.warn(`Discord rate limited. Waiting ${retryAfter}ms before retry...`);
+          log.warn(`Discord rate limited. Waiting ${retryAfter}ms before retry...`);
           await new Promise((resolve) => setTimeout(resolve, retryAfter + 100));
           return this.sendWebhook(target, payload, retries - 1);
         }
-        console.error(`Failed to send Discord message: ${err.message}`, err.response?.data);
+        log.error(`Failed to send Discord message: ${err.message}`, err.response?.data);
         return false;
       }
     }
@@ -274,13 +276,13 @@ export class DiscordService {
     retries = 2
   ): Promise<'sent' | 'blocked' | 'failed'> {
     if (config.dryRunDiscord) {
-      console.log(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
+      log.info(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
       return 'sent';
     }
 
     const token = botTokenOverride || config.discord.botToken;
     if (!token) {
-      console.warn('[Discord DM] Skipping DM: No DISCORD_BOT_TOKEN configured');
+      log.warn('[Discord DM] Skipping DM: No DISCORD_BOT_TOKEN configured');
       return 'failed';
     }
 
@@ -314,20 +316,20 @@ export class DiscordService {
         { headers, timeout: 8000 }
       );
 
-      console.log(`[Discord DM] Successfully sent DM to user ${discordUserId}`);
+      log.info(`[Discord DM] Successfully sent DM to user ${discordUserId}`);
       return 'sent';
     } catch (err: any) {
       if (err.response?.status === 429 && retries > 0) {
         const retryAfter = (err.response.data?.retry_after || 1) * 1000;
-        console.warn(`[Discord DM] Rate limited. Waiting ${retryAfter}ms before retry...`);
+        log.warn(`[Discord DM] Rate limited. Waiting ${retryAfter}ms before retry...`);
         await new Promise((resolve) => setTimeout(resolve, retryAfter + 100));
         return this.sendDmResult(discordUserId, payload, token, retries - 1);
       }
       if (err.response?.data?.code === 50007) {
-        console.warn(`[Discord DM] User ${discordUserId} doesn't accept DMs from the bot (50007)`);
+        log.warn(`[Discord DM] User ${discordUserId} doesn't accept DMs from the bot (50007)`);
         return 'blocked';
       }
-      console.error(`[Discord DM] Failed to send DM to ${discordUserId}: ${err.message}`, err.response?.data);
+      log.error(`[Discord DM] Failed to send DM to ${discordUserId}: ${err.message}`, err.response?.data);
       return 'failed';
     }
   }

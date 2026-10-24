@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../config';
+import { log } from '../utils/log';
 
 export interface PlayerRoastData {
   name: string;
@@ -94,7 +95,7 @@ export class GeminiRoastService {
 
       return this.getRandomFallback(target);
     } catch (err: any) {
-      console.warn('[GeminiRoast] Falling back to dynamic clash roast:', err.message);
+      log.warn('[GeminiRoast] Falling back to dynamic clash roast:', err.message);
       return this.getRandomFallback(target);
     }
   }

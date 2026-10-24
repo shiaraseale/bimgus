@@ -7,6 +7,7 @@ import { FirestoreService } from '../../services/firestoreService';
 import { getPlayerWithFallback } from '../../services/playerFallback';
 import { isDmPaused } from '../../services/upgradeNotifier';
 import { LinkedAccount, UserDoc } from '../../types/user';
+import { log } from '../../utils/log';
 
 export type CommandContext = ReturnType<typeof createCommandContext>;
 
@@ -32,14 +33,14 @@ export function forEachLinkedAccount(
         try {
           await fn(account, idx);
         } catch (accountErr: any) {
-          console.error(`Failed to load ${label} for ${account.playerTag}:`, accountErr);
+          log.error(`Failed to load ${label} for ${account.playerTag}:`, accountErr);
           await ctx.sendAccountMessage(idx, {
             content: `❌ Could not load ${label} for **${account.name}** (${account.playerTag}): ${accountErr.message || 'API error'}`,
           });
         }
       }
     } catch (cmdErr: any) {
-      console.error(`Failed to execute /${ctx.name}:`, cmdErr);
+      log.error(`Failed to execute /${ctx.name}:`, cmdErr);
       await ctx.editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
     }
   });
@@ -82,7 +83,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
       });
       return true;
     } catch (patchErr: any) {
-      console.error('[Discord] Failed to patch deferred reply:', JSON.stringify(patchErr.response?.data) || patchErr.message);
+      log.error('[Discord] Failed to patch deferred reply:', JSON.stringify(patchErr.response?.data) || patchErr.message);
       return false;
     }
   };
@@ -105,9 +106,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     if (fromTask) return undefined;
     return res.json({
       type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        ...(ephemeral ? { flags: 64 } : {}),
-      },
+      data: ephemeral ? { flags: 64 } : {},
     });
   };
 
@@ -127,7 +126,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
         }
       );
     } catch (postErr: any) {
-      console.error('[Discord] Failed to send follow-up reply:', postErr.response?.data || postErr.message);
+      log.error('[Discord] Failed to send follow-up reply:', postErr.response?.data || postErr.message);
     }
   };
 
@@ -139,7 +138,9 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     if (index === 0) {
       if (commandUserDoc && isDmPaused(commandUserDoc) && !commandUserDoc.dmsBlockedNoticeShown) {
         commandUserDoc.dmsBlockedNoticeShown = true;
-        await FirestoreService.saveUser(commandUserDoc).catch(() => {});
+        await FirestoreService.saveUser(commandUserDoc).catch((err: any) =>
+          log.warn(`[Discord] Could not record that the DM-pause notice was shown: ${err.message}`)
+        );
         const notice = '📭 *Bimgus couldn\'t DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*';
         messageData = { ...messageData, content: [notice, messageData.content].filter(Boolean).join('\n') };
       }

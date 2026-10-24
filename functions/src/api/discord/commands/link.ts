@@ -4,6 +4,7 @@ import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { LinkedAccount } from '../../../types/user';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
+import { log } from '../../../utils/log';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -81,6 +82,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
       ],
     });
   } catch (apiErr: any) {
+    if (apiErr.response?.status !== 404) {
+      log.warn(`[Link] Player lookup for ${formattedTag} failed: ${apiErr.message}`);
+      return respondPersonal({
+        content: `⚠️ Bimgus couldn't reach Clash of Clans just now (${apiErr.response?.status === 503 ? 'maintenance' : 'connection problem'}). Please try \`/link\` again in a few minutes.`,
+      });
+    }
     return respondPersonal({
       content: `❌ Could not find a Clash of Clans account with tag \`${formattedTag}\`. Please check the tag and try again.`,
     });

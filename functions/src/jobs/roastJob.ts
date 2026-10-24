@@ -9,6 +9,7 @@ import { CocService } from '../services/cocService';
 import { FirestoreService } from '../services/firestoreService';
 import { GeminiRoastService, PlayerRoastData } from '../services/geminiRoastService';
 import { LinkedAccount } from '../types/user';
+import { log } from '../utils/log';
 
 export interface RoastTaskData {
   targetUserId: string;
@@ -67,7 +68,8 @@ async function accountRoastData(acc: LinkedAccount, cocService: CocService, warS
         warPreference: fp.warPreference,
         heroes: (fp.heroes || []).map((h: any) => ({ name: h.name, level: h.level })),
       });
-    } catch {
+    } catch (err: any) {
+      log.warn(`[Roast] Live lookup for ${acc.playerTag} failed (${err.message}); using the snapshot's heroes`);
       if (snap?.heroes) {
         data.heroes = Object.entries(snap.heroes).map(([key, h]) => ({ name: h.name ?? key.replace(/^(home|builder):/, ''), level: h.level }));
       }
@@ -98,7 +100,7 @@ async function editReply(task: RoastTaskData, content: string): Promise<void> {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         continue;
       }
-      console.error('[Roast] Failed to edit the reply:', err.response?.data || err.message);
+      log.error('[Roast] Failed to edit the reply:', err.response?.data || err.message);
       return;
     }
   }
@@ -124,7 +126,10 @@ export async function runRoastTask(task: RoastTaskData, now: number = Date.now()
     const userDoc = await time('userRead', () => FirestoreService.getUser(task.targetUserId));
     let accounts: PlayerRoastData[] | undefined;
     if (userDoc?.accounts?.length) {
-      const warSnap = await time('warSnapshot', () => FirestoreService.getWarSnapshot(config.coc.clanTag).catch(() => null));
+      const warSnap = await time('warSnapshot', () => FirestoreService.getWarSnapshot(config.coc.clanTag).catch((err: any) => {
+        log.warn(`[Roast] Could not read the war snapshot (${err.message})`);
+        return null;
+      }));
       const cocService = CocService.shared();
       const results = await time('accounts', () =>
         Promise.all(userDoc.accounts.map((acc) => accountRoastData(acc, cocService, warSnap, now)))
@@ -138,10 +143,10 @@ export async function runRoastTask(task: RoastTaskData, now: number = Date.now()
     );
     await time('discordEdit', () => editReply(task, roast.includes(mention) ? roast : `${mention} ${roast}`));
   } catch (err: any) {
-    console.error('[Roast] Error executing roast:', err);
+    log.error('[Roast] Error executing roast:', err);
     await editReply(task, `❌ Bimgus got too heated and fumbled the roast: ${err.message || 'Unknown error'}`);
   } finally {
     // One structured line per roast (2.7 step 1), to see which stage is slow
-    console.log(JSON.stringify({ message: '[Roast] timings', cold, liveCalls, totalMs: Date.now() - started, ...timings }));
+    log.info('[Roast] timings', { cold, liveCalls, totalMs: Date.now() - started, ...timings });
   }
 }

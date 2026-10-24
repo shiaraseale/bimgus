@@ -4,6 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { config } from '../config';
 import { CurrentWarResponse } from '../types/coc';
 import { findActiveCwlWar } from '../diff/cwlWars';
+import { isExpectedApiMiss, log } from '../utils/log';
 
 export async function runWarPingJob(clanTagOverride?: string): Promise<{ success: boolean; message: string }> {
   const targetTag = clanTagOverride || config.coc.clanTag;
@@ -28,8 +29,9 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
       if (war.state === 'inWar' && war.endTime) {
         activeWar = war;
       }
-    } catch {
-      // Standard war not accessible
+    } catch (err: any) {
+      // A private war log (403) is expected; anything else is worth knowing about
+      if (!isExpectedApiMiss(err)) log.warn(`[WarPing] Could not fetch the current war: ${err.message}`);
     }
 
     // 2. Check CWL War if not in standard battle day
@@ -44,8 +46,8 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
             cwlRoundIndex = active.roundIndex;
           }
         }
-      } catch {
-        // Not in CWL
+      } catch (err: any) {
+        if (!isExpectedApiMiss(err)) log.warn(`[WarPing] Could not check CWL: ${err.message}`);
       }
     }
 

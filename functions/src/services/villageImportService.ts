@@ -11,6 +11,7 @@ import {
 } from './gameDataService';
 import { EMOJIS } from '../constants/emojis';
 import type { InProgressUpgrade, VillageDataV2, VillageItem } from '../types/village';
+import { log } from '../utils/log';
 
 export const VILLAGE_DATA_VERSION = 2;
 
@@ -101,7 +102,7 @@ export class VillageImportService {
 
     const rawTs = Number(exportJson.timestamp) || 0;
     const exportSec = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs;
-    if (!exportSec) console.warn('[VillageImport] Export has no timestamp; using the import time');
+    if (!exportSec) log.warn('[VillageImport] Export has no timestamp; using the import time');
     const exportTimestamp = exportSec ? exportSec * 1000 : now;
 
     const groups = new Map<string, VillageItem>();
@@ -115,7 +116,7 @@ export class VillageImportService {
       if (!item) {
         nameForCode(code); // logs the unknown code once
       } else if (item.village !== village) {
-        console.warn(`[VillageImport] ${item.name} (${code}) is listed in the ${village} village but the data says ${item.village}`);
+        log.warn(`[VillageImport] ${item.name} (${code}) is listed in the ${village} village but the data says ${item.village}`);
       }
       const category = item?.category ?? 'unknown';
       const key = `${village}:${code}:${level}:${gearedUp ? 1 : 0}`;
