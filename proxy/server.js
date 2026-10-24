@@ -65,16 +65,29 @@ function isProxyKeyValid(providedKey) {
   return crypto.timingSafeEqual(expectedBuf, providedBuf);
 }
 
+const UPSTREAM_ORIGIN = "https://api.clashofclans.com";
+const ALLOWED_PREFIXES = ["/v1/clans/", "/v1/players/", "/v1/clanwarleagues/"];
+
+// Resolves the request the same way the upstream URL will be resolved, so "." and ".."
+// segments (including encoded ones like %2e%2e) can't step outside the allow-list
+function buildUpstreamUrl(originalUrl) {
+  try {
+    const parsed = new URL(originalUrl, UPSTREAM_ORIGIN);
+    if (parsed.origin !== UPSTREAM_ORIGIN) {
+      return null;
+    }
+    return { path: parsed.pathname, url: `${UPSTREAM_ORIGIN}${parsed.pathname}${parsed.search}` };
+  } catch {
+    return null;
+  }
+}
+
 // Path allow-list verification: GET requests to /v1/clans/*, /v1/players/*, /v1/clanwarleagues/*
 function isAllowedPathAndMethod(method, path) {
   if (method !== "GET") {
     return false;
   }
-  return (
-    path.startsWith("/v1/clans") ||
-    path.startsWith("/v1/players") ||
-    path.startsWith("/v1/clanwarleagues")
-  );
+  return ALLOWED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 // Proxy handler for /v1/*
@@ -90,8 +103,9 @@ app.all("/v1/*", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized", message: "Missing or invalid X-Proxy-Key" });
   }
 
-  // 3. Enforce path and method allow-list
-  if (!isAllowedPathAndMethod(req.method, req.path)) {
+  // 3. Enforce path and method allow-list on the normalised path
+  const upstream = buildUpstreamUrl(req.originalUrl);
+  if (!upstream || !isAllowedPathAndMethod(req.method, upstream.path)) {
     return res.status(403).json({ error: "Forbidden", message: "Method or path not permitted by proxy policy" });
   }
 
@@ -100,13 +114,11 @@ app.all("/v1/*", async (req, res) => {
   }
 
   // 4. Forward to Supercell API using the VM's locked token
-  const targetUrl = `https://api.clashofclans.com${req.originalUrl}`;
-
   try {
+    // The query string is already part of upstream.url, so it isn't passed again as params
     const upstreamRes = await axios({
       method: "GET",
-      url: targetUrl,
-      params: req.query,
+      url: upstream.url,
       headers: {
         Authorization: `Bearer ${COC_API_TOKEN}`,
         Accept: "application/json",
@@ -133,3 +145,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.buildUpstreamUrl = buildUpstreamUrl;
