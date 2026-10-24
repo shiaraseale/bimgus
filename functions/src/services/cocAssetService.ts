@@ -1,3 +1,5 @@
+import type { PlayerLike } from '../types/coc';
+
 /**
  * Service to resolve high-resolution transparent assets (Town Halls, Builder Halls,
  * Heroes, Troops, Spells, Equipment, Helpers, and Defenses) sourced directly from Supercell's game files.
@@ -46,7 +48,7 @@ export class CocAssetService {
    * Official Player League Badge image URL from live profile.
    * Checks both new ranked League Tiers and legacy multiplayer league badges.
    */
-  static getPlayerLeagueUrl(player: any): string | undefined {
+  static getPlayerLeagueUrl(player: PlayerLike | undefined): string | undefined {
     if (!player) return undefined;
     return (
       player.leagueTier?.iconUrls?.large ||

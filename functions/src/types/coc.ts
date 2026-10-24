@@ -41,6 +41,10 @@ export interface ClanResponse {
   isWarLogPublic: boolean;
   members: number;
   memberList: ClanMember[];
+  clanCapital?: {
+    capitalHallLevel: number;
+    districts: Array<{ id: number; name: string; districtHallLevel: number }>;
+  };
 }
 
 export interface WarAttack {
@@ -190,3 +194,10 @@ export interface PlayerResponse {
   leagueTier?: { iconUrls?: Record<string, string> };
 }
 
+
+/**
+ * A live player, or one rebuilt from the last snapshot during maintenance (which lacks some fields).
+ * Functions that accept either take this; anything needing the full response takes PlayerResponse.
+ */
+export type PlayerLike = Pick<PlayerResponse, 'tag' | 'name' | 'townHallLevel'> &
+  Partial<Omit<PlayerResponse, 'tag' | 'name' | 'townHallLevel'>>;

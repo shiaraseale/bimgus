@@ -1,3 +1,4 @@
+import type { PlayerLike, PlayerUnit } from '../types/coc';
 import {
   HeroesProgressSummary,
   HeroProgressItem,
@@ -48,12 +49,12 @@ export function lookupApiItem(kind: ApiListKind, apiItem: { name: string; villag
 }
 
 /** The player's hall level for an item's village (0 if they have no Builder Hall yet). */
-function hallFor(player: any, village: 'home' | 'builder'): number {
+function hallFor(player: PlayerLike, village: 'home' | 'builder'): number {
   return village === 'builder' ? player.builderHallLevel || 0 : player.townHallLevel || 0;
 }
 
 /** Cap for a live API entry at the player's current hall. Unknown items fall back to their own level. */
-export function apiCap(kind: ApiListKind, apiItem: any, player: any): number {
+export function apiCap(kind: ApiListKind, apiItem: PlayerUnit, player: PlayerLike): number {
   const item = lookupApiItem(kind, apiItem);
   if (!item) return Math.max(apiItem.level, 0);
   return capFor(item, hallFor(player, item.village), apiItem.level);
@@ -68,7 +69,7 @@ export class PlayerTrackingService {
   /**
    * Calculates hero progress towards max level for the current Town Hall or Builder Hall.
    */
-  static calculateHeroesProgress(player: any): HeroesProgressSummary {
+  static calculateHeroesProgress(player: PlayerLike): HeroesProgressSummary {
     const homeHeroes: HeroProgressItem[] = [];
     const builderHeroes: HeroProgressItem[] = [];
 
@@ -133,7 +134,7 @@ export class PlayerTrackingService {
    * 4. Combined BB Hero Level 45 (Battle Machine + Battle Copter)
    */
   static calculateSixthBuilderProgress(
-    player: any,
+    player: PlayerLike,
     villageData: VillageDataV2 | null = null,
     bobDefenseCompleted: boolean = false
   ): SixthBuilderProgress {
@@ -228,7 +229,7 @@ export class PlayerTrackingService {
    * Computes outstanding upgrades grouped by resource type.
    */
   static calculateOutstandingUpgrades(
-    player: any,
+    player: PlayerLike,
     bobDefenseCompleted: boolean = false,
     villageData: VillageDataV2 | null = null
   ): OutstandingUpgradesSummary {
@@ -448,7 +449,7 @@ export class PlayerTrackingService {
    * recorded (it's a data gap, not an event). Snapshots from before version 2 are replaced without
    * comparing, so the migration can't trigger a burst of DMs.
    */
-  static detectApiUpgrades(oldSnapshot: PlayerSnapshot | undefined, newPlayer: any): UpgradeEvent[] {
+  static detectApiUpgrades(oldSnapshot: PlayerSnapshot | undefined, newPlayer: PlayerLike): UpgradeEvent[] {
     if (!oldSnapshot || oldSnapshot.version !== SNAPSHOT_VERSION) return [];
     const events: UpgradeEvent[] = [];
 
@@ -524,7 +525,7 @@ export class PlayerTrackingService {
   /**
    * Builds a PlayerSnapshot object from live player API data.
    */
-  static createSnapshot(player: any, now: Date = new Date()): PlayerSnapshot {
+  static createSnapshot(player: PlayerLike, now: Date = new Date()): PlayerSnapshot {
     const entries = (list: any[] | undefined) => {
       const out: PlayerSnapshot['heroes'] = {};
       for (const x of list || []) {

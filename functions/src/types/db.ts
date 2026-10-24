@@ -1,4 +1,4 @@
-import { ClanMember, CurrentWarResponse } from './coc';
+import type { ClanMember, CurrentWarResponse } from './coc';
 
 export interface ClanSnapshotDoc {
   tag: string;

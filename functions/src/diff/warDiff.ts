@@ -3,6 +3,7 @@ import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
+import type { WarAudit } from '../types/api';
 
 interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -227,12 +228,7 @@ export interface WarEndSummaryResult {
   endEmbed: DiscordEmbed;
   auditEmbed: DiscordEmbed;
   auditLines: string[];
-  postWarAudit: {
-    zeroAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number }>;
-    partialAttacks: Array<{ tag: string; name: string; mapPosition: number; townhallLevel: number; attacksUsed: number; starsGained: number }>;
-    wastedAttacks: Array<{ attackerName: string; attackerPos: number; defenderName: string; defenderPos: number; stars: number; destruction: number }>;
-    mvps: Array<{ name: string; mapPosition: number; townhallLevel: number; totalStars: number; avgDestruction: number }>;
-  };
+  postWarAudit: WarAudit;
   won: boolean;
   tied: boolean;
 }

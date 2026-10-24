@@ -1,3 +1,5 @@
+import type { InProgressUpgrade, VillageDataV2 } from './village';
+
 export interface SnapshotEntry {
   name?: string;
   level: number;
@@ -33,18 +35,8 @@ export interface PlayerSnapshot {
   updatedAt: string;
 }
 
-/** Same shape as an import timer (InProgressUpgrade), kept here to avoid a types → services import. */
-export interface PendingUpgrade {
-  code?: number;
-  name: string;
-  category: string;
-  village: 'home' | 'builder';
-  currentLevel: number;
-  targetLevel: number;
-  maxLevel: number;
-  timerSeconds: number;
-  finishesAtMs: number;
-}
+/** A hero upgrade the API showed starting, with its estimated finish; same shape as an import timer. */
+export type PendingUpgrade = InProgressUpgrade;
 
 export interface LinkedAccount {
   playerTag: string;
@@ -55,7 +47,8 @@ export interface LinkedAccount {
   lastSnapshot?: PlayerSnapshot;
   dmsEnabled?: boolean;
   bobDefenseCompleted?: boolean;
-  villageData?: any;
+  // The latest import (2.3); data from before version 2 may still be stored and is ignored on read
+  villageData?: VillageDataV2 | { version?: undefined; [key: string]: unknown };
   // Recent notifications already sent (timer and API keys), so a retry never sends one twice
   notifiedKeys?: string[];
   // Hero upgrades the API reported when they started, with an estimated finish (see upgradeNotifier)

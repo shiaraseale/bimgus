@@ -1,10 +1,11 @@
 import { CocService } from './cocService';
 import { LinkedAccount } from '../types/user';
+import type { PlayerLike } from '../types/coc';
 
 /**
  * Fetches a player live, falling back to the last saved snapshot (e.g. during Supercell maintenance).
  */
-export async function getPlayerWithFallback(coc: CocService, account: LinkedAccount): Promise<{ player: any; isCached: boolean }> {
+export async function getPlayerWithFallback(coc: CocService, account: LinkedAccount): Promise<{ player: PlayerLike; isCached: boolean }> {
   try {
     const fresh = await coc.getPlayer(account.playerTag);
     return { player: fresh, isCached: false };
