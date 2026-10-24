@@ -3,6 +3,7 @@ import { CwlSnapshotDoc, BotConfigDoc, CwlSeasonSummary, CwlPlayerSummary, CwlUn
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
+import { findOurCwlWar } from './cwlWars';
 
 interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -24,7 +25,8 @@ function formatCoCTime(cocTime: string): string {
 export async function buildCwlSeasonSummary(
   cwlGroup: CwlGroupResponse,
   clanTag: string,
-  cocService: CocService
+  cocService: CocService,
+  knownWarTags?: Record<number, string>
 ): Promise<CwlSeasonSummary | null> {
   const normalizedClanTag = clanTag.trim().toUpperCase();
   const playerMap = new Map<string, CwlPlayerSummary>();
@@ -45,12 +47,10 @@ export async function buildCwlSeasonSummary(
     const validWarTags = (round.warTags || []).filter((tag) => tag && tag !== '#0');
     const roundNum = roundIndex + 1;
 
-    for (const warTag of validWarTags) {
+    const found = await findOurCwlWar(validWarTags, normalizedClanTag, cocService, knownWarTags?.[roundIndex]);
+    for (const { warTag, war } of found ? [found] : []) {
       try {
-        const war = await cocService.getCwlWar(warTag);
         const isClanHome = war.clan.tag.toUpperCase() === normalizedClanTag;
-        const isOpponent = war.opponent.tag.toUpperCase() === normalizedClanTag;
-        if (!isClanHome && !isOpponent) continue;
 
         const ourClan = isClanHome ? war.clan : war.opponent;
         const enemyClan = isClanHome ? war.opponent : war.clan;
@@ -432,6 +432,7 @@ export async function processCwlDiff(
   const announcedMatchups = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedMatchupRounds || []));
   const announcedBattleDays = new Set<number>(isNewSeason ? [] : (prevSnapshot?.announcedBattleDayRounds || []));
   const loggedAttackOrders: Record<string, number[]> = isNewSeason ? {} : { ...(prevSnapshot?.loggedAttackOrders || {}) };
+  const ourWarTags: Record<number, string> = isNewSeason ? {} : { ...(prevSnapshot?.ourWarTags || {}) };
 
   let currentRoundIndex: number | undefined;
   let currentWarTag: string | undefined;
@@ -470,14 +471,14 @@ export async function processCwlDiff(
 
       const roundNum = roundIndex + 1;
 
-      // Find our clan's war in this round
-      for (const warTag of validWarTags) {
-        try {
-          const war = await cocService.getCwlWar(warTag);
-          const isOurWar = war.clan.tag.toUpperCase() === clanTag.toUpperCase() ||
-                           war.opponent.tag.toUpperCase() === clanTag.toUpperCase();
+      // A round whose summary has been posted has nothing left to report, so it isn't fetched again
+      if (loggedRounds.has(roundIndex)) continue;
 
-          if (!isOurWar) continue;
+      // Find our clan's war in this round (one request once its tag is known)
+      const found = await findOurCwlWar(validWarTags, clanTag, cocService, ourWarTags[roundIndex]);
+      if (found) ourWarTags[roundIndex] = found.warTag;
+      for (const { warTag, war } of found ? [found] : []) {
+        try {
 
           currentRoundIndex = roundIndex;
           currentWarTag = warTag;
@@ -745,7 +746,7 @@ export async function processCwlDiff(
 
   if (isSeasonEnded && !announcedSeasonSummary && webhookUrl && config.notificationsEnabled.cwlRoundSummary) {
     try {
-      const summary = await buildCwlSeasonSummary(cwlGroup, clanTag, cocService);
+      const summary = await buildCwlSeasonSummary(cwlGroup, clanTag, cocService, ourWarTags);
       if (summary) {
         await sendCwlSeasonSummaryDiscord(summary, webhookUrl);
         seasonSummary = summary;
@@ -765,6 +766,7 @@ export async function processCwlDiff(
     announcedBattleDayRounds: Array.from(announcedBattleDays),
     loggedAttackOrders,
     loggedRoundIndices: Array.from(loggedRounds),
+    ourWarTags,
     currentRoundIndex,
     currentWarTag,
     announcedSeasonSummary,

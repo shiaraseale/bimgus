@@ -8,6 +8,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { runPollClanJob } from '../jobs/pollClanJob';
 import { buildCwlSeasonSummary, sendCwlSeasonSummaryDiscord } from '../diff/cwlDiff';
 import { sendWarSummaryDiscord } from '../diff/warDiff';
+import { findActiveCwlWar } from '../diff/cwlWars';
 
 import { discordInteractionsRouter } from './discordInteractions';
 import { registerDiscordCommands } from '../scripts/registerCommands';
@@ -107,26 +108,17 @@ router.get('/clan/:tag/war', async (req, res) => {
       try {
         const cwlGroup = await coc.getCwlGroup(clanTag);
         if (cwlGroup && cwlGroup.state !== 'notInWar' && cwlGroup.rounds) {
-          for (let r = 0; r < cwlGroup.rounds.length; r++) {
-            const validTags = (cwlGroup.rounds[r].warTags || []).filter((t: string) => t && t !== '#0');
-            for (const wt of validTags) {
-              const cwlWar = await coc.getCwlWar(wt);
-              const isOurWar =
-                cwlWar.clan.tag.toUpperCase() === clanTag.toUpperCase() ||
-                cwlWar.opponent.tag.toUpperCase() === clanTag.toUpperCase();
-
-              if (isOurWar && (cwlWar.state === 'inWar' || cwlWar.state === 'preparation')) {
-                return res.json({
-                  success: true,
-                  data: {
-                    ...cwlWar,
-                    isCwl: true,
-                    cwlRound: r + 1,
-                    cwlSeason: cwlGroup.season,
-                  },
-                });
-              }
-            }
+          const active = await findActiveCwlWar(cwlGroup, clanTag, coc);
+          if (active) {
+            return res.json({
+              success: true,
+              data: {
+                ...active.war,
+                isCwl: true,
+                cwlRound: active.roundIndex + 1,
+                cwlSeason: cwlGroup.season,
+              },
+            });
           }
         }
       } catch {

@@ -105,6 +105,8 @@ export interface CwlSnapshotDoc {
   announcedBattleDayRounds?: number[];
   loggedAttackOrders?: Record<string, number[]>; // warTag -> array of logged orders
   loggedRoundIndices: number[];
+  // Round index -> our war's tag, so later polls fetch one war per round instead of all four (3.3)
+  ourWarTags?: Record<number, string>;
   pingedMissedAttacksRounds?: number[];
   currentRoundIndex?: number;
   currentWarTag?: string;

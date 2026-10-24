@@ -3,6 +3,7 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { config } from '../config';
 import { CurrentWarResponse } from '../types/coc';
+import { findActiveCwlWar } from '../diff/cwlWars';
 
 export async function runWarPingJob(clanTagOverride?: string): Promise<{ success: boolean; message: string }> {
   const targetTag = clanTagOverride || config.coc.clanTag;
@@ -36,22 +37,11 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
       try {
         const cwlGroup = await cocService.getCwlGroup(targetTag);
         if (cwlGroup && cwlGroup.state !== 'notInWar' && cwlGroup.rounds) {
-          for (let r = 0; r < cwlGroup.rounds.length; r++) {
-            const validWarTags = (cwlGroup.rounds[r].warTags || []).filter((t: string) => t && t !== '#0');
-            for (const wt of validWarTags) {
-              const cwlWar = await cocService.getCwlWar(wt);
-              const isOurWar =
-                cwlWar.clan.tag.toUpperCase() === targetTag.toUpperCase() ||
-                cwlWar.opponent.tag.toUpperCase() === targetTag.toUpperCase();
-
-              if (isOurWar && cwlWar.state === 'inWar' && cwlWar.endTime) {
-                activeWar = cwlWar;
-                isCwlWar = true;
-                cwlRoundIndex = r;
-                break;
-              }
-            }
-            if (activeWar) break;
+          const active = await findActiveCwlWar(cwlGroup, targetTag, cocService, ['inWar']);
+          if (active && active.war.endTime) {
+            activeWar = active.war;
+            isCwlWar = true;
+            cwlRoundIndex = active.roundIndex;
           }
         }
       } catch {
