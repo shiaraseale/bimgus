@@ -36,7 +36,7 @@ const ENQUEUE_TIMEOUT_MS = 1500;
  * Queues slow command work as a Cloud Task, which gets full CPU (3.7). Returns false if queueing
  * fails or is slow, in which case the caller replies and runs the work inline instead.
  */
-async function queueTask(functionName: 'roastTask' | 'importTask', data: Record<string, any>): Promise<boolean> {
+async function queueTask(functionName: 'roastTask' | 'importTask' | 'commandTask', data: Record<string, any>): Promise<boolean> {
   return Promise.race([
     getFunctions()
       .taskQueue(functionName)
@@ -49,6 +49,9 @@ async function queueTask(functionName: 'roastTask' | 'importTask', data: Record<
     new Promise<false>((resolve) => setTimeout(() => resolve(false), ENQUEUE_TIMEOUT_MS)),
   ]);
 }
+
+// Commands whose work (live API calls, Firestore) runs after a "thinking…" reply
+const TASK_COMMANDS = new Set(['accounts', 'sixth-builder', 'heroes', 'upgrades', 'defenses', 'spells', 'troops']);
 
 // Which stored import categories each list shows
 const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];
@@ -64,24 +67,39 @@ function formatProgressBar(percent: number, length: number = 10): string {
 /**
  * Handles incoming Discord HTTP interactions (Slash Commands & Message Components)
  */
-discordInteractionsRouter.post('/interactions', async (req: Request, res: Response): Promise<any> => {
+discordInteractionsRouter.post('/interactions', (req: Request, res: Response) => handleInteraction(req, res));
+
+/**
+ * Replays an interaction inside a Cloud Task (3.7): the request already replied "thinking…", so the
+ * handler runs with deferring switched off, and this waits for its background work to finish.
+ */
+export async function runCommandTask(interaction: any): Promise<void> {
+  const work: Array<Promise<void>> = [];
+  const req: any = { body: interaction, fromTask: true, work, get: () => undefined };
+  const res: any = { json: () => res, status: () => res, send: () => res };
+  await handleInteraction(req, res);
+  await Promise.all(work);
+}
+
+export async function handleInteraction(req: Request, res: Response): Promise<any> {
+  const fromTask = Boolean((req as any).fromTask);
   const signature = req.get('X-Signature-Ed25519');
   const timestamp = req.get('X-Signature-Timestamp');
   const rawBody = (req as any).rawBody || JSON.stringify(req.body);
 
   const publicKey = config.discord.publicKey;
 
-  // Always verify the cryptographic signature; without a public key, reject every request
-  if (!publicKey) {
+  // Always verify the cryptographic signature; without a public key, reject every request.
+  // (A replay inside a Cloud Task was verified when Discord sent it, and tasks can only come from us.)
+  if (fromTask) {
+    // already verified
+  } else if (!publicKey) {
     console.error('[Discord Interactions] DISCORD_PUBLIC_KEY is not configured; rejecting request');
     return res.status(401).send('Interactions endpoint not configured');
-  }
-  if (!signature || !timestamp) {
+  } else if (!signature || !timestamp) {
     console.warn('[Discord Interactions] Missing signature or timestamp');
     return res.status(401).send('Missing signature headers');
-  }
-  const isValid = await verifyKey(rawBody, signature, timestamp, publicKey);
-  if (!isValid) {
+  } else if (!(await verifyKey(rawBody, signature, timestamp, publicKey))) {
     console.warn('[Discord Interactions] Invalid request signature');
     return res.status(401).send('Invalid request signature');
   }
@@ -108,12 +126,19 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
     const cocService = CocService.shared();
     const isGuild = Boolean(req.body.guild_id);
+
+    // Runs a command's work after the reply; inside a Cloud Task the task waits for it
+    const track = (fn: () => Promise<void>) => {
+      const promise = fn();
+      if (fromTask) (req as any).work.push(promise);
+    };
     const interactionToken = req.body.token;
     const applicationId = req.body.application_id || config.discord.clientId;
 
     // Personal command response: if run inside a server channel, make it ephemeral (flags: 64)
     // so it doesn't spam the chat! In private DMs with Bimgus, respond normally.
     const respondPersonal = (data: any) => {
+      if (fromTask) return editDeferredReply(data);
       return res.json({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -125,6 +150,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
     // Immediately acknowledges the interaction to satisfy Discord's 3-second hard timeout
     const deferReply = (ephemeral: boolean = isGuild) => {
+      if (fromTask) return undefined; // the original request already replied "thinking…"
       return res.json({
         type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -292,6 +318,13 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       }
     }
 
+    // Slow commands run in a Cloud Task with full CPU (3.7); if queueing fails they run here as before
+    if (!fromTask && TASK_COMMANDS.has(name)) {
+      if (await queueTask('commandTask', { interaction: req.body })) {
+        return deferReply();
+      }
+    }
+
     try {
       // ----------------------------------------------------------------------
       // COMMAND: /link
@@ -395,7 +428,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'accounts') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const { accounts, error } = await getTargetAccounts();
             if (error || !accounts || accounts.length === 0) {
@@ -433,7 +466,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
           } catch (accErr: any) {
             await editDeferredReply({ content: `❌ Error loading accounts: ${accErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -444,7 +477,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'sixth-builder') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const { accounts, error } = await getTargetAccounts(targetTag);
@@ -542,7 +575,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /sixth-builder:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -553,7 +586,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'heroes') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const villageFilter = optionsMap['village'] || 'both';
@@ -635,7 +668,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /heroes:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -646,7 +679,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'upgrades') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const { accounts, error } = await getTargetAccounts(targetTag);
@@ -1031,7 +1064,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /upgrades:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -1042,7 +1075,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'defenses') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const { accounts, error } = await getTargetAccounts(targetTag);
@@ -1308,7 +1341,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /defenses:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -1373,7 +1406,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'spells') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const { accounts, error } = await getTargetAccounts(targetTag);
@@ -1453,7 +1486,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /spells:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -1464,7 +1497,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (name === 'troops') {
         deferReply();
 
-        (async () => {
+        track(async () => {
           try {
             const targetTag = optionsMap['account'];
             const villageFilter = optionsMap['village'] || 'both';
@@ -1579,7 +1612,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             console.error('Failed to execute /troops:', cmdErr);
             await editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
           }
-        })();
+        });
 
         return;
       }
@@ -1790,4 +1823,4 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
   }
 
   return res.status(400).send('Unknown interaction type');
-});
+}

@@ -4,6 +4,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { runPollClanJob } from './jobs/pollClanJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
+import { runCommandTask } from './api/discordInteractions';
 import { proxyKeySecret } from './services/cocService';
 import { RoastTaskData, runRoastTask } from './jobs/roastJob';
 import { ImportTaskData, runImportTask } from './jobs/importJob';
@@ -85,5 +86,22 @@ export const importTask = onTaskDispatched<ImportTaskData>(
   },
   async (req) => {
     await runImportTask(req.data);
+  }
+);
+
+/**
+ * Cloud Task (2nd Gen): replays a slow slash command (/upgrades, /defenses, /heroes, …) queued by the
+ * interaction handler, so its work runs with full CPU (3.7).
+ */
+export const commandTask = onTaskDispatched<{ interaction: any }>(
+  {
+    retryConfig: { maxAttempts: 1 },
+    rateLimits: { maxConcurrentDispatches: 10 },
+    memory: '512MiB',
+    timeoutSeconds: 120,
+    secrets: [proxyKeySecret],
+  },
+  async (req) => {
+    await runCommandTask(req.data.interaction);
   }
 );

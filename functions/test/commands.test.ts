@@ -140,6 +140,17 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(defenses)).toContain('/import-village');
   });
 
+  it('a queued command task runs the command and edits the reply', async () => {
+    const { runCommandTask } = await import('../src/api/discordInteractions');
+    await runCommandTask({
+      type: 2, token: 'tok', application_id: 'app', user: { id: '42', username: 'tester' },
+      data: { name: 'heroes', options: [] },
+    });
+    // The task waits for the work, so the reply is already edited when it returns
+    expect(patches).toHaveLength(1);
+    expect(allText(patches[0])).toContain('Hero Maxing Overview');
+  });
+
   it('/sixth-builder reads the BB defense task from the import', async () => {
     await importFile();
     patches = [];

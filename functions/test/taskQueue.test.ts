@@ -64,6 +64,20 @@ describe('slow commands are queued as Cloud Tasks', () => {
     expect(get).not.toHaveBeenCalled();
   });
 
+  it('/upgrades queues commandTask with the whole interaction and replies "thinking"', async () => {
+    const res = await send({ data: { name: 'upgrades', options: [] } });
+    expect(await res.json()).toEqual({ type: 5, data: { flags: 64 } });
+    expect(taskQueue).toHaveBeenCalledWith('commandTask');
+    expect(enqueue).toHaveBeenCalledWith({ interaction: expect.objectContaining({ token: 'tok', data: { name: 'upgrades', options: [] } }) });
+  });
+
+  it('/help is answered straight away, not queued', async () => {
+    taskQueue.mockClear();
+    const res = await send({ data: { name: 'help' } });
+    expect((await res.json()).type).toBe(4);
+    expect(taskQueue).not.toHaveBeenCalled();
+  });
+
   it('/roast queues roastTask and replies publicly', async () => {
     const res = await send({ data: { name: 'roast', options: [{ name: 'user', value: '7' }], resolved: { users: { 7: { username: 'T' } } } } });
     expect(await res.json()).toEqual({ type: 5, data: {} });
