@@ -37,7 +37,8 @@ export const pollClanScheduled = onSchedule(
 
     const scheduleTime = event.scheduleTime ? new Date(event.scheduleTime) : new Date();
     const result = await runPollClanJob(undefined, { scheduleTime });
-    log.info('[Schedule] Result:', result);
+    // As text: an object with a `message` field would be overwritten by the log entry's own message
+    log.info(`[Schedule] ${result.success ? 'Done' : 'Failed'}: ${result.message}`);
 
     if (pingPromise) {
       await pingPromise;
