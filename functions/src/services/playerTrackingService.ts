@@ -3,55 +3,56 @@ import {
   HeroProgressItem,
   SixthBuilderProgress,
   OutstandingUpgradesSummary,
+  OutstandingUpgradeItem,
   ActiveUpgrade,
   PlayerSnapshot,
 } from '../types/user';
 import {
-  getHeroMaxLevelForHall,
-  getEquipmentMaxLevelForTh,
-  getTroopMaxLevelForHall,
-  getSpellMaxLevelForTh,
-  SUPER_TROOPS,
-} from './cocMaxLevels';
+  API_CATEGORIES,
+  GameItem,
+  MAX_BUILDER_HALL,
+  MAX_TOWN_HALL,
+  Resource,
+  apiVillage,
+  capFor,
+  formatNextCost,
+  getById,
+  getByName,
+  isSuperTroop,
+} from './gameDataService';
 
-const DARK_ELIXIR_HEROES = new Set(['Barbarian King', 'Archer Queen', 'Royal Champion', 'Minion Prince']);
+type ApiListKind = keyof typeof API_CATEGORIES;
+type OutstandingResource = OutstandingUpgradeItem['resourceType'];
 
-const DARK_ELIXIR_TROOPS = new Set([
-  'Minion',
-  'Hog Rider',
-  'Valkyrie',
-  'Golem',
-  'Witch',
-  'Lava Hound',
-  'Bowler',
-  'Ice Golem',
-  'Headhunter',
-  'Apprentice Warden',
-  'Druid',
-  'Super Barbarian',
-  'Super Archer',
-  'Super Wall Breaker',
-  'Super Giant',
-  'Sneaky Goblin',
-  'Super Miner',
-  'Super Dragon',
-  'Inferno Dragon',
-  'Super Valkyrie',
-  'Super Witch',
-  'Ice Hound',
-  'Super Bowler',
-  'Super Hog Rider',
-]);
+const warnedUnknown = new Set<string>();
 
-const DARK_ELIXIR_SPELLS = new Set([
-  'Poison Spell',
-  'Earthquake Spell',
-  'Haste Spell',
-  'Skeleton Spell',
-  'Bat Spell',
-  'Overgrowth Spell',
-  'Endless Haste Spell',
-]);
+/** Looks up a live API hero/troop/spell/equipment entry in the game data. */
+export function lookupApiItem(kind: ApiListKind, apiItem: { name: string; village?: string }): GameItem | undefined {
+  const village = apiVillage(apiItem.village);
+  const item = getByName(apiItem.name, village, API_CATEGORIES[kind]);
+  if (!item && !warnedUnknown.has(`${kind}:${village}:${apiItem.name}`)) {
+    warnedUnknown.add(`${kind}:${village}:${apiItem.name}`);
+    console.warn(`[PlayerTracking] "${apiItem.name}" (${village} ${kind}) is not in the game data`);
+  }
+  return item;
+}
+
+/** The player's hall level for an item's village (0 if they have no Builder Hall yet). */
+function hallFor(player: any, village: 'home' | 'builder'): number {
+  return village === 'builder' ? player.builderHallLevel || 0 : player.townHallLevel || 0;
+}
+
+/** Cap for a live API entry at the player's current hall. Unknown items fall back to their own level. */
+export function apiCap(kind: ApiListKind, apiItem: any, player: any): number {
+  const item = lookupApiItem(kind, apiItem);
+  if (!item) return Math.max(apiItem.level, 0);
+  return capFor(item, hallFor(player, item.village), apiItem.level);
+}
+
+function outstandingResource(resource: Resource, village: 'home' | 'builder'): OutstandingResource {
+  if (resource === 'gems' || resource === 'other') return village === 'builder' ? 'builderGold' : 'gold';
+  return resource;
+}
 
 export class PlayerTrackingService {
   /**
@@ -63,13 +64,12 @@ export class PlayerTrackingService {
 
     for (const h of player.heroes || []) {
       const isBb = h.village === 'builderBase';
-      const hallLevel = isBb ? (player.builderHallLevel || 10) : player.townHallLevel;
-      const maxLvl = getHeroMaxLevelForHall(h.name, isBb, hallLevel, h.maxLevel || h.level);
+      const maxLvl = apiCap('heroes', h, player);
       const levelsRemaining = Math.max(0, maxLvl - h.level);
       const percentage = maxLvl > 0 ? Math.min(100, Math.round((h.level / maxLvl) * 100)) : 100;
 
       const item: HeroProgressItem = {
-        name: h.name,
+        name: lookupApiItem('heroes', h)?.displayName ?? h.name,
         level: h.level,
         maxLevel: maxLvl,
         levelsRemaining,
@@ -261,19 +261,17 @@ export class PlayerTrackingService {
     // 1. Heroes
     for (const h of player.heroes || []) {
       const isBb = h.village === 'builderBase';
-      const hallLevel = isBb ? (player.builderHallLevel || 10) : player.townHallLevel;
-      const maxLvl = getHeroMaxLevelForHall(h.name, isBb, hallLevel, h.maxLevel || h.level);
+      const data = lookupApiItem('heroes', h);
+      const maxLvl = apiCap('heroes', h, player);
       const remaining = Math.max(0, maxLvl - h.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const resType: 'builderElixir' | 'darkElixir' | 'elixir' = isBb
-          ? 'builderElixir'
-          : DARK_ELIXIR_HEROES.has(h.name)
-          ? 'darkElixir'
-          : 'elixir';
+        const resType = outstandingResource(data?.resource ?? (isBb ? 'builderElixir' : 'darkElixir'), isBb ? 'builder' : 'home');
 
-        const item = {
-          name: h.name,
+        const item: OutstandingUpgradeItem = {
+          name: data?.displayName ?? h.name,
+          code: data?.id,
+          nextCost: data ? formatNextCost(data, h.level) : undefined,
           currentLevel: h.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -293,12 +291,15 @@ export class PlayerTrackingService {
 
     // 2. Hero Equipment (Ores)
     for (const eq of player.heroEquipment || []) {
-      const maxLvl = getEquipmentMaxLevelForTh(eq.name, player.townHallLevel, eq.maxLevel || eq.level);
+      const data = lookupApiItem('heroEquipment', eq);
+      const maxLvl = apiCap('heroEquipment', eq, player);
       const remaining = Math.max(0, maxLvl - eq.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const item = {
-          name: eq.name,
+        const item: OutstandingUpgradeItem = {
+          name: data?.displayName ?? eq.name,
+          code: data?.id,
+          nextCost: data ? formatNextCost(data, eq.level) : undefined,
           currentLevel: eq.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -313,21 +314,20 @@ export class PlayerTrackingService {
 
     // 3. Troops
     for (const tr of player.troops || []) {
-      if (SUPER_TROOPS.has(tr.name)) continue;
+      const data = lookupApiItem('troops', tr);
+      // Super troops show at level 1 even when inactive, and event units can't be upgraded for good
+      if (isSuperTroop(data) || data?.event) continue;
       const isBb = tr.village === 'builderBase';
-      const hallLevel = isBb ? (player.builderHallLevel || 10) : player.townHallLevel;
-      const maxLvl = getTroopMaxLevelForHall(tr.name, isBb, hallLevel, tr.maxLevel || tr.level);
+      const maxLvl = apiCap('troops', tr, player);
       const remaining = Math.max(0, maxLvl - tr.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const resType: 'builderElixir' | 'darkElixir' | 'elixir' = isBb
-          ? 'builderElixir'
-          : DARK_ELIXIR_TROOPS.has(tr.name)
-          ? 'darkElixir'
-          : 'elixir';
+        const resType = outstandingResource(data?.resource ?? (isBb ? 'builderElixir' : 'elixir'), isBb ? 'builder' : 'home');
 
-        const item = {
-          name: tr.name,
+        const item: OutstandingUpgradeItem = {
+          name: data?.displayName ?? tr.name,
+          code: data?.id,
+          nextCost: data ? formatNextCost(data, tr.level) : undefined,
           currentLevel: tr.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -347,14 +347,18 @@ export class PlayerTrackingService {
 
     // 4. Spells
     for (const sp of player.spells || []) {
-      const maxLvl = getSpellMaxLevelForTh(sp.name, player.townHallLevel, sp.maxLevel || sp.level);
+      const data = lookupApiItem('spells', sp);
+      if (data?.event) continue;
+      const maxLvl = apiCap('spells', sp, player);
       const remaining = Math.max(0, maxLvl - sp.level);
       if (remaining > 0) {
         totalRemainingLevels += remaining;
-        const resType: 'darkElixir' | 'elixir' = DARK_ELIXIR_SPELLS.has(sp.name) ? 'darkElixir' : 'elixir';
+        const resType = outstandingResource(data?.resource ?? 'elixir', 'home');
 
-        const item = {
-          name: sp.name,
+        const item: OutstandingUpgradeItem = {
+          name: data?.displayName ?? sp.name,
+          code: data?.id,
+          nextCost: data ? formatNextCost(data, sp.level) : undefined,
           currentLevel: sp.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -370,9 +374,12 @@ export class PlayerTrackingService {
 
     // 5. Buildings & Defenses
     // Town Hall always only has 1 upgrade (0/1) to reach the next Town Hall level
-    if (player.townHallLevel < 17) {
-      const item = {
+    if (player.townHallLevel < MAX_TOWN_HALL) {
+      const townHall = getById(1000001);
+      const item: OutstandingUpgradeItem = {
         name: 'Town Hall',
+        code: 1000001,
+        nextCost: townHall ? formatNextCost(townHall, player.townHallLevel) : undefined,
         currentLevel: 0,
         maxLevel: 1,
         levelsRemaining: 1,
@@ -388,7 +395,7 @@ export class PlayerTrackingService {
     const highGear = (player.achievements || []).find((a: any) => a.name === 'High Gear');
     const gearUpsCount = highGear ? Math.min(3, highGear.value || 0) : 0;
     if (gearUpsCount < 3) {
-      const item = {
+      const item: OutstandingUpgradeItem = {
         name: 'Home Defense Gear-Ups (Cannon/Archer Tower/Mortar)',
         currentLevel: gearUpsCount,
         maxLevel: 3,
@@ -403,9 +410,12 @@ export class PlayerTrackingService {
     }
 
     // Builder Hall always only has 1 upgrade (0/1) to reach the next Builder Hall level
-    if (player.builderHallLevel && player.builderHallLevel < 10) {
-      const item = {
+    if (player.builderHallLevel && player.builderHallLevel < MAX_BUILDER_HALL) {
+      const builderHall = getById(1000034);
+      const item: OutstandingUpgradeItem = {
         name: 'Builder Hall',
+        code: 1000034,
+        nextCost: builderHall ? formatNextCost(builderHall, player.builderHallLevel) : undefined,
         currentLevel: 0,
         maxLevel: 1,
         levelsRemaining: 1,
@@ -485,8 +495,8 @@ export class PlayerTrackingService {
         village: 'home',
         oldLevel: oldSnapshot.townHallLevel,
         newLevel: newPlayer.townHallLevel,
-        maxLevel: 17, // Current game maximum
-        levelsRemaining: Math.max(0, 17 - newPlayer.townHallLevel),
+        maxLevel: MAX_TOWN_HALL,
+        levelsRemaining: Math.max(0, MAX_TOWN_HALL - newPlayer.townHallLevel),
       });
     }
 
@@ -498,8 +508,8 @@ export class PlayerTrackingService {
         village: 'builder',
         oldLevel: oldSnapshot.builderHallLevel,
         newLevel: newPlayer.builderHallLevel,
-        maxLevel: 10,
-        levelsRemaining: Math.max(0, 10 - newPlayer.builderHallLevel),
+        maxLevel: MAX_BUILDER_HALL,
+        levelsRemaining: Math.max(0, MAX_BUILDER_HALL - newPlayer.builderHallLevel),
       });
     }
 
@@ -509,8 +519,7 @@ export class PlayerTrackingService {
       const prevLevel = prev ? prev.level : 0;
       if (h.level > prevLevel) {
         const isBb = h.village === 'builderBase';
-        const hallLevel = isBb ? (newPlayer.builderHallLevel || 10) : newPlayer.townHallLevel;
-        const maxLvl = getHeroMaxLevelForHall(h.name, isBb, hallLevel, h.maxLevel || h.level);
+        const maxLvl = apiCap('heroes', h, newPlayer);
         completed.push({
           name: h.name,
           category: 'hero',
@@ -528,7 +537,7 @@ export class PlayerTrackingService {
       const prev = oldSnapshot.heroEquipment[eq.name];
       const prevLevel = prev ? prev.level : 0;
       if (eq.level > prevLevel) {
-        const maxLvl = getEquipmentMaxLevelForTh(eq.name, newPlayer.townHallLevel, eq.maxLevel || eq.level);
+        const maxLvl = apiCap('heroEquipment', eq, newPlayer);
         completed.push({
           name: eq.name,
           category: 'equipment',
@@ -543,13 +552,13 @@ export class PlayerTrackingService {
 
     // Troops
     for (const tr of newPlayer.troops || []) {
-      if (SUPER_TROOPS.has(tr.name)) continue;
+      const data = lookupApiItem('troops', tr);
+      if (isSuperTroop(data) || data?.event) continue;
       const prev = oldSnapshot.troops[tr.name];
       const prevLevel = prev ? prev.level : 0;
       if (tr.level > prevLevel) {
         const isBb = tr.village === 'builderBase';
-        const hallLevel = isBb ? (newPlayer.builderHallLevel || 10) : newPlayer.townHallLevel;
-        const maxLvl = getTroopMaxLevelForHall(tr.name, isBb, hallLevel, tr.maxLevel || tr.level);
+        const maxLvl = apiCap('troops', tr, newPlayer);
         completed.push({
           name: tr.name,
           category: 'troop',
@@ -567,7 +576,7 @@ export class PlayerTrackingService {
       const prev = oldSnapshot.spells[sp.name];
       const prevLevel = prev ? prev.level : 0;
       if (sp.level > prevLevel) {
-        const maxLvl = getSpellMaxLevelForTh(sp.name, newPlayer.townHallLevel, sp.maxLevel || sp.level);
+        const maxLvl = apiCap('spells', sp, newPlayer);
         completed.push({
           name: sp.name,
           category: 'spell',

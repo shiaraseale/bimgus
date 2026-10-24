@@ -13,7 +13,8 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "register-commands": "npm run build && node -r dotenv/config lib/scripts/registerCommands.js"
+    "register-commands": "npm run build && node -r dotenv/config lib/scripts/registerCommands.js",
+    "build:game-data": "node scripts/buildGameData.mts"
   },
   "engines": {
     "node": "22"

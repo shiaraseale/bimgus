@@ -7,8 +7,17 @@ import { FirestoreService } from '../services/firestoreService';
 import { GeminiRoastService } from '../services/geminiRoastService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
-import { formatUpgradeCost } from '../services/cocUpgradeCosts';
-import { getDetailedDefensesForTh, getDetailedDefensesForBh } from '../services/cocMaxLevels';
+import {
+  MAX_BUILDER_HALL,
+  MAX_TOWN_HALL,
+  countForHall,
+  formatLevelCost,
+  formatNextCost,
+  getById,
+  getLevel,
+  getMaxLevelForHall,
+  itemsIn,
+} from '../services/gameDataService';
 import { EMOJIS } from '../constants/emojis';
 import { LinkedAccount } from '../types/user';
 import { PlayerTrackingService } from '../services/playerTrackingService';
@@ -621,16 +630,12 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 const bob = bb.sixthBuilder;
 
                 const formatItems = (
-                  items: Array<{ name: string; currentLevel: number; maxLevel: number; category?: string; village?: 'home' | 'builder' }>,
-                  defaultCategory: 'hero' | 'equipment' | 'troop' | 'spell' | 'building',
-                  village: 'home' | 'builder',
+                  items: Array<{ name: string; currentLevel: number; maxLevel: number; nextCost?: string }>,
                   emptyText: string
                 ) => {
                   if (items.length === 0) return emptyText || '✅ Maxed!';
-                  const hallLevel = village === 'builder' ? (freshPlayer.builderHallLevel || 9) : freshPlayer.townHallLevel;
                   const lines = items.map((i) => {
-                    const cost = formatUpgradeCost(i.name, i.currentLevel, i.category || defaultCategory, i.village || village, hallLevel);
-                    const costStr = cost ? ` — ${cost}` : '';
+                    const costStr = i.nextCost ? ` — ${i.nextCost}` : '';
                     if (i.name === 'Town Hall' || i.name === 'Builder Hall') {
                       return `• **${i.name}**: ${i.currentLevel}/${i.maxLevel}${costStr}`;
                     }
@@ -704,7 +709,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   const costStr = VillageImportService.formatCost(d.nextCostNumber, d.resource);
                   return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${costStr}`;
                 });
-                const thGearUpText = formatItems(home.buildings, 'building', 'home', '');
+                const thGearUpText = formatItems(home.buildings, '');
                 const homeBuildingLines = [thGearUpText, ...unmaxedBuildingLines].filter(Boolean);
                 const homeBuildingFields: any[] = [];
                 const totalBuildingsCount = home.buildings.length + unmaxedHomeBuildings.length;
@@ -742,7 +747,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   }
                 }
 
-                const bbBuildingText = formatItems(bb.buildings, 'building', 'builder', `✅ Builder Hall maxed for BH${freshPlayer.builderHallLevel || 10}!`);
+                const bbBuildingText = formatItems(bb.buildings, `✅ Builder Hall maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`);
 
                 const homeDefFields: any[] = [];
                 if (importedHome.length > 0) {
@@ -824,7 +829,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   } else {
                     bbDefFields.push({
                       name: `🛡️ BB Defenses (0)`,
-                      value: `✅ All BB defenses maxed for BH${freshPlayer.builderHallLevel || 10}!`,
+                      value: `✅ All BB defenses maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`,
                       inline: false,
                     });
                   }
@@ -875,22 +880,22 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   ...homeDefFields,
                   {
                     name: `${EMOJIS.CROWN} Heroes (${home.heroes.length})`,
-                    value: formatItems(home.heroes, 'hero', 'home', `✅ All heroes maxed for TH${freshPlayer.townHallLevel}!`),
+                    value: formatItems(home.heroes, `✅ All heroes maxed for TH${freshPlayer.townHallLevel}!`),
                     inline: false,
                   },
                   {
                     name: `${EMOJIS.ANVIL} Hero Equipment (${home.equipment.length})`,
-                    value: formatItems(home.equipment, 'equipment', 'home', `✅ All equipment maxed for TH${freshPlayer.townHallLevel}!`),
+                    value: formatItems(home.equipment, `✅ All equipment maxed for TH${freshPlayer.townHallLevel}!`),
                     inline: false,
                   },
                   {
                     name: `🧪 Spells (${home.spells.length})`,
-                    value: formatItems(home.spells, 'spell', 'home', `✅ All spells maxed for TH${freshPlayer.townHallLevel}!`),
+                    value: formatItems(home.spells, `✅ All spells maxed for TH${freshPlayer.townHallLevel}!`),
                     inline: false,
                   },
                   {
                     name: `⚔️ Troops (${home.troops.length})`,
-                    value: formatItems(home.troops, 'troop', 'home', `✅ All troops maxed for TH${freshPlayer.townHallLevel}!`),
+                    value: formatItems(home.troops, `✅ All troops maxed for TH${freshPlayer.townHallLevel}!`),
                     inline: false,
                   },
 
@@ -913,12 +918,12 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   ...bbDefFields,
                   {
                     name: `${EMOJIS.CROWN} BB Heroes (${bb.heroes.length})`,
-                    value: formatItems(bb.heroes, 'hero', 'builder', `✅ All BB heroes maxed for BH${freshPlayer.builderHallLevel || 10}!`),
+                    value: formatItems(bb.heroes, `✅ All BB heroes maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`),
                     inline: false,
                   },
                   {
                     name: `⚔️ BB Troops (${bb.troops.length})`,
-                    value: formatItems(bb.troops, 'troop', 'builder', `✅ All BB troops maxed for BH${freshPlayer.builderHallLevel || 10}!`),
+                    value: formatItems(bb.troops, `✅ All BB troops maxed for BH${freshPlayer.builderHallLevel || MAX_BUILDER_HALL}!`),
                     inline: false,
                   }
                 );
@@ -1013,8 +1018,15 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
                 const th = freshPlayer.townHallLevel;
                 const bh = freshPlayer.builderHallLevel || 0;
-                const thDefenses = getDetailedDefensesForTh(th);
-                const bhDefenses = bh > 0 ? getDetailedDefensesForBh(bh) : {};
+                // Without an import, list every defense the hall allows with its cap and the cost of its last level
+                const hallCapLines = (village: 'home' | 'builder', hallLevel: number) =>
+                  itemsIn(village, ['defense'])
+                    .map((item) => ({ item, count: countForHall(item, hallLevel), max: getMaxLevelForHall(item, hallLevel) }))
+                    .filter((d) => d.count > 0 && d.max > 0)
+                    .map((d) => {
+                      const last = getLevel(d.item, d.max);
+                      return `• ${d.count}x **${d.item.displayName}**: Max Lv ${d.max}${last ? ` — ${formatLevelCost(d.item, last)}` : ''}`;
+                    });
 
                 const villageInProg: InProgressUpgrade[] = (account.villageData?.inProgressUpgrades || []) as InProgressUpgrade[];
                 const legacyInProg: InProgressUpgrade[] = (account.activeUpgrades || [])
@@ -1044,17 +1056,18 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   .sort((a, b) => a.finishesAtMs - b.finishesAtMs);
 
                 // Town Hall Status
-                const thUpgradeCost = formatUpgradeCost('Town Hall', 0, 'building', 'home', th);
-                const thUpgradeStr = th >= 17
-                  ? '🏆 **Town Hall**: Maxed (TH17)'
-                  : `• **Town Hall**: 0/1 — ${thUpgradeCost}`;
+                const townHall = getById(1000001);
+                const thUpgradeCost = townHall ? formatNextCost(townHall, th) : '';
+                const thUpgradeStr = th >= MAX_TOWN_HALL
+                  ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
+                  : `• **Town Hall**: 0/1${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
 
                 // High Gear achievement
                 const highGear = (freshPlayer.achievements || []).find((a: any) => a.name === 'High Gear');
                 const gearUpsCount = highGear ? Math.min(3, highGear.value || 0) : 0;
                 const gearUpsStr = gearUpsCount >= 3
                   ? '✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)'
-                  : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar) — ${formatUpgradeCost('Defense Gear-Up', gearUpsCount, 'building', 'home')}`;
+                  : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
 
                 // Defense lines: use imported village data if available, otherwise show target caps
                 const importedHome = account.villageData?.homeDefenses as any[];
@@ -1064,9 +1077,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                         ? `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — Maxed ✨`
                         : `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${VillageImportService.formatCost(d.nextCostNumber, d.resource)}`
                     )
-                  : Object.entries(thDefenses).map(
-                      ([defName, d]) => `• ${d.count}x **${defName}**: Max Lv ${d.maxLevel} — ${d.cost}`
-                    );
+                  : hallCapLines('home', th);
 
                 const fields: any[] = [];
 
@@ -1131,10 +1142,11 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
                 let bob: any = null;
                 if (bh > 0) {
-                  const bhUpgradeCost = formatUpgradeCost('Builder Hall', 0, 'building', 'builder', bh);
-                  const bhUpgradeStr = bh >= 10
-                    ? '🏆 **Builder Hall**: Maxed (BH10)'
-                    : `• **Builder Hall**: 0/1 — ${bhUpgradeCost}`;
+                  const builderHall = getById(1000034);
+                  const bhUpgradeCost = builderHall ? formatNextCost(builderHall, bh) : '';
+                  const bhUpgradeStr = bh >= MAX_BUILDER_HALL
+                    ? `🏆 **Builder Hall**: Maxed (BH${MAX_BUILDER_HALL})`
+                    : `• **Builder Hall**: 0/1${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
 
                   bob = PlayerTrackingService.calculateSixthBuilderProgress(
                     freshPlayer,
@@ -1152,9 +1164,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                           ? `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — Maxed ✨`
                           : `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${VillageImportService.formatCost(d.nextCostNumber, d.resource)}`
                       )
-                    : Object.entries(bhDefenses).map(
-                        ([defName, d]) => `• ${d.count}x **${defName}**: Max Lv ${d.maxLevel} — ${d.cost}`
-                      );
+                    : hallCapLines('builder', bh);
 
                   const bbHeader = [
                     bhUpgradeStr,
@@ -1654,8 +1664,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   if (list.length === 0) return '✅ All maxed for this Town Hall!';
                   return list
                     .map((s) => {
-                      const cost = formatUpgradeCost(s.name, s.currentLevel, 'spell', 'home', freshPlayer.townHallLevel);
-                      const costStr = cost ? ` — ${cost}` : '';
+                      const costStr = s.nextCost ? ` — ${s.nextCost}` : '';
                       return `• **${s.name}**: Lv ${s.currentLevel}/${s.maxLevel}${costStr}`;
                     })
                     .join('\n');
@@ -1748,8 +1757,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   const formatHomeList = () => {
                     if (homeTroops.length === 0) return `🎉 All Home Village troops maxed for TH${freshPlayer.townHallLevel}!`;
                     const lines = homeTroops.map((t) => {
-                      const cost = formatUpgradeCost(t.name, t.currentLevel, 'troop', 'home', freshPlayer.townHallLevel);
-                      const costStr = cost ? ` — ${cost}` : '';
+                      const costStr = t.nextCost ? ` — ${t.nextCost}` : '';
                       return `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${costStr}`;
                     });
                     const full = lines.join('\n');
@@ -1776,8 +1784,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   const formatBuilderList = () => {
                     if (builderTroops.length === 0) return `🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`;
                     const lines = builderTroops.map((t) => {
-                      const cost = formatUpgradeCost(t.name, t.currentLevel, 'troop', 'builder', freshPlayer.builderHallLevel);
-                      const costStr = cost ? ` — ${cost}` : '';
+                      const costStr = t.nextCost ? ` — ${t.nextCost}` : '';
                       return `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${costStr}`;
                     });
                     const full = lines.join('\n');

@@ -56,6 +56,8 @@ export interface UserDoc {
 
 export interface OutstandingUpgradeItem {
   name: string;
+  code?: number;
+  nextCost?: string;
   currentLevel: number;
   maxLevel: number;
   levelsRemaining: number;
