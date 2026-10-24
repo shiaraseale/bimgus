@@ -180,7 +180,7 @@ export function formatCoCTime(cocTime: string): string {
 /**
  * Builds a clean War Matchup / Preparation embed with schedule and war format.
  */
-export function buildWarMatchupEmbed(currentWar: CurrentWarResponse): DiscordEmbed {
+function buildWarMatchupEmbed(currentWar: CurrentWarResponse): DiscordEmbed {
   const startUnix = currentWar.startTime
     ? Math.floor(new Date(formatCoCTime(currentWar.startTime)).getTime() / 1000)
     : null;

@@ -18,20 +18,15 @@ export const config = {
     raidWeekend: process.env.DISCORD_WEBHOOK_RAID_WEEKEND || '',
     clanGames: process.env.DISCORD_WEBHOOK_CLAN_GAMES || '',
   },
-  discordAuth: {
-    clientId: process.env.DISCORD_CLIENT_ID || '',
-    clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
-    guildId: process.env.DISCORD_GUILD_ID || '',
-    coLeaderRoleId: process.env.DISCORD_COLEADER_ROLE_ID || '',
-    leaderRoleId: process.env.DISCORD_LEADER_ROLE_ID || '',
-    botToken: process.env.DISCORD_BOT_TOKEN || '',
-    publicKey: process.env.DISCORD_PUBLIC_KEY || '',
-  },
   discord: {
     botToken: process.env.DISCORD_BOT_TOKEN || '',
     publicKey: process.env.DISCORD_PUBLIC_KEY || '',
     clientId: process.env.DISCORD_CLIENT_ID || '',
     guildId: process.env.DISCORD_GUILD_ID || '',
+    // For a Discord login on the dashboard (not used yet)
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
+    coLeaderRoleId: process.env.DISCORD_COLEADER_ROLE_ID || '',
+    leaderRoleId: process.env.DISCORD_LEADER_ROLE_ID || '',
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',

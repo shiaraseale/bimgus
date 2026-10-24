@@ -242,12 +242,6 @@ export class DiscordService {
     ]);
   }
 
-  /**
-   * Creates an in-game deep link opening the player's profile in Clash of Clans.
-   */
-  static playerDeepLink(tag: string): string {
-    return `https://link.clashofclans.com/en?action=OpenPlayerProfile&tag=${this.cleanTag(tag)}`;
-  }
 
   /**
    * Standard button to open the Clash of Clans app directly.

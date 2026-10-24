@@ -351,7 +351,6 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
             isPrimary: false,
             dmsEnabled,
             lastSnapshot: initialSnapshot,
-            activeUpgrades: [],
           };
 
           const updatedUser = await FirestoreService.linkAccount(discordUserId, linkedAccount);
@@ -395,7 +394,9 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
 
         if (!result.success) {
           return respondPersonal({
-            content: tagInput
+            content: result.needsTag
+              ? `⚠️ You have ${result.remainingAccounts} linked accounts, so please say which one: \`/unlink tag:#TAG\`. Use \`/accounts\` to see them.`
+              : tagInput
               ? `⚠️ Could not find linked account \`${tagInput}\` under your Discord profile. Use \`/accounts\` to check your accounts.`
               : `⚠️ You do not have any linked Clash of Clans accounts to unlink. Use \`/link\` first!`,
           });
@@ -695,7 +696,6 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
                 const village = VillageImportService.read(account.villageData);
                 const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(
                   freshPlayer,
-                  account.activeUpgrades || [],
                   account.bobDefenseCompleted || false,
                   village
                 );
@@ -744,23 +744,10 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
                 ].join('\n');
 
                 const villageInProg: InProgressUpgrade[] = village?.inProgressUpgrades || [];
-                const legacyInProg: InProgressUpgrade[] = (account.activeUpgrades || [])
-                  .filter((au: any) => !au.completed && new Date(au.finishesAt).getTime() > Date.now())
-                  .map((au: any) => ({
-                    name: au.name,
-                    dataId: au.id || '',
-                    category: (au.category || 'building') as any,
-                    village: au.village || 'home',
-                    currentLevel: Math.max(0, au.targetLevel - 1),
-                    targetLevel: au.targetLevel,
-                    maxLevel: au.maxLevelForTh || au.targetLevel,
-                    timerSeconds: Math.max(0, Math.floor((new Date(au.finishesAt).getTime() - Date.now()) / 1000)),
-                    finishesAtMs: new Date(au.finishesAt).getTime(),
-                  }));
 
                 // Hero upgrades seen starting in the API, unless the import already has their timers
                 const heroInProg = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
-                const combinedInProg = [...villageInProg, ...heroInProg, ...legacyInProg];
+                const combinedInProg = [...villageInProg, ...heroInProg];
                 const seenInProg = new Set<string>();
                 const activeInProgress = combinedInProg
                   .filter((u) => {
@@ -1103,23 +1090,10 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
                     });
 
                 const villageInProg: InProgressUpgrade[] = village?.inProgressUpgrades || [];
-                const legacyInProg: InProgressUpgrade[] = (account.activeUpgrades || [])
-                  .filter((au: any) => !au.completed && new Date(au.finishesAt).getTime() > Date.now())
-                  .map((au: any) => ({
-                    name: au.name,
-                    dataId: au.id || '',
-                    category: (au.category || 'building') as any,
-                    village: au.village || 'home',
-                    currentLevel: Math.max(0, au.targetLevel - 1),
-                    targetLevel: au.targetLevel,
-                    maxLevel: au.maxLevelForTh || au.targetLevel,
-                    timerSeconds: Math.max(0, Math.floor((new Date(au.finishesAt).getTime() - Date.now()) / 1000)),
-                    finishesAtMs: new Date(au.finishesAt).getTime(),
-                  }));
 
                 // Hero upgrades seen starting in the API, unless the import already has their timers
                 const heroInProg = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
-                const combinedInProg = [...villageInProg, ...heroInProg, ...legacyInProg];
+                const combinedInProg = [...villageInProg, ...heroInProg];
                 const seenInProg = new Set<string>();
                 const activeInProgress = combinedInProg
                   .filter((u) => {
@@ -1419,7 +1393,7 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
               const account = accounts[idx];
               try {
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
-                const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(freshPlayer, account.activeUpgrades || []);
+                const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(freshPlayer);
                 const spells = outstanding.byCategory.home.spells;
 
                 const elixirSpells = spells.filter((s) => s.resourceType === 'elixir');
@@ -1511,7 +1485,7 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
               const account = accounts[idx];
               try {
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
-                const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(freshPlayer, account.activeUpgrades || []);
+                const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(freshPlayer);
 
                 const homeTroops = outstanding.byCategory.home.troops;
                 const builderTroops = outstanding.byCategory.builder.troops;
@@ -1733,17 +1707,6 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
   if (type === InteractionType.MESSAGE_COMPONENT) {
     const customId = data.custom_id || '';
 
-    // A. Switch active account (Notice: all accounts equal)
-    if (customId.startsWith('switch_account:')) {
-      return res.json({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `🌐 All your linked Clash of Clans accounts have equal status! Commands like \`/heroes\`, \`/upgrades\`, and \`/sixth-builder\` automatically send a message for each of your accounts.`,
-          flags: 64, // Ephemeral message
-        },
-      });
-    }
-
     // B. B.O.B Defense Level 9 Toggle
     if (customId.startsWith('bob_defense_done:') || customId.startsWith('bob_defense_undone:')) {
       const [action, tag] = customId.split(':');
@@ -1758,63 +1721,6 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
               : `🔄 Builder Base Defense Lv 9 has been marked as **incomplete** for \`${tag}\`. Run \`/sixth-builder\` to view your updated progress.`
             : `⚠️ Could not find linked account \`${tag}\` under your profile.`,
           flags: 64,
-        },
-      });
-    }
-
-    // B. War Poll Voting
-    if (customId.startsWith('war_poll_in:') || customId.startsWith('war_poll_out:')) {
-      const [action, pollId] = customId.split(':');
-      const isVoteIn = action === 'war_poll_in';
-
-      const poll = await FirestoreService.getWarPoll(pollId);
-      if (!poll) {
-        return res.json({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: { content: '⚠️ This war poll is no longer active.', flags: 64 },
-        });
-      }
-
-      const voterUsername = discordUser.username || discordUser.global_name || 'Member';
-
-      // Remove existing votes from this user
-      poll.inVotes = (poll.inVotes || []).filter((v: any) => v.userId !== discordUserId);
-      poll.outVotes = (poll.outVotes || []).filter((v: any) => v.userId !== discordUserId);
-
-      if (isVoteIn) {
-        poll.inVotes.push({ userId: discordUserId, username: voterUsername });
-      } else {
-        poll.outVotes.push({ userId: discordUserId, username: voterUsername });
-      }
-
-      await FirestoreService.saveWarPoll(pollId, poll);
-
-      const inList = poll.inVotes.map((v: any) => `• ${v.username}`).join('\n') || 'None yet';
-      const outList = poll.outVotes.map((v: any) => `• ${v.username}`).join('\n') || 'None yet';
-      const expiresSec = Math.floor(new Date(poll.expiresAt).getTime() / 1000);
-
-      // Update the message in-place
-      return res.json({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-          embeds: [
-            {
-              title: `⚔️ ${poll.title}`,
-              description: [
-                `Are you ready to participate in the upcoming Clan War?`,
-                `Please declare your status before <t:${expiresSec}:R>!`,
-                '',
-                `✅ **I'm In (${poll.inVotes.length})**:`,
-                inList,
-                '',
-                `🛡️ **I'm Out (${poll.outVotes.length})**:`,
-                outList,
-              ].join('\n'),
-              color: COLORS.GOLD,
-              footer: { text: `Poll ID: ${pollId} • Bimgus War Coordinator` },
-              timestamp: new Date().toISOString(),
-            },
-          ],
         },
       });
     }

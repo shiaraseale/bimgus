@@ -4,7 +4,6 @@ import {
   SixthBuilderProgress,
   OutstandingUpgradesSummary,
   OutstandingUpgradeItem,
-  ActiveUpgrade,
   PlayerSnapshot,
 } from '../types/user';
 import {
@@ -230,7 +229,6 @@ export class PlayerTrackingService {
    */
   static calculateOutstandingUpgrades(
     player: any,
-    activeUpgrades: ActiveUpgrade[] = [],
     bobDefenseCompleted: boolean = false,
     villageData: VillageDataV2 | null = null
   ): OutstandingUpgradesSummary {
@@ -431,29 +429,6 @@ export class PlayerTrackingService {
       totalRemainingLevels += 1;
     }
 
-    // 6. Active Building / Custom Upgrades logged by user
-    for (const au of activeUpgrades) {
-      if (!au.completed) {
-        const remaining = Math.max(1, au.maxLevelForTh - au.targetLevel);
-        const resType = au.resourceType || (au.village === 'builder' ? 'builderGold' : 'gold');
-        const item = {
-          name: au.name,
-          currentLevel: au.targetLevel - 1,
-          maxLevel: au.maxLevelForTh,
-          levelsRemaining: remaining,
-          village: au.village,
-          resourceType: resType,
-          category: 'building' as const,
-        };
-        byResource[resType].push(item);
-        if (au.village === 'builder') {
-          byCategory.builder.buildings.push(item);
-        } else {
-          byCategory.home.buildings.push(item);
-        }
-      }
-    }
-
     return {
       playerTag: player.tag,
       playerName: player.name,
@@ -585,28 +560,5 @@ export class PlayerTrackingService {
       },
       updatedAt: now.toISOString(),
     };
-  }
-
-  /**
-   * Helper to parse user duration strings like "12d", "14h 30m", "3d 4h".
-   * Returns milliseconds.
-   */
-  static parseDuration(input: string): number | null {
-    const cleaned = input.toLowerCase().trim();
-    let totalMs = 0;
-
-    const daysMatch = cleaned.match(/(\d+)\s*d/);
-    if (daysMatch) totalMs += parseInt(daysMatch[1], 10) * 24 * 60 * 60 * 1000;
-
-    const hoursMatch = cleaned.match(/(\d+)\s*h/);
-    if (hoursMatch) totalMs += parseInt(hoursMatch[1], 10) * 60 * 60 * 1000;
-
-    const minsMatch = cleaned.match(/(\d+)\s*m(?!s)/);
-    if (minsMatch) totalMs += parseInt(minsMatch[1], 10) * 60 * 1000;
-
-    const secsMatch = cleaned.match(/(\d+)\s*s/);
-    if (secsMatch) totalMs += parseInt(secsMatch[1], 10) * 1000;
-
-    return totalMs > 0 ? totalMs : null;
   }
 }

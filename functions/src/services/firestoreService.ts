@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import {
   ClanSnapshotDoc,
   WarSnapshotDoc,
@@ -8,7 +8,7 @@ import {
   CwlSnapshotDoc,
   ClanGamesSnapshotDoc,
 } from '../types/db';
-import { UserDoc, LinkedAccount, ActiveUpgrade, ApprenticeTimer } from '../types/user';
+import { UserDoc, LinkedAccount } from '../types/user';
 import { config } from '../config';
 
 // Initialize Firebase Admin if not already initialized
@@ -21,7 +21,6 @@ export const db = getFirestore();
 export class FirestoreService {
   private static clansCol = db.collection('clans');
   private static usersCol = db.collection('users');
-  private static pollsCol = db.collection('warPolls');
 
   /**
    * Retrieves the current bot configuration for a clan.
@@ -219,8 +218,17 @@ export class FirestoreService {
    * Saves or updates a user document.
    */
   static async saveUser(user: UserDoc): Promise<void> {
+    // Fields nothing reads any more are removed whenever a user is saved (4.1). The accounts array is
+    // replaced as a whole, so dropping a field from each account removes it from the stored document.
+    const accounts = user.accounts.map((a: any) => {
+      const { activeUpgrades, apprenticeTimer, ...rest } = a;
+      if (rest.villageData && rest.villageData.version !== 2) delete rest.villageData; // pre-2.3 imports
+      return rest;
+    });
     await this.usersCol.doc(user.discordUserId).set({
       ...user,
+      accounts,
+      activeAccountTag: FieldValue.delete(),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
   }
@@ -260,7 +268,6 @@ export class FirestoreService {
     if (!existing) {
       const newUser: UserDoc = {
         discordUserId,
-        activeAccountTag: account.playerTag,
         dmsEnabled: account.dmsEnabled ?? true,
         accounts: [account],
         createdAt: now,
@@ -281,15 +288,8 @@ export class FirestoreService {
       updatedAccounts.push({ ...account, isPrimary: false });
     }
 
-    // Default to 'ALL' when multiple accounts exist so all accounts are equal
-    const newActiveTag =
-      existing.activeAccountTag && existing.activeAccountTag !== ''
-        ? existing.activeAccountTag
-        : (updatedAccounts.length > 1 ? 'ALL' : account.playerTag);
-
     const updatedUser: UserDoc = {
       ...existing,
-      activeAccountTag: newActiveTag,
       dmsEnabled: account.dmsEnabled !== undefined ? account.dmsEnabled : (existing.dmsEnabled ?? true),
       accounts: updatedAccounts,
       updatedAt: now,
@@ -300,44 +300,23 @@ export class FirestoreService {
   }
 
   /**
-   * Sets the active account tag for commands (supports 'ALL' for equal multi-account mode).
-   */
-  static async setActiveAccount(discordUserId: string, playerTag: string): Promise<UserDoc | null> {
-    const user = await this.getUser(discordUserId);
-    if (!user) return null;
-
-    if (playerTag.toUpperCase() === 'ALL') {
-      user.activeAccountTag = 'ALL';
-      await this.saveUser(user);
-      return user;
-    }
-
-    const formatted = config.formatTag(playerTag);
-    const found = user.accounts.find((a) => a.playerTag.toUpperCase() === formatted.toUpperCase());
-    if (!found) return null;
-
-    user.activeAccountTag = formatted;
-    await this.saveUser(user);
-    return user;
-  }
-
-  /**
    * Unlinks a player account for a Discord user.
    * If it was the last account, removes the user record.
    */
   static async unlinkAccount(
     discordUserId: string,
     playerTag?: string
-  ): Promise<{ success: boolean; removedTag: string; remainingAccounts: number; removedName?: string }> {
+  ): Promise<{ success: boolean; removedTag: string; remainingAccounts: number; removedName?: string; needsTag?: boolean }> {
     const user = await this.getUser(discordUserId);
     if (!user || user.accounts.length === 0) {
       return { success: false, removedTag: '', remainingAccounts: 0 };
     }
 
-    let tagToRemove = playerTag ? config.formatTag(playerTag) : (user.activeAccountTag || user.accounts[0]?.playerTag);
-    if (!tagToRemove) {
-      return { success: false, removedTag: '', remainingAccounts: user.accounts.length };
+    // Without a tag, only an only account can be unlinked
+    if (!playerTag && user.accounts.length > 1) {
+      return { success: false, removedTag: '', remainingAccounts: user.accounts.length, needsTag: true };
     }
+    const tagToRemove = playerTag ? config.formatTag(playerTag) : user.accounts[0].playerTag;
 
     const index = user.accounts.findIndex(
       (a) => a.playerTag.toUpperCase() === tagToRemove.toUpperCase()
@@ -348,11 +327,6 @@ export class FirestoreService {
     }
 
     const removedAccount = user.accounts.splice(index, 1)[0];
-
-    // If active account was removed, shift active to first remaining
-    if (user.activeAccountTag?.toUpperCase() === removedAccount.playerTag.toUpperCase()) {
-      user.activeAccountTag = user.accounts.length > 0 ? user.accounts[0].playerTag : '';
-    }
 
     if (user.accounts.length === 0) {
       await this.usersCol.doc(discordUserId).delete();
@@ -366,47 +340,6 @@ export class FirestoreService {
       removedName: removedAccount.name,
       remainingAccounts: user.accounts.length,
     };
-  }
-
-  /**
-   * Adds an active building upgrade timer to an account.
-   */
-  static async addActiveUpgrade(
-    discordUserId: string,
-    playerTag: string,
-    upgrade: ActiveUpgrade
-  ): Promise<boolean> {
-    const user = await this.getUser(discordUserId);
-    if (!user) return false;
-
-    const formatted = config.formatTag(playerTag);
-    const account = user.accounts.find((a) => a.playerTag.toUpperCase() === formatted.toUpperCase());
-    if (!account) return false;
-
-    account.activeUpgrades = account.activeUpgrades || [];
-    account.activeUpgrades.push(upgrade);
-    await this.saveUser(user);
-    return true;
-  }
-
-  /**
-   * Sets the apprentice builder timer for an account.
-   */
-  static async setApprenticeTimer(
-    discordUserId: string,
-    playerTag: string,
-    timer: ApprenticeTimer
-  ): Promise<boolean> {
-    const user = await this.getUser(discordUserId);
-    if (!user) return false;
-
-    const formatted = config.formatTag(playerTag);
-    const account = user.accounts.find((a) => a.playerTag.toUpperCase() === formatted.toUpperCase());
-    if (!account) return false;
-
-    account.apprenticeTimer = timer;
-    await this.saveUser(user);
-    return true;
   }
 
   /**
@@ -428,20 +361,4 @@ export class FirestoreService {
     await this.saveUser(user);
     return true;
   }
-
-  /**
-   * Gets a War Poll by ID.
-   */
-  static async getWarPoll(pollId: string): Promise<any | null> {
-    const doc = await this.pollsCol.doc(pollId).get();
-    return doc.exists ? doc.data() : null;
-  }
-
-  /**
-   * Saves or updates a War Poll.
-   */
-  static async saveWarPoll(pollId: string, data: any): Promise<void> {
-    await this.pollsCol.doc(pollId).set(data, { merge: true });
-  }
 }
-

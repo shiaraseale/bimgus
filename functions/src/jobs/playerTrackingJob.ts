@@ -97,54 +97,11 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         }
       }
 
-      // Manually logged upgrades (legacy; nothing creates new ones)
-      if (Array.isArray(account.activeUpgrades)) {
-        for (const au of account.activeUpgrades) {
-          if (!au.completed && new Date(au.finishesAt).getTime() <= Date.now()) {
-            au.completed = true;
-            userModified = true;
-            events.push({
-              kind: 'expected', name: au.name, assetName: au.name, category: au.category, village: au.village,
-              oldLevel: au.targetLevel - 1, newLevel: au.targetLevel, maxLevel: au.maxLevelForTh || au.targetLevel,
-              count: 1, key: `manual:${au.id}`,
-            });
-          }
-        }
-      }
-
       if (events.length > 0) {
         dmsSent += await notifyUpgrades(user, account, events);
         userModified = true;
       }
 
-      // Check Builder's Apprentice timer
-      if (
-        account.apprenticeTimer &&
-        !account.apprenticeTimer.notified &&
-        new Date(account.apprenticeTimer.readyAt).getTime() <= Date.now()
-      ) {
-        account.apprenticeTimer.notified = true;
-        userModified = true;
-
-        if (account.dmsEnabled !== false) {
-          await DiscordService.sendDm(user.discordUserId, {
-            embeds: [
-              {
-                title: `🛠️ [${account.name}] Builder's Apprentice Ready!`,
-                description: `Your **Builder's Apprentice** is rested and ready for a new assignment!`,
-                color: COLORS.GOLD,
-                thumbnail: { url: CocAssetService.getApprenticeUrl('builder') },
-                footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` },
-                timestamp: new Date().toISOString(),
-              },
-            ],
-            components: [
-              DiscordService.createActionRow([DiscordService.openGameLinkButton()]),
-            ],
-          });
-          dmsSent++;
-        }
-      }
     }
 
     if (userModified) {

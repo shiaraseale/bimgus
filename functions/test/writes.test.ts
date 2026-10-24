@@ -47,3 +47,33 @@ describe('only write when something changed (3.4)', () => {
     });
   });
 });
+
+describe('saveUser removes fields nothing reads any more (4.1)', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('drops manual timers, the apprentice timer, old imports and activeAccountTag', async () => {
+    const set = vi.fn(async () => {});
+    vi.spyOn((FirestoreService as any).usersCol, 'doc').mockReturnValue({ set });
+    await FirestoreService.saveUser({
+      discordUserId: '42', createdAt: '', updatedAt: '', activeAccountTag: 'ALL',
+      accounts: [
+        { playerTag: '#A', name: 'A', townHallLevel: 12, isPrimary: true, activeUpgrades: [], apprenticeTimer: {}, villageData: { homeDefenses: [] } },
+        { playerTag: '#B', name: 'B', townHallLevel: 9, isPrimary: false, villageData: { version: 2, items: [] } },
+      ],
+    } as any);
+    const [doc, opts] = set.mock.calls[0] as any;
+    expect(opts).toEqual({ merge: true });
+    expect(doc.accounts[0]).toEqual({ playerTag: '#A', name: 'A', townHallLevel: 12, isPrimary: true });
+    expect(doc.accounts[1].villageData).toEqual({ version: 2, items: [] });
+    expect(doc.activeAccountTag.constructor.name).toMatch(/DeleteTransform|FieldValue/);
+  });
+
+  it('/unlink without a tag only works for a single account', async () => {
+    vi.spyOn(FirestoreService, 'getUser').mockResolvedValue({
+      discordUserId: '42', createdAt: '', updatedAt: '',
+      accounts: [{ playerTag: '#A', name: 'A', townHallLevel: 1, isPrimary: true }, { playerTag: '#B', name: 'B', townHallLevel: 1, isPrimary: false }],
+    } as any);
+    const result = await FirestoreService.unlinkAccount('42');
+    expect(result).toMatchObject({ success: false, needsTag: true, remainingAccounts: 2 });
+  });
+});

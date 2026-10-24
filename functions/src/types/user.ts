@@ -1,23 +1,3 @@
-export interface ActiveUpgrade {
-  id: string;
-  name: string;
-  village: 'home' | 'builder';
-  targetLevel: number;
-  maxLevelForTh: number;
-  resourceType?: 'gold' | 'elixir' | 'darkElixir' | 'builderGold' | 'builderElixir' | 'ores';
-  category: 'defense' | 'hero' | 'troop' | 'spell' | 'resource' | 'army' | 'equipment' | 'other';
-  startedAt: string;
-  finishesAt: string;
-  completed: boolean;
-}
-
-export interface ApprenticeTimer {
-  assignedAt: string;
-  readyAt: string;
-  target?: string;
-  notified: boolean;
-}
-
 export interface SnapshotEntry {
   name?: string;
   level: number;
@@ -73,8 +53,6 @@ export interface LinkedAccount {
   builderHallLevel?: number;
   isPrimary: boolean;
   lastSnapshot?: PlayerSnapshot;
-  activeUpgrades?: ActiveUpgrade[];
-  apprenticeTimer?: ApprenticeTimer;
   dmsEnabled?: boolean;
   bobDefenseCompleted?: boolean;
   villageData?: any;
@@ -87,7 +65,6 @@ export interface LinkedAccount {
 export interface UserDoc {
   discordUserId: string;
   dmChannelId?: string;
-  activeAccountTag?: string;
   dmsEnabled?: boolean;
   // Set when Discord refuses DMs to this user (50007); DMs pause for 7 days
   dmsBlockedAt?: string;

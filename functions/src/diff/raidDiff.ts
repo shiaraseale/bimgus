@@ -9,7 +9,7 @@ import { EMOJIS } from '../constants/emojis';
  * or when the raid weekend concludes while a capital was partially attacked.
  * Details all attacks grouped by district in chronological order, showing 0% for unattacked districts.
  */
-export function buildCapitalConqueredEmbed(
+function buildCapitalConqueredEmbed(
   raid: NonNullable<CapitalRaidWeekend['attackLog']>[number],
   weekendTotals?: {
     districtsDestroyed: number;
