@@ -55,6 +55,13 @@ describe('CWL war lookups (3.3)', () => {
     expect(await findActiveCwlWar(onlyPrep, US, coc, ['inWar'])).toBeNull();
   });
 
+  it('marks an ended round as done even with round summaries switched off', async () => {
+    vi.spyOn(DiscordService, 'sendWebhook').mockResolvedValue(true);
+    const prev: any = { season: '2026-10', state: 'inWar', clans: [], announcedGroup: true, loggedRoundIndices: [], updatedAt: '' };
+    const snapshot = await processCwlDiff(group, US, prev, { webhooks: {}, notificationsEnabled: {} } as any, coc);
+    expect(snapshot?.loggedRoundIndices.sort()).toEqual([0, 1]);
+  });
+
   it('the poll skips rounds that are fully reported and remembers our war tags', async () => {
     vi.spyOn(DiscordService, 'sendWebhook').mockResolvedValue(true);
     const config: any = { webhooks: {}, notificationsEnabled: {} };

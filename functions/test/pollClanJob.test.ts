@@ -64,6 +64,16 @@ describe('runPollClanJob', () => {
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[Poll] War failed'));
   });
 
+  it('saves the war before player tracking and the reminders run (they set flags on it)', async () => {
+    const order: string[] = [];
+    (FirestoreService.getWarSnapshot as any).mockImplementation(async () => { order.push('war'); return null; });
+    (runPlayerTrackingJob as any).mockImplementation(async () => { order.push('tracking'); return { checkedAccounts: 0, dmsSent: 0 }; });
+    (runWarPingJob as any).mockImplementation(async () => { order.push('reminders'); return { success: true, message: 'ok' }; });
+    coc.getCurrentWar.mockResolvedValueOnce({ state: 'inWar' } as any);
+    await runPollClanJob(undefined, { scheduleTime: at('2026-10-24T12:30:00') });
+    expect(order).toEqual(['war', 'tracking', 'reminders']);
+  });
+
   it('runs the war reminders from the 2-minute job at :30', async () => {
     await runPollClanJob(undefined, { scheduleTime: at('2026-10-24T12:30:00') });
     expect(runWarPingJob).toHaveBeenCalledTimes(1);

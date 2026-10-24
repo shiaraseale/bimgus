@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { readStoredKey, storeKey } from './storage';
 import type { ClanData, WarData, BotConfig } from './types';
 import { Header } from './components/Header';
 import { WarRoom } from './components/WarRoom';
@@ -35,17 +36,13 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
 
   const [adminKey, setAdminKey] = useState<string>(() => {
-    return typeof window !== 'undefined' ? (localStorage.getItem('bimgus_admin_key') || '') : '';
+    return readStoredKey();
   });
 
   const handleAdminKeyChange = (key: string) => {
     setAdminKey(key);
-    if (key) {
-      localStorage.setItem('bimgus_admin_key', key);
-    } else {
-      localStorage.removeItem('bimgus_admin_key');
-      setConfig(null);
-    }
+    storeKey(key);
+    if (!key) setConfig(null);
   };
 
   const fetchConfig = async (keyToUse = adminKey) => {

@@ -53,6 +53,18 @@ describe('/roast task', () => {
     expect(patched).toEqual([{ url: expect.stringContaining('/webhooks/app/tok/messages/@original'), body: { content: '<@7> your walls are a welcome mat.' } }]);
   });
 
+  it('only mentions missed attacks once the war has ended', async () => {
+    vi.spyOn(FirestoreService, 'getUser').mockResolvedValue(userWithSnapshot(60_000));
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ data: {} } as any);
+    const audit = { zeroAttacks: [{ tag: '#ANON12345' }], partialAttacks: [] };
+    vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue({ state: 'inWar', postWarAudit: audit } as any);
+    await runRoastTask(task, now);
+    expect((post.mock.calls[0][1] as any).input).not.toContain('Missed all attacks');
+    vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue({ state: 'warEnded', postWarAudit: audit } as any);
+    await runRoastTask(task, now);
+    expect((post.mock.calls[1][1] as any).input).toContain('Missed all attacks');
+  });
+
   it('makes one live call when the snapshot is stale', async () => {
     vi.spyOn(FirestoreService, 'getUser').mockResolvedValue(userWithSnapshot(60 * 60_000));
     vi.spyOn(axios, 'post').mockResolvedValue({ data: {} } as any);

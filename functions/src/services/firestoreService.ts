@@ -135,7 +135,8 @@ export class FirestoreService {
 
   static async saveClanSnapshot(snapshot: ClanSnapshotDoc): Promise<void> {
     const formattedTag = config.formatTag(snapshot.tag);
-    await this.clansCol.doc(formattedTag).set(snapshot, { merge: true });
+    // Replaced, not merged: a merge never removes departed members from membersMap
+    await this.clansCol.doc(formattedTag).set(snapshot);
   }
 
   /**

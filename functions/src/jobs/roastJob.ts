@@ -74,7 +74,8 @@ async function accountRoastData(acc: LinkedAccount, cocService: CocService, warS
     }
   }
 
-  const audit = warSnap?.postWarAudit;
+  // The audit is worked out during the war too; only an ended war's audit means attacks were missed
+  const audit = warSnap?.state === 'warEnded' ? warSnap.postWarAudit : undefined;
   if (audit) {
     const tag = acc.playerTag.toUpperCase();
     const missed = audit.zeroAttacks?.find((m: any) => m.tag.toUpperCase() === tag);

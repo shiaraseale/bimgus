@@ -4,6 +4,8 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
 
+const MAX_DESCRIPTION = 4096;
+
 /**
  * Builds a rich summary embed when an entire enemy clan capital is conquered (100% destroyed),
  * or when the raid weekend concludes while a capital was partially attacked.
@@ -89,11 +91,18 @@ function buildCapitalConqueredEmbed(
     raid.defender.badgeUrls?.medium ||
     raid.defender.badgeUrls?.small;
 
+  // Discord rejects descriptions over 4,096 characters; drop the per-hit lines if needed
+  let description = lines.join('\n');
+  if (description.length > MAX_DESCRIPTION) {
+    description = lines.filter((l) => !l.startsWith('   └ ⚔️')).join('\n');
+  }
+  if (description.length > MAX_DESCRIPTION) description = description.slice(0, MAX_DESCRIPTION - 1) + '…';
+
   return {
     title: isPartialWeekendEnd
       ? `${EMOJIS.RAID} Raid Weekend Concluded: ${raid.defender.name} (Partial Attack)`
       : `${EMOJIS.RAID} Clan Capital Conquered: ${raid.defender.name}`,
-    description: lines.join('\n'),
+    description,
     color: isPartialWeekendEnd ? COLORS.PURPLE : COLORS.GOLD,
     thumbnail: badgeUrl ? { url: badgeUrl } : undefined,
     footer: { text: 'Clan Capital Raid Weekend • Bimgus Tracker' },
@@ -111,8 +120,8 @@ export async function processRaidDiff(
   const webhookUrl = config.webhooks.raidWeekend;
   const isNewWeekend = !prevSnapshot || prevSnapshot.weekendId !== weekendId;
 
-  // 1. Raid Weekend Start Announcement
-  if (isNewWeekend && webhookUrl && latestRaid.state === 'ongoing') {
+  // 1. Raid Weekend Start Announcement (not on the very first run, which only records a baseline)
+  if (isNewWeekend && prevSnapshot && webhookUrl && latestRaid.state === 'ongoing') {
     const embed: DiscordEmbed = {
       title: `${EMOJIS.RAID} Raid Weekend Started!`,
       description: [

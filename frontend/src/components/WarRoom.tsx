@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { readStoredKey } from '../storage';
 import type { WarData } from '../types';
 import { Swords, ShieldAlert, Star, BellRing, Clock } from 'lucide-react';
 import { TownHallBadge } from './TownHallBadge';
@@ -10,7 +11,7 @@ interface WarRoomProps {
 }
 
 export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
-  const effectiveKey = adminKey || (typeof window !== 'undefined' ? localStorage.getItem('bimgus_admin_key') || '' : '');
+  const effectiveKey = adminKey || readStoredKey();
   const [isNudging, setIsNudging] = useState(false);
   const [nudgeMessage, setNudgeMessage] = useState<string | null>(null);
 
@@ -26,7 +27,8 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
 
   const clan = war.clan;
   const opponent = war.opponent;
-  const attacksPerMember = 2;
+  // Regular wars allow 2 attacks each; CWL allows 1 (the API sends attacksPerMember for regular wars)
+  const attacksPerMember = war.attacksPerMember || (war.isCwl ? 1 : 2);
   const teamSize = war.teamSize || clan.members.length || 15;
 
   // Unused attacks list
@@ -158,7 +160,7 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
             <Swords size={16} /> {isPrep ? '⏳ Preparation Day Active' : war.state === 'inWar' ? '🔥 Battle Day Live' : '🏁 War Ended'}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1', fontFamily: 'var(--font-coc)', fontSize: '0.95rem' }}>
-            <Clock size={16} style={{ color: 'var(--gold)' }} /> Format: {teamSize} vs {teamSize} ({teamSize * 2} Hits Total)
+            <Clock size={16} style={{ color: 'var(--gold)' }} /> Format: {teamSize} vs {teamSize} ({teamSize * attacksPerMember} Hits Total)
           </div>
         </div>
 
@@ -193,7 +195,7 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
               {clan.stars} <Star size={30} style={{ fill: '#ffd700', color: '#ffb300' }} />
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-              {clan.attacks} / {teamSize * 2} Attacks
+              {clan.attacks} / {teamSize * attacksPerMember} Attacks
             </div>
             {/* 3D Progress Bar */}
             <div className="coc-progress-track" style={{ marginTop: '12px' }}>
@@ -249,7 +251,7 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
               {opponent.stars} <Star size={30} style={{ fill: '#f87171', color: '#b91c1c' }} />
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-              {opponent.attacks} / {teamSize * 2} Attacks
+              {opponent.attacks} / {teamSize * attacksPerMember} Attacks
             </div>
             {/* 3D Progress Bar */}
             <div className="coc-progress-track" style={{ marginTop: '12px' }}>
@@ -277,7 +279,7 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
             </div>
             {unusedAttackers.length === 0 ? (
               <p style={{ fontSize: '0.88rem', color: 'var(--gem-green)', fontWeight: 600 }}>
-                ✅ Flawless! All players have used both attacks.
+                ✅ Flawless! All players have used all their attacks.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>

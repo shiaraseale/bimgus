@@ -71,6 +71,9 @@ export interface WarAudit {
 export interface WarData {
   state: 'notInWar' | 'preparation' | 'inWar' | 'warEnded';
   teamSize?: number;
+  attacksPerMember?: number;
+  isCwl?: boolean;
+  cwlRound?: number;
   startTime?: string;
   endTime?: string;
   clan: WarClan;

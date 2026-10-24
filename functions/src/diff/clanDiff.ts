@@ -30,13 +30,15 @@ export async function processClanDiff(
   }
 
   const prevMap = previousSnapshot.membersMap;
+  // Joins are judged by the tag list: older snapshots kept departed members in membersMap
+  const prevTags = new Set(previousSnapshot.memberTags);
   const webhookUrl = config.webhooks.clanActivity;
   const embedsToSend: DiscordEmbed[] = [];
 
   if (webhookUrl && config.notificationsEnabled.memberJoinedLeft) {
     // 1. Check for joined members
     for (const tag of currentTags) {
-      if (!prevMap[tag]) {
+      if (!prevTags.has(tag)) {
         const joined = currentMembersMap[tag];
         embedsToSend.push({
           title: '📥 New Member Joined',
@@ -79,7 +81,7 @@ export async function processClanDiff(
   // 3. Check for role changes & promotions
   if (webhookUrl && config.notificationsEnabled.roleChanges) {
     for (const tag of currentTags) {
-      const prev = prevMap[tag];
+      const prev = prevTags.has(tag) ? prevMap[tag] : undefined;
       const curr = currentMembersMap[tag];
       if (prev && curr && prev.role !== curr.role) {
         const isPromotion = getRoleWeight(curr.role) > getRoleWeight(prev.role);
@@ -102,7 +104,7 @@ export async function processClanDiff(
   // 4. Check for Town Hall level upgrades
   if (webhookUrl && config.notificationsEnabled.thUpgrades) {
     for (const tag of currentTags) {
-      const prev = prevMap[tag];
+      const prev = prevTags.has(tag) ? prevMap[tag] : undefined;
       const curr = currentMembersMap[tag];
       if (
         prev &&

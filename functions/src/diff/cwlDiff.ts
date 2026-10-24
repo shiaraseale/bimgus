@@ -641,6 +641,11 @@ export async function processCwlDiff(
           }
           loggedAttackOrders[warTag] = Array.from(warLoggedOrders);
 
+          // A finished round with summaries off has nothing left to report either
+          if (war.state === 'warEnded' && (!webhookUrl || !config.notificationsEnabled.cwlRoundSummary)) {
+            loggedRounds.add(roundIndex);
+          }
+
           // D. Round Completed Summary & Audit
           if (
             webhookUrl &&

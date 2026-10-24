@@ -127,8 +127,10 @@ export async function processWarDiff(
   const { postWarAudit } = buildWarEndSummaryMessages(currentWar);
 
   // 4. War Ended Announcement
+  // Only for a war the bot saw before it ended, so a first run (or a fresh deploy) doesn't post an old war
   if (
     currentWar.state === 'warEnded' &&
+    isSameWar &&
     prevSnapshot?.state !== 'warEnded' &&
     webhookUrl &&
     config.notificationsEnabled.warEndSummary

@@ -9,7 +9,7 @@ import { runPlayerTrackingJob } from './playerTrackingJob';
 import { runWarPingJob } from './warPingJob';
 import { config } from '../config';
 import { changedIgnoringUpdatedAt } from '../utils/changes';
-import { findActiveCwlWar } from '../diff/cwlWars';
+import { findActiveCwlWar, withOurClanFirst } from '../diff/cwlWars';
 
 const TICK_MS = 2 * 60 * 1000;
 // Each task gets this long before the run stops waiting for it (the function's timeout is longer)
@@ -77,11 +77,10 @@ export async function runPollClanJob(
     await FirestoreService.saveRaw(targetTag, 'clan', clanData);
     if (changedIgnoringUpdatedAt(prevClanSnapshot, newClanSnapshot)) await FirestoreService.saveClanSnapshot(newClanSnapshot);
 
-    // 2. Everything else in parallel
-    const work: Array<Promise<void>> = [];
-
+    // 2. The war next, on its own: the war snapshot it saves carries flags that player tracking (the
+    // roster DMs) and the reminders set, so those must run after it, not alongside it
     if (tasks.war) {
-      work.push(runTask('War', async () => {
+      await runTask('War', async () => {
         try {
           const warData = await cocService.getCurrentWar(targetTag);
           const prevWarSnapshot = await FirestoreService.getWarSnapshot(targetTag);
@@ -99,8 +98,11 @@ export async function runPollClanJob(
           }
           throw warErr;
         }
-      }));
+      });
     }
+
+    // 3. Everything else in parallel
+    const work: Array<Promise<void>> = [];
 
     if (tasks.cwl) {
       work.push(runTask('CWL', async () => {
@@ -121,7 +123,7 @@ export async function runPollClanJob(
           await FirestoreService.saveRaw(
             targetTag,
             'cwlWar',
-            active ? { ...active.war, isCwl: true, cwlRound: active.roundIndex + 1, cwlSeason: cwlGroup.season } : null
+            active ? { ...withOurClanFirst(active.war, targetTag), isCwl: true, attacksPerMember: 1, cwlRound: active.roundIndex + 1, cwlSeason: cwlGroup.season } : null
           );
         } catch (cwlErr: any) {
           if (cwlErr.response?.status === 404) {
@@ -159,14 +161,15 @@ export async function runPollClanJob(
       }));
     }
 
+    await Promise.all(work);
+
+    // 4. Reminders last, after the war and CWL snapshots for this tick are saved
     if (tasks.warReminders) {
-      work.push(runTask('War reminders', async () => {
+      await runTask('War reminders', async () => {
         const result = await runWarPingJob(targetTag);
         console.log('[Poll] War reminders:', result.message);
-      }));
+      });
     }
-
-    await Promise.all(work);
     return { success: true, message: `Successfully polled clan ${targetTag}` };
   } catch (err: any) {
     console.error(`[Poll] Error during polling job: ${err.message}`);

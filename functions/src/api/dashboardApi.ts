@@ -8,7 +8,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { runPollClanJob } from '../jobs/pollClanJob';
 import { buildCwlSeasonSummary, sendCwlSeasonSummaryDiscord } from '../diff/cwlDiff';
 import { sendWarSummaryDiscord } from '../diff/warDiff';
-import { findActiveCwlWar } from '../diff/cwlWars';
+import { findActiveCwlWar, withOurClanFirst } from '../diff/cwlWars';
 
 import { discordInteractionsRouter } from './discordInteractions';
 import { registerDiscordCommands } from '../scripts/registerCommands';
@@ -136,8 +136,9 @@ router.get('/clan/:tag/war', publicCache, async (req, res) => {
             return res.json({
               success: true,
               data: {
-                ...active.war,
+                ...withOurClanFirst(active.war, clanTag),
                 isCwl: true,
+                attacksPerMember: 1,
                 cwlRound: active.roundIndex + 1,
                 cwlSeason: cwlGroup.season,
               },
