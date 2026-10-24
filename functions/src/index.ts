@@ -4,6 +4,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { runPollClanJob } from './jobs/pollClanJob';
 import { runWarPingJob } from './jobs/warPingJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
+import { proxyKeySecret } from './services/cocService';
 
 /**
  * Scheduled Cloud Function (2nd Gen):
@@ -15,6 +16,7 @@ export const pollClanScheduled = onSchedule(
     timeZone: 'UTC',
     memory: '256MiB',
     timeoutSeconds: 60,
+    secrets: [proxyKeySecret],
   },
   async () => {
     console.log('[Schedule] Running pollClanScheduled...');
@@ -46,6 +48,7 @@ export const warReminderScheduled = onSchedule(
     timeZone: 'UTC',
     memory: '256MiB',
     timeoutSeconds: 60,
+    secrets: [proxyKeySecret],
   },
   async () => {
     console.log('[Schedule] Running warReminderScheduled...');
@@ -63,7 +66,7 @@ export const api = onRequest(
     cors: true,
     memory: '512MiB',
     timeoutSeconds: 60,
-    secrets: [adminApiKey],
+    secrets: [adminApiKey, proxyKeySecret],
   },
   dashboardApp
 );
