@@ -1,10 +1,9 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Try loading from functions/.env, current directory, or root
-dotenv.config();
+// Load functions/.env only (from src/ or lib/), never a .env elsewhere in the repo.
+// Deployed functions get these values from Firebase, so this matters only for local runs.
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export const config = {
   coc: {
