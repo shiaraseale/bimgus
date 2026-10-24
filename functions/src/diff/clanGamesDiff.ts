@@ -3,6 +3,7 @@ import { ClanGamesSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
+import { isClanGamesActive } from './clanGamesWindow';
 
 const MAX_CLAN_GAMES_POINTS = 10000;
 
@@ -20,12 +21,11 @@ export async function processClanGamesDiff(
   prevSnapshot: ClanGamesSnapshotDoc | null,
   config: BotConfigDoc,
   cocService: CocService,
-  clanTag: string = '#ABC123'
+  clanTag: string = '#ABC123',
+  now: Date = new Date()
 ): Promise<ClanGamesSnapshotDoc> {
-  const now = new Date();
-  const currentDay = now.getUTCDate();
   const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  const isEventWindow = currentDay >= 22 && currentDay <= 28;
+  const isEventWindow = isClanGamesActive(now);
 
   const webhookUrl = config.webhooks.clanGames;
 
@@ -57,7 +57,7 @@ export async function processClanGamesDiff(
         '',
         `🎯 **Max Points per Player**: ${MAX_CLAN_GAMES_POINTS.toLocaleString()} pts`,
         `🏆 **Clan Tier 6 Goal**: 50,000 pts`,
-        `⏳ **Event Window**: 22nd – 28th`,
+        `⏳ **Event Window**: 22nd 08:00 UTC – 28th`,
         '',
         '**Reward Milestones**:',
         '• **Tier 1**: 3,000 pts',
