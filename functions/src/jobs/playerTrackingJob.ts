@@ -4,6 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { PlayerTrackingService } from '../services/playerTrackingService';
 import { CocAssetService } from '../services/cocAssetService';
 import { config } from '../config';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { getWarId } from '../diff/warDiff';
 import { InProgressUpgrade, VillageImportService } from '../services/villageImportService';
 import {
@@ -15,6 +16,8 @@ import {
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
 
+const USER_CONCURRENCY = 3;
+
 export async function runPlayerTrackingJob(): Promise<{ success: boolean; checkedAccounts: number; dmsSent: number }> {
   const users = await FirestoreService.getAllUsers();
   if (!users || users.length === 0) {
@@ -25,7 +28,8 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
   let checkedAccounts = 0;
   let dmsSent = 0;
 
-  for (const user of users) {
+  // A few users at a time (3.2): each user's accounts and save stay in order
+  await mapWithConcurrency(users, USER_CONCURRENCY, async (user) => {
     let userModified = false;
 
     for (let i = 0; i < user.accounts.length; i++) {
@@ -135,7 +139,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
     if (userModified) {
       await FirestoreService.saveUser(user);
     }
-  }
+  });
 
   // 4. Check for War Preparation Roster Announcements
   try {

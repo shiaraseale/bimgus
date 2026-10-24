@@ -4,6 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
 import { isClanGamesActive } from './clanGamesWindow';
+import { mapWithConcurrency } from '../utils/concurrency';
 
 const MAX_CLAN_GAMES_POINTS = 10000;
 
@@ -82,9 +83,14 @@ export async function processClanGamesDiff(
   // Sample up to 15 members per poll cycle
   const sampleMembers = members.slice(0, 15);
 
-  for (const member of sampleMembers) {
+  // Fetch a few at a time (3.2), then process in roster order
+  const players = await mapWithConcurrency(sampleMembers, 5, (member) =>
+    cocService.getPlayer(member.tag).catch(() => null)
+  );
+  for (const [i, member] of sampleMembers.entries()) {
     try {
-      const player = await cocService.getPlayer(member.tag);
+      const player = players[i];
+      if (!player) continue;
       const achievement = player.achievements?.find((a: any) => a.name === 'Games Champion');
       const currentValue = achievement ? achievement.value : 0;
 

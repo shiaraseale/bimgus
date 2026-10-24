@@ -3,25 +3,25 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { runPollClanJob } from './jobs/pollClanJob';
-import { runWarPingJob } from './jobs/warPingJob';
 import { dashboardApp, adminApiKey } from './api/dashboardApi';
 import { proxyKeySecret } from './services/cocService';
 import { RoastTaskData, runRoastTask } from './jobs/roastJob';
 import { ImportTaskData, runImportTask } from './jobs/importJob';
 
 /**
- * Scheduled Cloud Function (2nd Gen):
- * Runs every 2 minutes to poll Clash of Clans and stream diffs to Discord.
+ * Scheduled Cloud Function (2nd Gen): the only scheduled job (3.1). Every 2 minutes it polls the clan
+ * and decides per tick what else to run, including the war reminders that used to be a separate
+ * 30-minute job, so only one Cloud Scheduler job is used per environment (D10).
  */
 export const pollClanScheduled = onSchedule(
   {
     schedule: 'every 2 minutes',
     timeZone: 'UTC',
     memory: '256MiB',
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     secrets: [proxyKeySecret],
   },
-  async () => {
+  async (event) => {
     console.log('[Schedule] Running pollClanScheduled...');
 
     // Fire API warming ping if configured, without blocking the poll job
@@ -32,31 +32,13 @@ export const pollClanScheduled = onSchedule(
         })
       : null;
 
-    const result = await runPollClanJob();
+    const scheduleTime = event.scheduleTime ? new Date(event.scheduleTime) : new Date();
+    const result = await runPollClanJob(undefined, { scheduleTime });
     console.log('[Schedule] Result:', result);
 
     if (pingPromise) {
       await pingPromise;
     }
-  }
-);
-
-/**
- * Scheduled Cloud Function (2nd Gen):
- * Runs every 30 minutes to check if war attacks are pending with <4h remaining.
- */
-export const warReminderScheduled = onSchedule(
-  {
-    schedule: 'every 30 minutes',
-    timeZone: 'UTC',
-    memory: '256MiB',
-    timeoutSeconds: 60,
-    secrets: [proxyKeySecret],
-  },
-  async () => {
-    console.log('[Schedule] Running warReminderScheduled...');
-    const result = await runWarPingJob();
-    console.log('[Schedule] Result:', result);
   }
 );
 
