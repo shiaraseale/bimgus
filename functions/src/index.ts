@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { config } from './config';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
@@ -26,7 +27,7 @@ export const pollClanScheduled = onSchedule(
     console.log('[Schedule] Running pollClanScheduled...');
 
     // Fire API warming ping if configured, without blocking the poll job
-    const pingUrl = process.env.API_PING_URL;
+    const pingUrl = config.apiPingUrl;
     const pingPromise = pingUrl
       ? axios.get(pingUrl, { timeout: 5000 }).catch((err: any) => {
           console.warn(`[Ping] Warning: warming ping failed (${err.message})`);

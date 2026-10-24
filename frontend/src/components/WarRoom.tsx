@@ -10,7 +10,7 @@ interface WarRoomProps {
   adminKey?: string;
 }
 
-export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
+export const WarRoom: React.FC<WarRoomProps> = ({ war, clanTag, adminKey }) => {
   const effectiveKey = adminKey || readStoredKey();
   const [isNudging, setIsNudging] = useState(false);
   const [nudgeMessage, setNudgeMessage] = useState<string | null>(null);
@@ -129,7 +129,7 @@ export const WarRoom: React.FC<WarRoomProps> = ({ war, adminKey }) => {
     setIsNudging(true);
     setNudgeMessage(null);
     try {
-      const res = await fetch('/api/clan/%23ABC123/poll', {
+      const res = await fetch(`/api/clan/${encodeURIComponent(clanTag)}/poll`, {
         method: 'POST',
         headers: {
           'X-Admin-Key': effectiveKey,

@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
                 borderRadius: '4px',
                 border: '1px solid rgba(6, 182, 212, 0.3)'
               }}>
-                {clan?.tag || '#ABC123'}
+                {clan?.tag || ''}
               </span>
               <span>•</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>

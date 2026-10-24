@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import express from 'express';
+import { config } from '../config';
 import cors from 'cors';
 import { defineSecret } from 'firebase-functions/params';
 import { FirestoreService } from '../services/firestoreService';
@@ -67,6 +68,12 @@ dashboardApp.use('/api/discord', discordInteractionsRouter);
 const router = express.Router();
 
 dashboardApp.use('/api', router);
+
+// Public: which clan this deployment tracks, so the dashboard needn't hard-code it (4.4)
+router.get('/meta', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  res.json({ success: true, data: { clanTag: config.coc.clanTag } });
+});
 
 // Lightweight warming ping route (returns 204 immediately, no auth or external work)
 router.get('/ping', (_req, res) => res.status(204).end());

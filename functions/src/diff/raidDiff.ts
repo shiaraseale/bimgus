@@ -18,8 +18,7 @@ function buildCapitalConqueredEmbed(
     capitalTotalLoot: number;
     raidsCompleted?: number;
   },
-  isPartialWeekendEnd: boolean = false,
-  _clanTag: string = '#ABC123'
+  isPartialWeekendEnd: boolean = false
 ): DiscordEmbed {
   const totalLoot = raid.districts.reduce((sum, d) => sum + (d.totalLooted || 0), 0);
   const percentCleared =
@@ -114,7 +113,7 @@ export async function processRaidDiff(
   latestRaid: CapitalRaidWeekend,
   prevSnapshot: RaidSnapshotDoc | null,
   config: BotConfigDoc,
-  clanTag: string = '#ABC123'
+  clanTag: string
 ): Promise<RaidSnapshotDoc> {
   const weekendId = latestRaid.startTime;
   const webhookUrl = config.webhooks.raidWeekend;
@@ -164,8 +163,7 @@ export async function processRaidDiff(
                 capitalTotalLoot: latestRaid.capitalTotalLoot,
                 raidsCompleted: latestRaid.raidsCompleted,
               },
-              false,
-              clanTag
+              false
             );
             await DiscordService.sendWebhook(webhookUrl, {
               embeds: [embed],
@@ -201,8 +199,7 @@ export async function processRaidDiff(
                 capitalTotalLoot: latestRaid.capitalTotalLoot,
                 raidsCompleted: latestRaid.raidsCompleted,
               },
-              true /* isPartialWeekendEnd */,
-              clanTag
+              true /* isPartialWeekendEnd */
             );
             await DiscordService.sendWebhook(webhookUrl, {
               embeds: [embed],

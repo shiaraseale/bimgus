@@ -9,8 +9,6 @@ import { ClanGamesView } from './components/ClanGamesView';
 import { BotSettings } from './components/BotSettings';
 import { AlertCircle } from 'lucide-react';
 
-const CLAN_TAG = '#ABC123';
-
 const getInitialTab = () => {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -34,6 +32,8 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The tracked clan comes from the server (GET /api/meta), not from the code (4.4)
+  const [clanTag, setClanTag] = useState('');
 
   const [adminKey, setAdminKey] = useState<string>(() => {
     return readStoredKey();
@@ -48,7 +48,7 @@ export function App() {
   const fetchConfig = async (keyToUse = adminKey) => {
     if (!keyToUse) return;
     try {
-      const encodedTag = encodeURIComponent(CLAN_TAG);
+      const encodedTag = encodeURIComponent(clanTag);
       const configRes = await fetch(`/api/clan/${encodedTag}/config`, {
         headers: { 'X-Admin-Key': keyToUse },
       });
@@ -75,7 +75,7 @@ export function App() {
   const fetchData = async (fresh: boolean = false) => {
     try {
       setError(null);
-      const encodedTag = encodeURIComponent(CLAN_TAG);
+      const encodedTag = encodeURIComponent(clanTag);
       const bust = fresh ? `?fresh=${Date.now()}` : '';
 
       // Fetch clan data
@@ -117,14 +117,31 @@ export function App() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetch('/api/meta')
+      .then((r) => r.json())
+      .then((meta) => {
+        if (meta.success && meta.data?.clanTag) {
+          setClanTag(meta.data.clanTag); // loading ends when fetchData finishes
+          return;
+        }
+        setError('Could not load the clan settings.');
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Could not connect to the API.');
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    if (clanTag) fetchData();
+  }, [clanTag]);
 
   const handleSync = async () => {
     if (!adminKey) return;
     setIsSyncing(true);
     try {
-      const encodedTag = encodeURIComponent(CLAN_TAG);
+      const encodedTag = encodeURIComponent(clanTag);
       await fetch(`/api/clan/${encodedTag}/poll`, {
         method: 'POST',
         headers: { 'X-Admin-Key': adminKey },
@@ -140,7 +157,7 @@ export function App() {
   const handleSaveConfig = async (updated: Partial<BotConfig>): Promise<boolean> => {
     if (!adminKey) return false;
     try {
-      const encodedTag = encodeURIComponent(CLAN_TAG);
+      const encodedTag = encodeURIComponent(clanTag);
       const res = await fetch(`/api/clan/${encodedTag}/config`, {
         method: 'POST',
         headers: {
@@ -201,14 +218,14 @@ export function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'war' && <WarRoom war={war} clanTag={CLAN_TAG} adminKey={adminKey} />}
+            {activeTab === 'war' && <WarRoom war={war} clanTag={clanTag} adminKey={adminKey} />}
             {activeTab === 'roster' && <RosterAudit members={clan?.memberList || []} />}
             {activeTab === 'capital' && <CapitalRaids clan={clan} />}
             {activeTab === 'games' && <ClanGamesView />}
             {activeTab === 'settings' && (
               <BotSettings
                 config={config}
-                clanTag={CLAN_TAG}
+                clanTag={clanTag}
                 adminKey={adminKey}
                 onAdminKeyChange={handleAdminKeyChange}
                 onRefreshConfig={fetchConfig}
@@ -229,7 +246,7 @@ export function App() {
         boxShadow: 'inset 0 4px 8px rgba(0,0,0,0.6)'
       }}>
         <p className="font-coc" style={{ letterSpacing: '0.04em', color: '#64748b' }}>
-          ⚔️ Bimgus • Clash of Clans Command Portal • Clan Bingo (#ABC123)
+          ⚔️ Bimgus • Clash of Clans Command Portal • {clan?.name || 'Clan'} ({clanTag})
         </p>
       </footer>
     </div>

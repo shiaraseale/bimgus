@@ -4,7 +4,8 @@ import { config } from '../config';
 import { sendWarSummaryDiscord } from '../diff/warDiff';
 
 export async function pushWarSummary(targetClanTag?: string): Promise<{ success: boolean; message: string }> {
-  const clanTag = targetClanTag || config.coc.clanTag || '#ABC123';
+  const clanTag = targetClanTag || config.coc.clanTag;
+  if (!clanTag) throw new Error('No clan tag: set COC_CLAN_TAG in functions/.env or pass one');
   console.log(`[pushWarSummary] Fetching live war status for ${clanTag}...`);
 
   const coc = CocService.shared();

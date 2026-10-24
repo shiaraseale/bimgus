@@ -22,7 +22,7 @@ export async function processClanGamesDiff(
   prevSnapshot: ClanGamesSnapshotDoc | null,
   config: BotConfigDoc,
   cocService: CocService,
-  clanTag: string = '#ABC123',
+  clanTag: string,
   now: Date = new Date()
 ): Promise<ClanGamesSnapshotDoc> {
   const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;

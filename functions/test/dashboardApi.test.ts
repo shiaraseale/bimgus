@@ -78,6 +78,12 @@ describe('dashboardApi', () => {
     });
   });
 
+  it('/api/meta says which clan this deployment tracks (4.4)', async () => {
+    const res = await fetch(`${baseUrl}/api/meta`);
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toHaveProperty('clanTag');
+  });
+
   describe('route mounts (item 1.3)', () => {
     it('no longer serves routes outside /api', async () => {
       expect((await fetch(`${baseUrl}/ping`)).status).toBe(404);

@@ -22,7 +22,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
   const [keyInput, setKeyInput] = useState(adminKey);
   const [formData, setFormData] = useState<BotConfig>(
     config || {
-      clanTag: '#ABC123',
+      clanTag,
       webhooks: {},
       notificationsEnabled: {
         memberJoinedLeft: true,

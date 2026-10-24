@@ -1,3 +1,4 @@
+import { config } from '../config';
 import axios from 'axios';
 import { DiscordWebhookPayload } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
@@ -55,7 +56,7 @@ export class DiscordService {
   static async sendWebhook(target: string, payload: DiscordWebhookPayload, retries = 3): Promise<boolean> {
     if (!target) return false;
 
-    if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
+    if (config.dryRunDiscord) {
       const sanitizedTarget = target.replace(
         /(discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/)[^/?\s]+/i,
         '$1[REDACTED]'
@@ -64,7 +65,7 @@ export class DiscordService {
       return true;
     }
 
-    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const botToken = config.discord.botToken;
 
     // 1. Send directly from the official Bimgus Discord Bot
     if (botToken) {
@@ -272,12 +273,12 @@ export class DiscordService {
     botTokenOverride?: string,
     retries = 2
   ): Promise<'sent' | 'blocked' | 'failed'> {
-    if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
+    if (config.dryRunDiscord) {
       console.log(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
       return 'sent';
     }
 
-    const token = botTokenOverride || process.env.DISCORD_BOT_TOKEN;
+    const token = botTokenOverride || config.discord.botToken;
     if (!token) {
       console.warn('[Discord DM] Skipping DM: No DISCORD_BOT_TOKEN configured');
       return 'failed';

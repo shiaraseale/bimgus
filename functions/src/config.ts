@@ -19,7 +19,10 @@ export const config = {
     clanGames: process.env.DISCORD_WEBHOOK_CLAN_GAMES || '',
   },
   discord: {
-    botToken: process.env.DISCORD_BOT_TOKEN || '',
+    // A getter, so tests and late-loaded env files are seen when it's read
+    get botToken(): string {
+      return process.env.DISCORD_BOT_TOKEN || '';
+    },
     publicKey: process.env.DISCORD_PUBLIC_KEY || '',
     clientId: process.env.DISCORD_CLIENT_ID || '',
     guildId: process.env.DISCORD_GUILD_ID || '',
@@ -27,6 +30,14 @@ export const config = {
     clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     coLeaderRoleId: process.env.DISCORD_COLEADER_ROLE_ID || '',
     leaderRoleId: process.env.DISCORD_LEADER_ROLE_ID || '',
+  },
+  /** DRY_RUN_DISCORD=1 logs webhooks and DMs instead of sending them (staging, tests) */
+  get dryRunDiscord(): boolean {
+    return process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true';
+  },
+  /** URL the 2-minute poll pings to keep the api function warm (empty in staging) */
+  get apiPingUrl(): string {
+    return process.env.API_PING_URL || '';
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
