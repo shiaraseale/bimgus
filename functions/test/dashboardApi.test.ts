@@ -39,6 +39,19 @@ describe('dashboardApi', () => {
     });
   });
 
+  describe('route mounts (item 1.3)', () => {
+    it('no longer serves routes outside /api', async () => {
+      expect((await fetch(`${baseUrl}/ping`)).status).toBe(404);
+      expect((await fetch(`${baseUrl}/clan/%23TESTCLAN`)).status).toBe(404);
+      const interactions = await fetch(`${baseUrl}/discord/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 1 }),
+      });
+      expect(interactions.status).toBe(404);
+    });
+  });
+
   describe('admin key lockdown (item 1.1)', () => {
     it('rejects GET /api/clan/:tag/config when X-Admin-Key is missing', async () => {
       const res = await fetch(`${baseUrl}/api/clan/%23TESTCLAN/config`);

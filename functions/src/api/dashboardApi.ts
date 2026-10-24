@@ -59,14 +59,13 @@ dashboardApp.use((_req, res, next) => {
   next();
 });
 
-// Mount Discord Interactions router (handles Discord Slash Commands & Buttons)
+// Mount Discord Interactions router (handles Discord Slash Commands & Buttons).
+// Hosting rewrites /api/** to this function and keeps the path, so everything lives under /api.
 dashboardApp.use('/api/discord', discordInteractionsRouter);
-dashboardApp.use('/discord', discordInteractionsRouter);
 
 const router = express.Router();
 
 dashboardApp.use('/api', router);
-dashboardApp.use('/', router);
 
 // Lightweight warming ping route (returns 204 immediately, no auth or external work)
 router.get('/ping', (_req, res) => res.status(204).end());
