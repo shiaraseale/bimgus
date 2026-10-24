@@ -1,39 +1,33 @@
-import defenseDataRaw from '../data/cocDefensesData.json';
+import {
+  GameCategory,
+  GameItem,
+  Village,
+  capFor,
+  formatNextCost,
+  getById,
+  getLevel,
+  getWeapon,
+  nameForCode,
+} from './gameDataService';
 import { EMOJIS } from '../constants/emojis';
 
-export interface DefenseLevelEntry {
+export const VILLAGE_DATA_VERSION = 2;
+
+/** One group of identical items (same code, village and level) from an export. */
+export interface VillageItem {
+  code: number;
+  category: GameCategory | 'unknown';
+  village: Village;
   level: number;
-  cost: number;
-  resource: string;
-  thRequired: number;
-}
-
-export interface DefenseMeta {
-  id: string;
-  name: string;
-  base: 'home' | 'builder';
-  category: string;
-  levels: DefenseLevelEntry[];
-}
-
-const DEFENSE_DATA: Record<string, DefenseMeta> = defenseDataRaw as unknown as Record<string, DefenseMeta>;
-
-export interface ParsedDefenseGroup {
-  name: string;
   count: number;
-  currentLevel: number;
-  maxLevel: number;
-  nextCostNumber: number;
-  resource: string;
-  isMaxed: boolean;
-  base: 'home' | 'builder';
+  gearedUp?: boolean;
 }
 
 export interface InProgressUpgrade {
+  code?: number;
   name: string;
-  dataId: string;
-  category: 'defense' | 'building' | 'townHall' | 'builderHall' | 'hero' | 'troop' | 'spell';
-  village: 'home' | 'builder';
+  category: GameCategory | 'unknown' | 'building' | 'townHall' | 'builderHall';
+  village: Village;
   currentLevel: number;
   targetLevel: number;
   maxLevel: number;
@@ -41,16 +35,75 @@ export interface InProgressUpgrade {
   finishesAtMs: number;
 }
 
-export interface VillageImportResult {
-  tag?: string;
-  timestamp?: number;
-  townHallLevel?: number;
-  builderHallLevel?: number;
-  homeDefenses: ParsedDefenseGroup[];
-  builderDefenses: ParsedDefenseGroup[];
-  homeBuildings: ParsedDefenseGroup[];
+/** What one in-game export says about an account (both villages). Stored as `account.villageData`. */
+export interface VillageDataV2 {
+  version: 2;
+  tag: string;
+  exportTimestamp: number; // ms
+  importedAt: string;
+  townHallLevel: number;
+  builderHallLevel: number;
+  townHallWeaponLevel?: number;
+  items: VillageItem[];
   inProgressUpgrades: InProgressUpgrade[];
-  totalParsedDefenses: number;
+  boosts: Record<string, unknown>;
+}
+
+export interface ParsedDefenseGroup {
+  code: number;
+  name: string;
+  count: number;
+  currentLevel: number;
+  maxLevel: number;
+  nextCost: string;
+  nextCostNumber: number;
+  isMaxed: boolean;
+  village: Village;
+}
+
+export interface ImportChange {
+  kind: 'upgraded' | 'built';
+  code: number;
+  name: string;
+  category: GameCategory;
+  village: Village;
+  oldLevel: number;
+  newLevel: number;
+  maxLevel: number;
+  count: number;
+}
+
+// Export sections, and the village each one belongs to (a "2" suffix is the Builder Base)
+const SECTIONS: Array<[string, Village]> = [
+  ['buildings', 'home'],
+  ['traps', 'home'],
+  ['units', 'home'],
+  ['siege_machines', 'home'],
+  ['heroes', 'home'],
+  ['spells', 'home'],
+  ['pets', 'home'],
+  ['equipment', 'home'],
+  ['helpers', 'home'],
+  ['guardians', 'home'],
+  ['buildings2', 'builder'],
+  ['traps2', 'builder'],
+  ['units2', 'builder'],
+  ['heroes2', 'builder'],
+];
+
+const TOWN_HALL = 1000001;
+const BUILDER_HALL = 1000034;
+const STALE_EXPORT_MS = 24 * 60 * 60 * 1000;
+
+// Categories whose completions the import is the source for; the live API covers the rest (2.4)
+export const IMPORT_TRACKED_CATEGORIES: readonly GameCategory[] = [
+  'defense', 'resource', 'army', 'other', 'trap', 'wall', 'guardian', 'craftedModule', 'helper',
+];
+
+function hallFor(data: VillageDataV2, village: Village, override?: { townHall?: number; builderHall?: number }): number {
+  return village === 'builder'
+    ? Math.max(override?.builderHall ?? 0, data.builderHallLevel)
+    : Math.max(override?.townHall ?? 0, data.townHallLevel);
 }
 
 export class VillageImportService {
@@ -72,313 +125,323 @@ export class VillageImportService {
   }
 
   /**
-   * Format cost with appropriate resource emoji
+   * Reads one in-game export (which holds both villages) into the stored format.
    */
-  static formatCost(amount: number, resource: string): string {
-    if (amount <= 0) return 'Free';
-
-    let formattedNum: string;
-    if (amount >= 1_000_000) {
-      formattedNum = (amount / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
-    } else if (amount >= 1_000) {
-      formattedNum = Math.round(amount / 1_000) + 'K';
-    } else {
-      formattedNum = amount.toLocaleString();
+  static parseExport(exportJson: any, now: number = Date.now()): VillageDataV2 {
+    if (!exportJson || typeof exportJson !== 'object' || !Array.isArray(exportJson.buildings)) {
+      throw new Error('This doesn\'t look like a Clash of Clans village export (no "buildings" list).');
     }
 
-    const resLower = (resource || '').toLowerCase();
-    let emoji = '';
-    if (resLower.includes('builder') && resLower.includes('gold')) {
-      emoji = ` ${EMOJIS.BUILDER_GOLD}`;
-    } else if (resLower.includes('builder') && resLower.includes('elixir')) {
-      emoji = ` ${EMOJIS.BUILDER_ELIXIR}`;
-    } else if (resLower.includes('dark')) {
-      emoji = ` ${EMOJIS.DARK_ELIXIR}`;
-    } else if (resLower.includes('elixir')) {
-      emoji = ` ${EMOJIS.ELIXIR}`;
-    } else if (resLower.includes('gold')) {
-      emoji = ` ${EMOJIS.GOLD}`;
+    const rawTs = Number(exportJson.timestamp) || 0;
+    const exportSec = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs;
+    if (!exportSec) console.warn('[VillageImport] Export has no timestamp; using the import time');
+    const exportTimestamp = exportSec ? exportSec * 1000 : now;
+
+    const groups = new Map<string, VillageItem>();
+    const inProgress: Array<Omit<InProgressUpgrade, 'maxLevel'>> = [];
+    let townHallLevel = 0;
+    let builderHallLevel = 0;
+    let townHallWeaponLevel: number | undefined;
+
+    const addItem = (code: number, village: Village, level: number, count: number, gearedUp: boolean, timer: number) => {
+      const item = getById(code);
+      if (!item) {
+        nameForCode(code); // logs the unknown code once
+      } else if (item.village !== village) {
+        console.warn(`[VillageImport] ${item.name} (${code}) is listed in the ${village} village but the data says ${item.village}`);
+      }
+      const category = item?.category ?? 'unknown';
+      const key = `${village}:${code}:${level}:${gearedUp ? 1 : 0}`;
+      const existing = groups.get(key);
+      if (existing) existing.count += count;
+      else groups.set(key, { code, category, village, level, count, ...(gearedUp ? { gearedUp: true } : {}) });
+
+      if (timer > 0) {
+        inProgress.push({
+          code,
+          name: item?.displayName ?? nameForCode(code),
+          category,
+          village,
+          currentLevel: level,
+          targetLevel: level + 1,
+          timerSeconds: timer,
+          finishesAtMs: exportTimestamp + timer * 1000,
+        });
+      }
+    };
+
+    for (const [section, village] of SECTIONS) {
+      const entries = exportJson[section];
+      if (!Array.isArray(entries)) continue;
+
+      for (const entry of entries) {
+        const code = Number(entry?.data);
+        if (!code) continue;
+
+        // The Crafting Station has no level of its own; each crafted defense's modules do
+        if (Array.isArray(entry.types)) {
+          for (const type of entry.types) {
+            for (const m of type.modules ?? []) {
+              addItem(Number(m.data), village, Number(m.lvl) || 0, 1, false, Number(m.timer) || 0);
+            }
+          }
+          continue;
+        }
+
+        const level = Number(entry.lvl) || 0;
+        if (code === TOWN_HALL) {
+          townHallLevel = Math.max(townHallLevel, level);
+          if (entry.weapon !== undefined) townHallWeaponLevel = Number(entry.weapon);
+        }
+        if (code === BUILDER_HALL) builderHallLevel = Math.max(builderHallLevel, level);
+
+        // A missing cnt means 1; upgrading and geared-up items are listed on their own
+        addItem(code, village, level, Number(entry.cnt) || 1, Boolean(entry.gear_up), Number(entry.timer) || 0);
+      }
     }
 
-    return `${formattedNum}${emoji}`;
+    if (!townHallLevel) throw new Error('The export has no Town Hall, so it can\'t be read.');
+
+    const data: VillageDataV2 = {
+      version: VILLAGE_DATA_VERSION,
+      tag: String(exportJson.tag || ''),
+      exportTimestamp,
+      importedAt: new Date(now).toISOString(),
+      townHallLevel,
+      builderHallLevel,
+      ...(townHallWeaponLevel !== undefined ? { townHallWeaponLevel } : {}),
+      items: [...groups.values()],
+      inProgressUpgrades: [],
+      boosts: exportJson.boosts && typeof exportJson.boosts === 'object' ? exportJson.boosts : {},
+    };
+
+    data.inProgressUpgrades = inProgress
+      .map((u) => {
+        const item = u.code ? getById(u.code) : undefined;
+        const maxLevel = item ? capFor(item, hallFor(data, u.village), u.targetLevel) : u.targetLevel;
+        return { ...u, maxLevel };
+      })
+      .sort((a, b) => a.finishesAtMs - b.finishesAtMs);
+
+    return data;
   }
 
   /**
-   * Processes raw village JSON export into sorted defense lists
+   * Matches each export to a linked account by the tag inside it. Only an export without a tag falls
+   * back to the `account` option or a single linked account, so one account's data never lands on
+   * another. Two exports for one account keep the newer one.
    */
-  static processVillageData(
-    villageJson: any,
-    fallbackTh: number = 0,
-    fallbackBh: number = 0
-  ): VillageImportResult {
-    let buildings: any[] = [];
-    if (Array.isArray(villageJson)) {
-      buildings = villageJson;
-    } else if (villageJson && Array.isArray(villageJson.buildings)) {
-      buildings = villageJson.buildings;
-    } else {
-      throw new Error('Export JSON must contain a "buildings" array.');
+  static matchExportsToAccounts<A extends { playerTag: string; name: string }>(
+    exports: Array<{ fileName: string; village: VillageDataV2 }>,
+    accounts: A[],
+    fallbackTag?: string
+  ): {
+    byAccount: Map<string, { account: A; village: VillageDataV2; fileName: string }>;
+    unmapped: string[];
+    notices: string[];
+  } {
+    const byAccount = new Map<string, { account: A; village: VillageDataV2; fileName: string }>();
+    const unmapped: string[] = [];
+    const notices: string[] = [];
+    const normalise = (tag: string) => (tag.startsWith('#') ? tag : `#${tag}`).toUpperCase();
+
+    for (const exp of exports) {
+      let account: A | undefined;
+      if (exp.village.tag) {
+        account = accounts.find((a) => a.playerTag.toUpperCase() === normalise(exp.village.tag));
+      } else if (fallbackTag) {
+        account = accounts.find((a) => a.playerTag.toUpperCase() === normalise(fallbackTag));
+      } else if (accounts.length === 1) {
+        account = accounts[0];
+      }
+
+      if (!account) {
+        unmapped.push(exp.village.tag ? `\`${exp.village.tag}\` (${exp.fileName})` : exp.fileName);
+        continue;
+      }
+
+      const key = account.playerTag.toUpperCase();
+      const existing = byAccount.get(key);
+      if (!existing) {
+        byAccount.set(key, { account, ...exp });
+        continue;
+      }
+      const keepNew = exp.village.exportTimestamp > existing.village.exportTimestamp;
+      const [kept, dropped] = keepNew ? [exp, existing] : [existing, exp];
+      notices.push(`ℹ️ Two exports for **${account.name}**: used **${kept.fileName}** (newer) and skipped **${dropped.fileName}**.`);
+      if (keepNew) byAccount.set(key, { account, ...exp });
     }
 
-    const tag: string | undefined = villageJson.tag || villageJson.playerTag;
+    return { byAccount, unmapped, notices };
+  }
 
-    // Detect Town Hall and Builder Hall levels from structures if present
-    let detectedTh = fallbackTh;
-    let detectedBh = fallbackBh;
+  /** Returns stored village data in the current format, or null (older formats are discarded). */
+  static read(villageData: any): VillageDataV2 | null {
+    return villageData && villageData.version === VILLAGE_DATA_VERSION ? (villageData as VillageDataV2) : null;
+  }
 
-    for (const b of buildings) {
-      const dataId = String(b.data || b.dataId);
-      const lvl = Number(b.lvl !== undefined ? b.lvl : b.level || 0);
-      if (dataId === '1000001' && lvl > 0) {
-        detectedTh = Math.max(detectedTh, lvl);
-      } else if (dataId === '1000034' && lvl > 0) {
-        detectedBh = Math.max(detectedBh, lvl);
+  static isStale(data: VillageDataV2, now: number = Date.now()): boolean {
+    return now - data.exportTimestamp > STALE_EXPORT_MS;
+  }
+
+  /**
+   * Groups stored items by code and level for display, with caps for the current hall and the next cost.
+   * Sorted by next cost (most expensive first), maxed items last.
+   */
+  static groupsFor(
+    data: VillageDataV2,
+    village: Village,
+    categories: readonly GameCategory[],
+    hallOverride?: { townHall?: number; builderHall?: number }
+  ): ParsedDefenseGroup[] {
+    const hall = hallFor(data, village, hallOverride);
+    const merged = new Map<string, ParsedDefenseGroup>();
+
+    for (const vi of data.items) {
+      if (vi.village !== village || !categories.includes(vi.category as GameCategory)) continue;
+      const item = getById(vi.code) as GameItem;
+      const key = `${vi.code}:${vi.level}`;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.count += vi.count;
+        continue;
       }
-    }
-
-    // Default sensible limits if completely unspecified
-    if (detectedTh <= 0) detectedTh = 12;
-    if (detectedBh <= 0) detectedBh = 9;
-
-    // Group defenses by dataId and current level, and track in-progress upgrades
-    const homeMap = new Map<string, { def: DefenseMeta; level: number; count: number }>();
-    const builderMap = new Map<string, { def: DefenseMeta; level: number; count: number }>();
-    const homeBuildingsMap = new Map<string, { def: DefenseMeta; level: number; count: number }>();
-    const inProgressUpgrades: InProgressUpgrade[] = [];
-    const exportTimestampSec = Number(villageJson.timestamp) || Math.floor(Date.now() / 1000);
-    const safeTimestampSec = exportTimestampSec > 1e12 ? Math.floor(exportTimestampSec / 1000) : exportTimestampSec;
-
-    for (const b of buildings) {
-      const dataId = String(b.data || b.dataId);
-      const timer = Number(b.timer ?? b.t ?? b.time ?? b.upgrade_timer ?? 0);
-      const lvl = Number(b.lvl !== undefined ? b.lvl : b.level || 0);
-      const def = DEFENSE_DATA[dataId];
-
-      if (timer > 0) {
-        let name = def ? def.name : '';
-        let village: 'home' | 'builder' = def?.base || 'home';
-        let maxLvl = lvl + 1;
-        let category: 'defense' | 'building' | 'townHall' | 'builderHall' | 'hero' | 'troop' | 'spell' = (def?.category as any) || 'defense';
-
-        if (dataId === '1000001') {
-          name = 'Town Hall';
-          village = 'home';
-          category = 'townHall';
-          maxLvl = 17;
-        } else if (dataId === '1000034') {
-          name = 'Builder Hall';
-          village = 'builder';
-          category = 'builderHall';
-          maxLvl = 10;
-        } else if (def) {
-          name = def.name;
-          village = def.base;
-          category = (def.category as any) || 'defense';
-          const hallLevel = village === 'builder' ? detectedBh : detectedTh;
-          for (const l of def.levels) {
-            if (l.thRequired <= hallLevel && l.level > maxLvl) {
-              maxLvl = l.level;
-            }
-          }
-          maxLvl = Math.max(maxLvl, lvl + 1);
-        } else {
-          name = `Building (${dataId})`;
-          category = 'building';
-        }
-
-        if (name) {
-          const finishesAtMs = (safeTimestampSec + timer) * 1000;
-          inProgressUpgrades.push({
-            name,
-            dataId,
-            category,
-            village,
-            currentLevel: lvl,
-            targetLevel: lvl + 1,
-            maxLevel: maxLvl,
-            timerSeconds: timer,
-            finishesAtMs,
-          });
-        }
-      }
-
-      if (!def) continue;
-
-      const count = Number(b.cnt || 1);
-      const key = `${dataId}_${lvl}`;
-
-      if (def.category === 'defense') {
-        const targetMap = def.base === 'builder' ? builderMap : homeMap;
-        if (!targetMap.has(key)) {
-          targetMap.set(key, { def, level: lvl, count: 0 });
-        }
-        targetMap.get(key)!.count += count;
-      } else if (def.category === 'building') {
-        if (!homeBuildingsMap.has(key)) {
-          homeBuildingsMap.set(key, { def, level: lvl, count: 0 });
-        }
-        homeBuildingsMap.get(key)!.count += count;
-      }
-    }
-
-    // Also check heroes for active upgrade timers
-    const HERO_MAP: Record<string, { name: string; village: 'home' | 'builder' }> = {
-      '28000000': { name: 'Barbarian King', village: 'home' },
-      '28000001': { name: 'Archer Queen', village: 'home' },
-      '28000002': { name: 'Grand Warden', village: 'home' },
-      '28000003': { name: 'Royal Champion', village: 'home' },
-      '28000004': { name: 'Minion Prince', village: 'home' },
-      '28000005': { name: 'Battle Machine', village: 'builder' },
-      '28000006': { name: 'Battle Copter', village: 'builder' },
-    };
-
-    if (Array.isArray(villageJson.heroes)) {
-      for (const h of villageJson.heroes) {
-        const dataId = String(h.data || h.dataId || '');
-        const timer = Number(h.timer ?? h.t ?? h.time ?? 0);
-        const lvl = Number(h.lvl !== undefined ? h.lvl : h.level || 0);
-        if (timer > 0) {
-          const meta = HERO_MAP[dataId];
-          const name = meta ? meta.name : (h.name || `Hero (${dataId})`);
-          const village = meta ? meta.village : 'home';
-          const finishesAtMs = (safeTimestampSec + timer) * 1000;
-          inProgressUpgrades.push({
-            name,
-            dataId,
-            category: 'hero',
-            village,
-            currentLevel: lvl,
-            targetLevel: lvl + 1,
-            maxLevel: lvl + 1,
-            timerSeconds: timer,
-            finishesAtMs,
-          });
-        }
-      }
-    }
-
-    // Check spells and laboratory units for active research timers
-    if (Array.isArray(villageJson.spells)) {
-      for (const s of villageJson.spells) {
-        const dataId = String(s.data || s.dataId || '');
-        const timer = Number(s.timer ?? s.t ?? s.time ?? 0);
-        const lvl = Number(s.lvl !== undefined ? s.lvl : s.level || 0);
-        if (timer > 0) {
-          const finishesAtMs = (safeTimestampSec + timer) * 1000;
-          inProgressUpgrades.push({
-            name: s.name || `Spell (${dataId})`,
-            dataId,
-            category: 'spell',
-            village: 'home',
-            currentLevel: lvl,
-            targetLevel: lvl + 1,
-            maxLevel: lvl + 1,
-            timerSeconds: timer,
-            finishesAtMs,
-          });
-        }
-      }
-    }
-
-    const unitList = Array.isArray(villageJson.units)
-      ? villageJson.units
-      : Array.isArray(villageJson.troops)
-      ? villageJson.troops
-      : [];
-    for (const u of unitList) {
-      const dataId = String(u.data || u.dataId || '');
-      const timer = Number(u.timer ?? u.t ?? u.time ?? 0);
-      const lvl = Number(u.lvl !== undefined ? u.lvl : u.level || 0);
-      if (timer > 0) {
-        const finishesAtMs = (safeTimestampSec + timer) * 1000;
-        inProgressUpgrades.push({
-          name: u.name || `Troop (${dataId})`,
-          dataId,
-          category: 'troop',
-          village: 'home',
-          currentLevel: lvl,
-          targetLevel: lvl + 1,
-          maxLevel: lvl + 1,
-          timerSeconds: timer,
-          finishesAtMs,
-        });
-      }
-    }
-
-    inProgressUpgrades.sort((a, b) => a.finishesAtMs - b.finishesAtMs);
-
-    const mapToGroups = (
-      sourceMap: Map<string, { def: DefenseMeta; level: number; count: number }>,
-      hallLevel: number
-    ): ParsedDefenseGroup[] => {
-      const entries: ParsedDefenseGroup[] = [];
-
-      for (const item of sourceMap.values()) {
-        const { def, level, count } = item;
-
-        // Calculate max allowed level for this hall level
-        let maxLevel = 1;
-        for (const l of def.levels) {
-          if (l.thRequired <= hallLevel && l.level > maxLevel) {
-            maxLevel = l.level;
-          }
-        }
-        maxLevel = Math.max(maxLevel, level);
-
-        const isMaxed = level >= maxLevel;
-        const nextLvl = level + 1;
-        const nextData = def.levels.find((l) => l.level === nextLvl);
-        const nextCostNumber = !isMaxed && nextData ? nextData.cost : 0;
-        const resource = !isMaxed && nextData ? nextData.resource : '';
-
-        entries.push({
-          name: def.name,
-          count,
-          currentLevel: level,
-          maxLevel,
-          nextCostNumber,
-          resource,
-          isMaxed,
-          base: def.base,
-        });
-      }
-
-      // Sort strictly in descending order based on numerical cost for gold, elixir, dark elixir
-      entries.sort((a, b) => {
-        if (b.nextCostNumber !== a.nextCostNumber) {
-          return b.nextCostNumber - a.nextCostNumber;
-        }
-        if (a.name !== b.name) {
-          return a.name.localeCompare(b.name);
-        }
-        return b.currentLevel - a.currentLevel;
+      const maxLevel = capFor(item, hall, vi.level);
+      const isMaxed = vi.level >= maxLevel;
+      const next = isMaxed ? undefined : getLevel(item, vi.level + 1);
+      merged.set(key, {
+        code: vi.code,
+        name: item.displayName,
+        count: vi.count,
+        currentLevel: vi.level,
+        maxLevel,
+        nextCost: next ? formatNextCost(item, vi.level) : '',
+        nextCostNumber: next ? next.cost : 0,
+        isMaxed,
+        village,
       });
+    }
 
-      return entries;
+    return [...merged.values()].sort((a, b) => {
+      if (a.isMaxed !== b.isMaxed) return a.isMaxed ? 1 : -1;
+      if (b.nextCostNumber !== a.nextCostNumber) return b.nextCostNumber - a.nextCostNumber;
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return b.currentLevel - a.currentLevel;
+    });
+  }
+
+  /** Items whose code isn't in the game data yet (shown as `Unknown (code)`). */
+  static unknownItems(data: VillageDataV2): VillageItem[] {
+    return data.items.filter((i) => i.category === 'unknown');
+  }
+
+  static formatGroupLine(d: ParsedDefenseGroup): string {
+    const levelStr = `Lv ${d.currentLevel}/${d.maxLevel}`;
+    if (d.isMaxed) return `• ${d.count}x **${d.name}**: ${levelStr} — Maxed ✨`;
+    return `• ${d.count}x **${d.name}**: ${levelStr}${d.nextCost ? ` — ${d.nextCost}` : ''}`;
+  }
+
+  /**
+   * The import result for one account, one section per category for each village.
+   */
+  static importSections(data: VillageDataV2): Array<{ title: string; lines: string[] }> {
+    const th = data.townHallLevel;
+    const bh = data.builderHallLevel;
+    const section = (title: string, village: Village, categories: GameCategory[]) => ({
+      title,
+      lines: VillageImportService.groupsFor(data, village, categories).map(VillageImportService.formatGroupLine),
+    });
+
+    const sections = [
+      section(`🛡️ Defenses (TH${th})`, 'home', ['defense']),
+      section(`💣 Traps (TH${th})`, 'home', ['trap']),
+      section(`🏛️ Resource & Army (TH${th})`, 'home', ['resource', 'army', 'other']),
+      section(`🧱 Walls (TH${th})`, 'home', ['wall']),
+      section(`🗿 Guardians (TH${th})`, 'home', ['guardian']),
+      section(`🕯️ Crafted Defenses (TH${th})`, 'home', ['craftedModule']),
+      section(`${EMOJIS.CROWN} Heroes (TH${th})`, 'home', ['hero']),
+      section(`🧪 Laboratory (TH${th})`, 'home', ['troop', 'siege', 'spell']),
+      section(`🐾 Pets (TH${th})`, 'home', ['pet']),
+      section(`🛠️ Helpers (TH${th})`, 'home', ['helper']),
+    ];
+    if (bh > 0) {
+      sections.push(
+        section(`🔨 BB Defenses (BH${bh})`, 'builder', ['defense']),
+        section(`💣 BB Traps (BH${bh})`, 'builder', ['trap']),
+        section(`🏛️ BB Resource & Army (BH${bh})`, 'builder', ['resource', 'army', 'other']),
+        section(`🧱 BB Walls (BH${bh})`, 'builder', ['wall']),
+        section(`${EMOJIS.CROWN} BB Heroes (BH${bh})`, 'builder', ['hero']),
+        section(`⚔️ BB Troops (BH${bh})`, 'builder', ['troop'])
+      );
+    }
+
+    const unknown = VillageImportService.unknownItems(data);
+    if (unknown.length > 0) {
+      sections.push({
+        title: '❔ Not in the game data yet',
+        lines: unknown.map((u) => `• ${u.count}x **${nameForCode(u.code)}**: Lv ${u.level}`),
+      });
+    }
+    return sections.filter((s) => s.lines.length > 0);
+  }
+
+  /** Splits lines into embed fields under Discord's 1,024-character field limit. */
+  static linesToFields(title: string, lines: string[]): Array<{ name: string; value: string; inline: boolean }> {
+    const fields: Array<{ name: string; value: string; inline: boolean }> = [];
+    let current: string[] = [];
+    let length = 0;
+    const flush = () => {
+      if (current.length === 0) return;
+      fields.push({ name: fields.length === 0 ? title : `${title} (cont.)`, value: current.join('\n'), inline: false });
+      current = [];
+      length = 0;
     };
+    for (const line of lines) {
+      if (length + line.length + 1 > 1000) flush();
+      current.push(line.length > 1000 ? line.slice(0, 997) + '...' : line);
+      length += line.length + 1;
+    }
+    flush();
+    return fields;
+  }
 
-    const homeDefenses = mapToGroups(homeMap, detectedTh);
-    const builderDefenses = mapToGroups(builderMap, detectedBh);
-    const homeBuildings = mapToGroups(homeBuildingsMap, detectedTh);
-
-    return {
-      tag,
-      timestamp: safeTimestampSec * 1000,
-      townHallLevel: detectedTh,
-      builderHallLevel: detectedBh,
-      homeDefenses,
-      builderDefenses,
-      homeBuildings,
-      inProgressUpgrades,
-      totalParsedDefenses: homeDefenses.length + builderDefenses.length + homeBuildings.length,
+  /**
+   * Builds as many embeds as needed: Discord allows 25 fields and 6,000 characters per embed.
+   */
+  static fieldsToEmbeds(
+    base: { title: string; description: string; color: number; thumbnail?: { url: string }; footer?: { text: string } },
+    fields: Array<{ name: string; value: string; inline: boolean }>
+  ): any[] {
+    const embeds: any[] = [];
+    let current: any[] = [];
+    let size = base.title.length + base.description.length + (base.footer?.text.length ?? 0);
+    const flush = () => {
+      const first = embeds.length === 0;
+      embeds.push({
+        ...base,
+        title: first ? base.title : `${base.title} (cont.)`,
+        description: first ? base.description : undefined,
+        fields: current,
+        timestamp: new Date().toISOString(),
+      });
+      current = [];
+      size = base.title.length + 10 + (base.footer?.text.length ?? 0);
     };
+    for (const f of fields) {
+      const fieldSize = f.name.length + f.value.length;
+      if (current.length > 0 && (current.length >= 25 || size + fieldSize > 5500)) flush();
+      current.push(f);
+      size += fieldSize;
+    }
+    if (current.length > 0 || embeds.length === 0) flush();
+    return embeds;
   }
 
   /**
    * Formats in-progress upgrades with dynamic Discord countdown timers.
    */
-  static formatInProgressUpgrades(upgrades: InProgressUpgrade[]): string {
-    const active = upgrades.filter((u) => u.finishesAtMs > Date.now());
+  static formatInProgressUpgrades(upgrades: InProgressUpgrade[], now: number = Date.now()): string {
+    const active = upgrades.filter((u) => u.finishesAtMs > now);
     if (active.length === 0) return '';
 
     return active
@@ -388,152 +451,106 @@ export class VillageImportService {
           prefix = '🔨 [BB] ';
         } else if (u.category === 'hero') {
           prefix = `${EMOJIS.CROWN} `;
-        } else if (u.category === 'troop' || u.category === 'spell') {
+        } else if (u.category === 'troop' || u.category === 'spell' || u.category === 'siege') {
           prefix = '🧪 ';
         }
+        const name = u.code ? nameForCode(u.code) : u.name;
         const targetStr = u.maxLevel > 0 ? `Lv ${u.targetLevel}/${u.maxLevel}` : `Lv ${u.targetLevel}`;
         const finishesSec = Math.floor(u.finishesAtMs / 1000);
-        return `• ${prefix}**${u.name}**: Upgrading to **${targetStr}** — finishes <t:${finishesSec}:R> (<t:${finishesSec}:t>)`;
+        return `• ${prefix}**${name}**: Upgrading to **${targetStr}** — finishes <t:${finishesSec}:R> (<t:${finishesSec}:t>)`;
       })
       .join('\n');
   }
 
   /**
-   * Formats the parsed defense groups into Discord embed fields.
-   * Splits across multiple fields if character limit (1024) is approached.
+   * Compares the previous import with a new one for the categories the import is the source for.
+   * Items of one code are matched highest level first, so "3 Cannons went from 12 to 13" is found
+   * even when the export lists them in a different order.
    */
-  static formatDefenseFields(
-    defenses: ParsedDefenseGroup[],
-    titlePrefix: string = '🛡️ Defense Upgrades'
-  ): Array<{ name: string; value: string; inline: boolean }> {
-    if (defenses.length === 0) {
-      return [{ name: titlePrefix, value: 'No defenses detected in export.', inline: false }];
-    }
-
-    const lines = defenses.map((d) => {
-      if (d.isMaxed) {
-        return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — Maxed ✨`;
+  static detectImportChanges(oldData: VillageDataV2 | null, newData: VillageDataV2): ImportChange[] {
+    if (!oldData) return [];
+    const levelsByCode = (data: VillageDataV2) => {
+      const map = new Map<string, number[]>();
+      for (const vi of data.items) {
+        if (!IMPORT_TRACKED_CATEGORIES.includes(vi.category as GameCategory)) continue;
+        const key = `${vi.village}:${vi.code}`;
+        const list = map.get(key) ?? [];
+        for (let i = 0; i < vi.count; i++) list.push(vi.level);
+        map.set(key, list);
       }
-      const costStr = VillageImportService.formatCost(d.nextCostNumber, d.resource);
-      return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${costStr}`;
-    });
+      for (const list of map.values()) list.sort((a, b) => b - a);
+      return map;
+    };
 
-    const fields: Array<{ name: string; value: string; inline: boolean }> = [];
-    let currentLines: string[] = [];
-    let currentLength = 0;
-    let part = 1;
-
-    for (const line of lines) {
-      // Discord field value limit is 1024 characters
-      if (currentLength + line.length + 1 > 950 && currentLines.length > 0) {
-        fields.push({
-          name: part === 1 ? titlePrefix : `${titlePrefix} (Part ${part})`,
-          value: currentLines.join('\n'),
-          inline: false,
-        });
-        currentLines = [];
-        currentLength = 0;
-        part++;
+    const oldLevels = levelsByCode(oldData);
+    const newLevels = levelsByCode(newData);
+    const changes = new Map<string, ImportChange>();
+    const record = (kind: ImportChange['kind'], item: GameItem, oldLevel: number, newLevel: number) => {
+      const key = `${kind}:${item.village}:${item.id}:${oldLevel}:${newLevel}`;
+      const existing = changes.get(key);
+      if (existing) {
+        existing.count += 1;
+        return;
       }
-      currentLines.push(line);
-      currentLength += line.length + 1;
-    }
+      changes.set(key, {
+        kind,
+        code: item.id,
+        name: item.displayName,
+        category: item.category,
+        village: item.village,
+        oldLevel,
+        newLevel,
+        maxLevel: capFor(item, hallFor(newData, item.village), newLevel),
+        count: 1,
+      });
+    };
 
-    if (currentLines.length > 0) {
-      fields.push({
-        name: part === 1 ? titlePrefix : `${titlePrefix} (Part ${part})`,
-        value: currentLines.join('\n'),
-        inline: false,
+    for (const [key, newList] of newLevels) {
+      const item = getById(key.split(':')[1]);
+      if (!item) continue;
+      const oldList = oldLevels.get(key) ?? [];
+
+      if (newList.length < oldList.length) {
+        // Fewer than before, e.g. two Archer Towers merged into a Multi-Archer Tower; levels can't be paired
+        continue;
+      }
+
+      // Extra items are new builds; they're the lowest-levelled ones
+      const built = newList.slice(oldList.length);
+      const kept = newList.slice(0, oldList.length);
+      for (const level of built) {
+        if (level === 1) record('built', item, 0, 1);
+      }
+      kept.forEach((level, i) => {
+        if (level > oldList[i]) record('upgraded', item, oldList[i], level);
       });
     }
 
-    return fields;
+    return [...changes.values()];
   }
 
-  /**
-   * Compares previously stored village data with newly imported village data
-   * to detect completed defense upgrades.
-   */
-  static detectCompletedDefenseUpgrades(
-    oldVillageData: any,
-    newResult: {
-      homeDefenses?: ParsedDefenseGroup[];
-      builderDefenses?: ParsedDefenseGroup[];
-      homeBuildings?: ParsedDefenseGroup[];
+  /** Moves one item up a level when its timer runs out, so stored levels stay current until the next import. */
+  static applyCompletedTimer(data: VillageDataV2, up: InProgressUpgrade): void {
+    if (!up.code) return;
+    const from = data.items.find((i) => i.code === up.code && i.village === up.village && i.level === up.currentLevel);
+    if (from) {
+      from.count -= 1;
+      if (from.count <= 0) data.items.splice(data.items.indexOf(from), 1);
     }
-  ): Array<{
-    name: string;
-    category: 'defense';
-    village: 'home' | 'builder';
-    oldLevel: number;
-    newLevel: number;
-    maxLevel: number;
-    count: number;
-  }> {
-    if (!oldVillageData) return [];
+    const to = data.items.find((i) => i.code === up.code && i.village === up.village && i.level === up.targetLevel && !i.gearedUp);
+    if (to) to.count += 1;
+    else data.items.push({ code: up.code, category: from?.category ?? (getById(up.code)?.category ?? 'unknown'), village: up.village, level: up.targetLevel, count: 1 });
+  }
 
-    const completed: Array<{
-      name: string;
-      category: 'defense';
-      village: 'home' | 'builder';
-      oldLevel: number;
-      newLevel: number;
-      maxLevel: number;
-      count: number;
-    }> = [];
+  /** B.O.B task 3: any Builder Base defense at level 9 or above in the latest import. */
+  static hasBuilderDefenseAtLevel9(data: VillageDataV2 | null): boolean {
+    return Boolean(data?.items.some((i) => i.village === 'builder' && i.category === 'defense' && i.level >= 9));
+  }
 
-    const checkList = (
-      oldList: ParsedDefenseGroup[] = [],
-      newList: ParsedDefenseGroup[] = [],
-      village: 'home' | 'builder'
-    ) => {
-      // Map: defenseName -> Map<level, count>
-      const oldMap = new Map<string, Map<number, number>>();
-      for (const item of oldList) {
-        if (!oldMap.has(item.name)) {
-          oldMap.set(item.name, new Map());
-        }
-        oldMap.get(item.name)!.set(
-          item.currentLevel,
-          (oldMap.get(item.name)!.get(item.currentLevel) || 0) + item.count
-        );
-      }
-
-      const newMap = new Map<string, Map<number, { count: number; maxLevel: number }>>();
-      for (const item of newList) {
-        if (!newMap.has(item.name)) {
-          newMap.set(item.name, new Map());
-        }
-        const existing = newMap.get(item.name)!.get(item.currentLevel);
-        const count = (existing ? existing.count : 0) + item.count;
-        newMap.get(item.name)!.set(item.currentLevel, { count, maxLevel: item.maxLevel });
-      }
-
-      for (const [name, newLevels] of newMap.entries()) {
-        const oldLevels = oldMap.get(name) || new Map<number, number>();
-
-        for (const [newLevel, info] of newLevels.entries()) {
-          const oldCountAtLevel = oldLevels.get(newLevel) || 0;
-          if (info.count > oldCountAtLevel && newLevel > 1) {
-            const upgradedCount = info.count - oldCountAtLevel;
-            completed.push({
-              name,
-              category: 'defense',
-              village,
-              oldLevel: newLevel - 1,
-              newLevel,
-              maxLevel: info.maxLevel,
-              count: upgradedCount,
-            });
-          }
-        }
-      }
-    };
-
-    checkList(oldVillageData.homeDefenses || [], newResult.homeDefenses || [], 'home');
-    checkList(oldVillageData.builderDefenses || [], newResult.builderDefenses || [], 'builder');
-    checkList(oldVillageData.homeBuildings || [], newResult.homeBuildings || [], 'home');
-
-    return completed;
+  /** The Town Hall weapon level from the export, when the data has a weapon for that Town Hall (D9). */
+  static weaponFor(data: VillageDataV2): { name: string; level: number; maxLevel: number } | null {
+    const weapon = getWeapon(data.townHallLevel);
+    if (!weapon || data.townHallWeaponLevel === undefined) return null;
+    return { name: weapon.name, level: data.townHallWeaponLevel, maxLevel: weapon.levels.length };
   }
 }

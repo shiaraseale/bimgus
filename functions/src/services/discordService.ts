@@ -265,15 +265,28 @@ export class DiscordService {
     botTokenOverride?: string,
     retries = 2
   ): Promise<boolean> {
+    return (await this.sendDmResult(discordUserId, payload, botTokenOverride, retries)) === 'sent';
+  }
+
+  /**
+   * Like sendDm, but says why a DM wasn't sent. 'blocked' means the user doesn't accept DMs from
+   * the bot (Discord error 50007), which retrying won't fix, so it's logged as a warning, not an error.
+   */
+  static async sendDmResult(
+    discordUserId: string,
+    payload: DiscordWebhookPayload,
+    botTokenOverride?: string,
+    retries = 2
+  ): Promise<'sent' | 'blocked' | 'failed'> {
     if (process.env.DRY_RUN_DISCORD === '1' || process.env.DRY_RUN_DISCORD === 'true') {
       console.log(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
-      return true;
+      return 'sent';
     }
 
     const token = botTokenOverride || process.env.DISCORD_BOT_TOKEN;
     if (!token) {
       console.warn('[Discord DM] Skipping DM: No DISCORD_BOT_TOKEN configured');
-      return false;
+      return 'failed';
     }
 
     const headers = {
@@ -307,16 +320,20 @@ export class DiscordService {
       );
 
       console.log(`[Discord DM] Successfully sent DM to user ${discordUserId}`);
-      return true;
+      return 'sent';
     } catch (err: any) {
       if (err.response?.status === 429 && retries > 0) {
         const retryAfter = (err.response.data?.retry_after || 1) * 1000;
         console.warn(`[Discord DM] Rate limited. Waiting ${retryAfter}ms before retry...`);
         await new Promise((resolve) => setTimeout(resolve, retryAfter + 100));
-        return this.sendDm(discordUserId, payload, token, retries - 1);
+        return this.sendDmResult(discordUserId, payload, token, retries - 1);
+      }
+      if (err.response?.data?.code === 50007) {
+        console.warn(`[Discord DM] User ${discordUserId} doesn't accept DMs from the bot (50007)`);
+        return 'blocked';
       }
       console.error(`[Discord DM] Failed to send DM to ${discordUserId}: ${err.message}`, err.response?.data);
-      return false;
+      return 'failed';
     }
   }
 }

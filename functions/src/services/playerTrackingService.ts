@@ -18,8 +18,19 @@ import {
   formatNextCost,
   getById,
   getByName,
+  getWeapon,
   isSuperTroop,
+  nameForCode,
 } from './gameDataService';
+import { VillageDataV2, VillageImportService } from './villageImportService';
+import type { UpgradeEvent } from './upgradeNotifier';
+
+export const SNAPSHOT_VERSION = 2;
+
+/** Snapshot entries are keyed by village and name, because some names exist in both villages. */
+export function snapshotKey(village: 'home' | 'builder', name: string): string {
+  return `${village}:${name}`;
+}
 
 type ApiListKind = keyof typeof API_CATEGORIES;
 type OutstandingResource = OutstandingUpgradeItem['resourceType'];
@@ -124,7 +135,7 @@ export class PlayerTrackingService {
    */
   static calculateSixthBuilderProgress(
     player: any,
-    activeUpgrades: ActiveUpgrade[] = [],
+    villageData: VillageDataV2 | null = null,
     bobDefenseCompleted: boolean = false
   ): SixthBuilderProgress {
     const achievements: any[] = player.achievements || [];
@@ -147,19 +158,10 @@ export class PlayerTrackingService {
     const bbTroopDone = highestTroopLvl >= 18;
 
     // Task 3: BB Defense Level 9
-    // NOTE: Builder Hall level is NOT a defense upgrade and must NOT be counted as such.
-    // The official CoC API does not expose raw village defense levels.
-    // We check if the user marked it completed or logged it in active upgrades.
+    // The API doesn't expose building levels, so this comes from the latest import (the Builder Hall
+    // itself doesn't count). The manual "Mark Defense Lv 9 Completed" button still overrides it.
     const bhLevel = player.builderHallLevel || 0;
-    const hasLv9Defense =
-      bobDefenseCompleted ||
-      activeUpgrades.some(
-        (u) =>
-          u.village === 'builder' &&
-          (u.category === 'defense' || (u.category as string) === 'building') &&
-          (u.targetLevel >= 9 || (u.completed && u.targetLevel >= 9))
-      );
-    const defenseDone = hasLv9Defense;
+    const defenseDone = bobDefenseCompleted || VillageImportService.hasBuilderDefenseAtLevel9(villageData);
 
     // Task 4: Combined BB Hero level 45
     const bm = (player.heroes || []).find((h: any) => h.name === 'Battle Machine');
@@ -229,7 +231,8 @@ export class PlayerTrackingService {
   static calculateOutstandingUpgrades(
     player: any,
     activeUpgrades: ActiveUpgrade[] = [],
-    bobDefenseCompleted: boolean = false
+    bobDefenseCompleted: boolean = false,
+    villageData: VillageDataV2 | null = null
   ): OutstandingUpgradesSummary {
     const byResource: OutstandingUpgradesSummary['byResource'] = {
       darkElixir: [],
@@ -252,7 +255,7 @@ export class PlayerTrackingService {
         buildings: [],
         heroes: [],
         troops: [],
-        sixthBuilder: PlayerTrackingService.calculateSixthBuilderProgress(player, activeUpgrades, bobDefenseCompleted),
+        sixthBuilder: PlayerTrackingService.calculateSixthBuilderProgress(player, villageData, bobDefenseCompleted),
       },
     };
 
@@ -377,7 +380,7 @@ export class PlayerTrackingService {
     if (player.townHallLevel < MAX_TOWN_HALL) {
       const townHall = getById(1000001);
       const item: OutstandingUpgradeItem = {
-        name: 'Town Hall',
+        name: nameForCode(1000001),
         code: 1000001,
         nextCost: townHall ? formatNextCost(townHall, player.townHallLevel) : undefined,
         currentLevel: 0,
@@ -413,7 +416,7 @@ export class PlayerTrackingService {
     if (player.builderHallLevel && player.builderHallLevel < MAX_BUILDER_HALL) {
       const builderHall = getById(1000034);
       const item: OutstandingUpgradeItem = {
-        name: 'Builder Hall',
+        name: nameForCode(1000034),
         code: 1000034,
         nextCost: builderHall ? formatNextCost(builderHall, player.builderHallLevel) : undefined,
         currentLevel: 0,
@@ -463,169 +466,124 @@ export class PlayerTrackingService {
   }
 
   /**
-   * Compares a previous snapshot with live player data to detect completed upgrades.
+   * Compares the last snapshot with live API data. Covers heroes, equipment, troops (including pets
+   * and siege machines), spells, both halls and the Town Hall weapon; buildings come from imports.
+   *
+   * Level rules (2.5): something new at level 1 is "unlocked"; something new above level 1 is only
+   * recorded (it's a data gap, not an event). Snapshots from before version 2 are replaced without
+   * comparing, so the migration can't trigger a burst of DMs.
    */
-  static detectCompletedUpgrades(
-    oldSnapshot: PlayerSnapshot,
-    newPlayer: any
-  ): Array<{
-    name: string;
-    category: 'hero' | 'equipment' | 'troop' | 'spell' | 'townHall' | 'builderHall';
-    village: 'home' | 'builder';
-    oldLevel: number;
-    newLevel: number;
-    maxLevel: number;
-    levelsRemaining: number;
-  }> {
-    const completed: Array<{
-      name: string;
-      category: 'hero' | 'equipment' | 'troop' | 'spell' | 'townHall' | 'builderHall';
-      village: 'home' | 'builder';
-      oldLevel: number;
-      newLevel: number;
-      maxLevel: number;
-      levelsRemaining: number;
-    }> = [];
+  static detectApiUpgrades(oldSnapshot: PlayerSnapshot | undefined, newPlayer: any): UpgradeEvent[] {
+    if (!oldSnapshot || oldSnapshot.version !== SNAPSHOT_VERSION) return [];
+    const events: UpgradeEvent[] = [];
 
-    // Town Hall
-    if (newPlayer.townHallLevel > oldSnapshot.townHallLevel) {
-      completed.push({
-        name: 'Town Hall',
-        category: 'townHall',
-        village: 'home',
-        oldLevel: oldSnapshot.townHallLevel,
-        newLevel: newPlayer.townHallLevel,
-        maxLevel: MAX_TOWN_HALL,
-        levelsRemaining: Math.max(0, MAX_TOWN_HALL - newPlayer.townHallLevel),
+    const th = newPlayer.townHallLevel;
+    if (th > oldSnapshot.townHallLevel) {
+      events.push({
+        kind: 'upgraded', code: 1000001, name: nameForCode(1000001), assetName: 'Town Hall', category: 'townHall', village: 'home',
+        oldLevel: oldSnapshot.townHallLevel, newLevel: th, maxLevel: MAX_TOWN_HALL, count: 1, key: `townHall:home:${th}`,
       });
     }
 
-    // Builder Hall
-    if (newPlayer.builderHallLevel && oldSnapshot.builderHallLevel && newPlayer.builderHallLevel > oldSnapshot.builderHallLevel) {
-      completed.push({
-        name: 'Builder Hall',
-        category: 'builderHall',
-        village: 'builder',
-        oldLevel: oldSnapshot.builderHallLevel,
-        newLevel: newPlayer.builderHallLevel,
-        maxLevel: MAX_BUILDER_HALL,
-        levelsRemaining: Math.max(0, MAX_BUILDER_HALL - newPlayer.builderHallLevel),
+    const bh = newPlayer.builderHallLevel || 0;
+    const oldBh = oldSnapshot.builderHallLevel || 0;
+    if (bh > oldBh && (oldBh > 0 || bh === 1)) {
+      events.push({
+        kind: oldBh > 0 ? 'upgraded' : 'unlocked', code: 1000034, name: nameForCode(1000034), assetName: 'Builder Hall',
+        category: 'builderHall', village: 'builder', oldLevel: oldBh, newLevel: bh, maxLevel: MAX_BUILDER_HALL, count: 1,
+        key: `builderHall:builder:${bh}`,
       });
     }
 
-    // Heroes
-    for (const h of newPlayer.heroes || []) {
-      const prev = oldSnapshot.heroes[h.name];
-      const prevLevel = prev ? prev.level : 0;
-      if (h.level > prevLevel) {
-        const isBb = h.village === 'builderBase';
-        const maxLvl = apiCap('heroes', h, newPlayer);
-        completed.push({
-          name: h.name,
-          category: 'hero',
-          village: isBb ? 'builder' : 'home',
-          oldLevel: prevLevel,
-          newLevel: h.level,
-          maxLevel: maxLvl,
-          levelsRemaining: Math.max(0, maxLvl - h.level),
+    // Town Hall weapon: only where the data has one (TH17 today, D9), and never in the poll where the
+    // Town Hall itself changed (then the new value is just recorded)
+    const weapon = getWeapon(th);
+    const weaponLevel = newPlayer.townHallWeaponLevel;
+    if (weapon && th === oldSnapshot.townHallLevel && typeof weaponLevel === 'number') {
+      const oldWeapon = oldSnapshot.townHallWeaponLevel ?? 0;
+      if (weaponLevel > oldWeapon) {
+        events.push({
+          kind: oldWeapon === 0 ? 'unlocked' : 'upgraded', name: weapon.name, assetName: 'Town Hall', category: 'townHall',
+          village: 'home', oldLevel: oldWeapon, newLevel: weaponLevel, maxLevel: weapon.levels.length, count: 1,
+          key: `weapon:home:${th}:${weaponLevel}`,
         });
       }
     }
 
-    // Hero Equipment
-    for (const eq of newPlayer.heroEquipment || []) {
-      const prev = oldSnapshot.heroEquipment[eq.name];
-      const prevLevel = prev ? prev.level : 0;
-      if (eq.level > prevLevel) {
-        const maxLvl = apiCap('heroEquipment', eq, newPlayer);
-        completed.push({
-          name: eq.name,
-          category: 'equipment',
-          village: 'home',
-          oldLevel: prevLevel,
-          newLevel: eq.level,
-          maxLevel: maxLvl,
-          levelsRemaining: Math.max(0, maxLvl - eq.level),
+    const lists: Array<[ApiListKind, 'heroes' | 'heroEquipment' | 'troops' | 'spells']> = [
+      ['heroes', 'heroes'],
+      ['heroEquipment', 'heroEquipment'],
+      ['troops', 'troops'],
+      ['spells', 'spells'],
+    ];
+    for (const [kind, field] of lists) {
+      for (const entry of newPlayer[field] || []) {
+        const item = lookupApiItem(kind, entry);
+        if (isSuperTroop(item) || item?.event) continue;
+        const village = apiVillage(entry.village);
+        const prev = oldSnapshot[field][snapshotKey(village, entry.name)];
+        const isNew = !prev;
+        if (isNew && entry.level !== 1) continue;
+        if (!isNew && entry.level <= prev.level) continue;
+
+        const category = item?.category ?? (kind === 'heroEquipment' ? 'equipment' : kind.replace(/s$/, ''));
+        events.push({
+          kind: isNew ? 'unlocked' : 'upgraded',
+          code: item?.id,
+          name: item?.displayName ?? entry.name,
+          assetName: item?.name ?? entry.name,
+          category,
+          village,
+          oldLevel: isNew ? 0 : prev.level,
+          newLevel: entry.level,
+          maxLevel: apiCap(kind, entry, newPlayer),
+          count: 1,
+          key: `${category}:${village}:${entry.name}:${entry.level}`,
         });
       }
     }
 
-    // Troops
-    for (const tr of newPlayer.troops || []) {
-      const data = lookupApiItem('troops', tr);
-      if (isSuperTroop(data) || data?.event) continue;
-      const prev = oldSnapshot.troops[tr.name];
-      const prevLevel = prev ? prev.level : 0;
-      if (tr.level > prevLevel) {
-        const isBb = tr.village === 'builderBase';
-        const maxLvl = apiCap('troops', tr, newPlayer);
-        completed.push({
-          name: tr.name,
-          category: 'troop',
-          village: isBb ? 'builder' : 'home',
-          oldLevel: prevLevel,
-          newLevel: tr.level,
-          maxLevel: maxLvl,
-          levelsRemaining: Math.max(0, maxLvl - tr.level),
-        });
-      }
-    }
-
-    // Spells
-    for (const sp of newPlayer.spells || []) {
-      const prev = oldSnapshot.spells[sp.name];
-      const prevLevel = prev ? prev.level : 0;
-      if (sp.level > prevLevel) {
-        const maxLvl = apiCap('spells', sp, newPlayer);
-        completed.push({
-          name: sp.name,
-          category: 'spell',
-          village: 'home',
-          oldLevel: prevLevel,
-          newLevel: sp.level,
-          maxLevel: maxLvl,
-          levelsRemaining: Math.max(0, maxLvl - sp.level),
-        });
-      }
-    }
-
-    return completed;
+    return events;
   }
 
   /**
    * Builds a PlayerSnapshot object from live player API data.
    */
-  static createSnapshot(player: any): PlayerSnapshot {
-    const heroes: PlayerSnapshot['heroes'] = {};
-    for (const h of player.heroes || []) {
-      heroes[h.name] = { level: h.level, maxLevel: h.maxLevel || h.level, village: h.village };
-    }
-
-    const heroEquipment: PlayerSnapshot['heroEquipment'] = {};
-    for (const eq of player.heroEquipment || []) {
-      heroEquipment[eq.name] = { level: eq.level, maxLevel: eq.maxLevel || eq.level, village: eq.village };
-    }
-
-    const troops: PlayerSnapshot['troops'] = {};
-    for (const tr of player.troops || []) {
-      troops[tr.name] = { level: tr.level, maxLevel: tr.maxLevel || tr.level, village: tr.village };
-    }
-
-    const spells: PlayerSnapshot['spells'] = {};
-    for (const sp of player.spells || []) {
-      spells[sp.name] = { level: sp.level, maxLevel: sp.maxLevel || sp.level, village: sp.village };
-    }
+  static createSnapshot(player: any, now: Date = new Date()): PlayerSnapshot {
+    const entries = (list: any[] | undefined) => {
+      const out: PlayerSnapshot['heroes'] = {};
+      for (const x of list || []) {
+        out[snapshotKey(apiVillage(x.village), x.name)] = {
+          name: x.name,
+          level: x.level,
+          maxLevel: x.maxLevel || x.level,
+          village: x.village,
+        };
+      }
+      return out;
+    };
 
     return {
+      version: SNAPSHOT_VERSION,
       tag: player.tag,
       name: player.name,
       townHallLevel: player.townHallLevel,
+      ...(typeof player.townHallWeaponLevel === 'number' ? { townHallWeaponLevel: player.townHallWeaponLevel } : {}),
       builderHallLevel: player.builderHallLevel,
-      heroes,
-      heroEquipment,
-      troops,
-      spells,
-      updatedAt: new Date().toISOString(),
+      heroes: entries(player.heroes),
+      heroEquipment: entries(player.heroEquipment),
+      troops: entries(player.troops),
+      spells: entries(player.spells),
+      stats: {
+        trophies: player.trophies ?? 0,
+        warStars: player.warStars ?? 0,
+        donations: player.donations ?? 0,
+        donationsReceived: player.donationsReceived ?? 0,
+        attackWins: player.attackWins ?? 0,
+        defenseWins: player.defenseWins ?? 0,
+        ...(player.warPreference ? { warPreference: player.warPreference } : {}),
+      },
+      updatedAt: now.toISOString(),
     };
   }
 

@@ -18,15 +18,38 @@ export interface ApprenticeTimer {
   notified: boolean;
 }
 
+export interface SnapshotEntry {
+  name?: string;
+  level: number;
+  maxLevel: number;
+  village: string;
+}
+
+/**
+ * The account's live API data as of the last poll. Version 2 keys each list by `village:name`,
+ * because some names exist in both villages (e.g. Baby Dragon).
+ */
 export interface PlayerSnapshot {
+  version?: 2;
   tag: string;
   name: string;
   townHallLevel: number;
+  townHallWeaponLevel?: number;
   builderHallLevel?: number;
-  heroes: Record<string, { level: number; maxLevel: number; village: string }>;
-  heroEquipment: Record<string, { level: number; maxLevel: number; village: string }>;
-  troops: Record<string, { level: number; maxLevel: number; village: string }>;
-  spells: Record<string, { level: number; maxLevel: number; village: string }>;
+  heroes: Record<string, SnapshotEntry>;
+  heroEquipment: Record<string, SnapshotEntry>;
+  troops: Record<string, SnapshotEntry>;
+  spells: Record<string, SnapshotEntry>;
+  // Profile stats for /roast (2.7), so it doesn't need a live API call
+  stats?: {
+    trophies: number;
+    warStars: number;
+    donations: number;
+    donationsReceived: number;
+    attackWins: number;
+    defenseWins: number;
+    warPreference?: string;
+  };
   updatedAt: string;
 }
 
@@ -42,6 +65,8 @@ export interface LinkedAccount {
   dmsEnabled?: boolean;
   bobDefenseCompleted?: boolean;
   villageData?: any;
+  // Recent notifications already sent (timer and API keys), so a retry never sends one twice
+  notifiedKeys?: string[];
 }
 
 export interface UserDoc {
@@ -49,6 +74,9 @@ export interface UserDoc {
   dmChannelId?: string;
   activeAccountTag?: string;
   dmsEnabled?: boolean;
+  // Set when Discord refuses DMs to this user (50007); DMs pause for 7 days
+  dmsBlockedAt?: string;
+  dmsBlockedNoticeShown?: boolean;
   accounts: LinkedAccount[];
   createdAt: string;
   updatedAt: string;

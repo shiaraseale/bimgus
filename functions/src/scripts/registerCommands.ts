@@ -170,43 +170,43 @@ export const BOT_COMMANDS = [
   },
   {
     name: 'import-village',
-    description: 'Import in-game village JSON export(s) to track defense levels and upgrade costs',
+    description: 'Import your village JSON export (one per account; it includes both villages)',
     contexts: [0, 1],
     integration_types: [0],
     options: [
       {
         name: 'file',
-        description: 'Village JSON export file 1 (Home Village or Builder Base)',
+        description: 'Village JSON export (one file covers both villages of an account)',
         type: 11, // ATTACHMENT
         required: false,
       },
       {
         name: 'file2',
-        description: 'Village JSON export file 2 (optional)',
+        description: 'Export for another account (optional)',
         type: 11, // ATTACHMENT
         required: false,
       },
       {
         name: 'file3',
-        description: 'Village JSON export file 3 (optional)',
+        description: 'Export for another account (optional)',
         type: 11, // ATTACHMENT
         required: false,
       },
       {
         name: 'file4',
-        description: 'Village JSON export file 4 (optional)',
+        description: 'Export for another account (optional)',
         type: 11, // ATTACHMENT
         required: false,
       },
       {
         name: 'file5',
-        description: 'Village JSON export file 5 (optional)',
+        description: 'Export for another account (optional)',
         type: 11, // ATTACHMENT
         required: false,
       },
       {
         name: 'file6',
-        description: 'Village JSON export file 6 (optional)',
+        description: 'Export for another account (optional)',
         type: 11, // ATTACHMENT
         required: false,
       },

@@ -8,6 +8,7 @@ import { GeminiRoastService } from '../services/geminiRoastService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import {
+  GameCategory,
   MAX_BUILDER_HALL,
   MAX_TOWN_HALL,
   countForHall,
@@ -19,11 +20,17 @@ import {
   itemsIn,
 } from '../services/gameDataService';
 import { EMOJIS } from '../constants/emojis';
-import { LinkedAccount } from '../types/user';
+import { LinkedAccount, UserDoc } from '../types/user';
 import { PlayerTrackingService } from '../services/playerTrackingService';
-import { VillageImportService, InProgressUpgrade, ParsedDefenseGroup } from '../services/villageImportService';
+import { VillageImportService, InProgressUpgrade, ParsedDefenseGroup, VillageDataV2 } from '../services/villageImportService';
+import { describeEvent, eventsFromImportChanges, groupWalls, isDmPaused, notifyUpgrades } from '../services/upgradeNotifier';
 
 export const discordInteractionsRouter = Router();
+
+// Which stored import categories each list shows
+const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];
+const BB_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap'];
+const BUILDING_CATEGORIES: GameCategory[] = ['resource', 'army', 'other', 'wall'];
 
 function formatProgressBar(percent: number, length: number = 10): string {
   const filled = Math.max(0, Math.min(length, Math.round((percent / 100) * length)));
@@ -136,9 +143,18 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       }
     };
 
+    // Set by getTargetAccounts; used to tell the user once that their DMs are paused
+    let commandUserDoc: UserDoc | null = null;
+
     // Helper to send a message per linked account (edits initial reply for 1st account, follows up for remaining)
     const sendAccountMessage = async (index: number, messageData: any) => {
       if (index === 0) {
+        if (commandUserDoc && isDmPaused(commandUserDoc) && !commandUserDoc.dmsBlockedNoticeShown) {
+          commandUserDoc.dmsBlockedNoticeShown = true;
+          await FirestoreService.saveUser(commandUserDoc).catch(() => {});
+          const notice = '📭 *Bimgus couldn\'t DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*';
+          messageData = { ...messageData, content: [notice, messageData.content].filter(Boolean).join('\n') };
+        }
         await editDeferredReply(messageData);
       } else {
         await sendFollowup(messageData);
@@ -154,6 +170,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
       if (!discordUserId) return { userDoc: null, accounts: [], error: 'Unable to identify Discord user.' };
 
       const userDoc = await FirestoreService.getUser(discordUserId);
+      commandUserDoc = userDoc;
       if (!userDoc || !userDoc.accounts || userDoc.accounts.length === 0) {
         return {
           userDoc,
@@ -181,23 +198,19 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
     // Helper to format date and time notice from imported village JSON
     function getVillageJsonTimestampNotice(
-      villageData: any,
-      prefix: string = 'Based on the latest JSON provided'
+      village: VillageDataV2 | null,
+      prefix: string = 'Based on the export taken'
     ): string | null {
-      if (!villageData) return null;
-      let sec: number | null = null;
-      if (villageData.timestamp) {
-        const ts = Number(villageData.timestamp);
-        if (ts > 1e12) sec = Math.floor(ts / 1000);
-        else if (ts > 1e9) sec = Math.floor(ts);
-      }
-      if (!sec && villageData.updatedAt) {
-        const t = new Date(villageData.updatedAt).getTime();
-        if (!isNaN(t)) sec = Math.floor(t / 1000);
-      }
-      if (!sec) return null;
-      return `📄 *${prefix} on <t:${sec}:f> (<t:${sec}:R>)*`;
+      if (!village) return null;
+      const sec = Math.floor(village.exportTimestamp / 1000);
+      const stale = VillageImportService.isStale(village) ? ' ⚠️ *over a day old, so timers may be out of date*' : '';
+      return `📄 *${prefix} on <t:${sec}:f> (<t:${sec}:R>)*${stale}`;
     }
+
+    // Shown where imported data would be, for accounts with no import in the current format
+    const NO_IMPORT_TEXT =
+      '💡 *Run `/import-village` to load your exact building levels and upgrade costs. ' +
+      '(Imports from before the one-file update are no longer used; one export now covers both villages.)*';
 
     // Helper to fetch player data with fallback to last saved snapshot during Supercell maintenance
     async function getPlayerWithFallback(account: LinkedAccount): Promise<{ player: any; isCached: boolean }> {
@@ -218,26 +231,26 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             name: snap.name || account.name,
             townHallLevel: snap.townHallLevel || account.townHallLevel || 9,
             builderHallLevel: snap.builderHallLevel || account.builderHallLevel || 0,
-            heroes: Object.entries(snap.heroes || {}).map(([name, h]: any) => ({
-              name,
+            heroes: Object.entries(snap.heroes || {}).map(([key, h]: any) => ({
+              name: h.name ?? key.replace(/^(home|builder):/, ''),
               level: h.level,
               maxLevel: h.maxLevel,
               village: h.village,
             })),
-            heroEquipment: Object.entries(snap.heroEquipment || {}).map(([name, e]: any) => ({
-              name,
+            heroEquipment: Object.entries(snap.heroEquipment || {}).map(([key, e]: any) => ({
+              name: e.name ?? key.replace(/^(home|builder):/, ''),
               level: e.level,
               maxLevel: e.maxLevel,
               village: e.village,
             })),
-            troops: Object.entries(snap.troops || {}).map(([name, t]: any) => ({
-              name,
+            troops: Object.entries(snap.troops || {}).map(([key, t]: any) => ({
+              name: t.name ?? key.replace(/^(home|builder):/, ''),
               level: t.level,
               maxLevel: t.maxLevel,
               village: t.village,
             })),
-            spells: Object.entries(snap.spells || {}).map(([name, s]: any) => ({
-              name,
+            spells: Object.entries(snap.spells || {}).map(([key, s]: any) => ({
+              name: s.name ?? key.replace(/^(home|builder):/, ''),
               level: s.level,
               maxLevel: s.maxLevel,
               village: s.village,
@@ -419,9 +432,10 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
               const account = accounts[idx];
               try {
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
+                const village = VillageImportService.read(account.villageData);
                 const bob = PlayerTrackingService.calculateSixthBuilderProgress(
                   freshPlayer,
-                  account.activeUpgrades || [],
+                  village,
                   account.bobDefenseCompleted || false
                 );
 
@@ -434,8 +448,8 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   ? '🎉 **Congratulations! You have unlocked the 6th Builder (B.O.B)!**'
                   : `⏳ **Overall Progress**: ${formatProgressBar(bob.overallPercentage)}`;
 
-                const bbJsonNotice = (account.villageData?.builderDefenses?.length > 0)
-                  ? getVillageJsonTimestampNotice(account.villageData, 'Builder Base defenses based on the latest JSON provided')
+                const bbJsonNotice = village && village.builderHallLevel > 0
+                  ? getVillageJsonTimestampNotice(village, 'Builder Base defenses based on the export taken')
                   : null;
 
                 const embed = {
@@ -620,10 +634,12 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
               const account = accounts[idx];
               try {
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
+                const village = VillageImportService.read(account.villageData);
                 const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(
                   freshPlayer,
                   account.activeUpgrades || [],
-                  account.bobDefenseCompleted || false
+                  account.bobDefenseCompleted || false,
+                  village
                 );
                 const home = outstanding.byCategory.home;
                 const bb = outstanding.byCategory.builder;
@@ -669,7 +685,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   `${heroEmoji} **Heroes Lv 45**: ${bob.tasks.bbHeroesLv45.current}/45`,
                 ].join('\n');
 
-                const villageInProg: InProgressUpgrade[] = (account.villageData?.inProgressUpgrades || []) as InProgressUpgrade[];
+                const villageInProg: InProgressUpgrade[] = village?.inProgressUpgrades || [];
                 const legacyInProg: InProgressUpgrade[] = (account.activeUpgrades || [])
                   .filter((au: any) => !au.completed && new Date(au.finishesAt).getTime() > Date.now())
                   .map((au: any) => ({
@@ -696,19 +712,23 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   })
                   .sort((a, b) => a.finishesAtMs - b.finishesAtMs);
 
-                const importedHome = (account.villageData?.homeDefenses || []) as ParsedDefenseGroup[];
-                const unmaxedHomeDef = importedHome.filter((d: any) => !d.isMaxed);
+                const halls = { townHall: freshPlayer.townHallLevel, builderHall: freshPlayer.builderHallLevel || 0 };
+                const importedHome: ParsedDefenseGroup[] = village
+                  ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls)
+                  : [];
+                const unmaxedHomeDef = importedHome.filter((d) => !d.isMaxed);
 
-                const importedHomeBuildings = (account.villageData?.homeBuildings || []) as ParsedDefenseGroup[];
-                const unmaxedHomeBuildings = importedHomeBuildings.filter((d: any) => !d.isMaxed);
+                const importedHomeBuildings: ParsedDefenseGroup[] = village
+                  ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls)
+                  : [];
+                const unmaxedHomeBuildings = importedHomeBuildings.filter((d) => !d.isMaxed);
 
-                const importedBb = (account.villageData?.builderDefenses || []) as ParsedDefenseGroup[];
-                const unmaxedBbDef = importedBb.filter((d: any) => !d.isMaxed);
+                const importedBb: ParsedDefenseGroup[] = village
+                  ? VillageImportService.groupsFor(village, 'builder', [...BB_DEFENSE_CATEGORIES, ...BUILDING_CATEGORIES], halls)
+                  : [];
+                const unmaxedBbDef = importedBb.filter((d) => !d.isMaxed);
 
-                const unmaxedBuildingLines = unmaxedHomeBuildings.map((d: any) => {
-                  const costStr = VillageImportService.formatCost(d.nextCostNumber, d.resource);
-                  return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${costStr}`;
-                });
+                const unmaxedBuildingLines = unmaxedHomeBuildings.map(VillageImportService.formatGroupLine);
                 const thGearUpText = formatItems(home.buildings, '');
                 const homeBuildingLines = [thGearUpText, ...unmaxedBuildingLines].filter(Boolean);
                 const homeBuildingFields: any[] = [];
@@ -752,10 +772,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 const homeDefFields: any[] = [];
                 if (importedHome.length > 0) {
                   if (unmaxedHomeDef.length > 0) {
-                    const homeDefLines = unmaxedHomeDef.map((d: any) => {
-                      const costStr = VillageImportService.formatCost(d.nextCostNumber, d.resource);
-                      return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${costStr}`;
-                    });
+                    const homeDefLines = unmaxedHomeDef.map(VillageImportService.formatGroupLine);
                     let chunk: string[] = [];
                     let chunkLen = 0;
                     let part = 1;
@@ -790,7 +807,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 } else {
                   homeDefFields.push({
                     name: `🛡️ Defenses`,
-                    value: `💡 *Run \`/import-village\` to load your exact defense levels and upgrade costs.*`,
+                    value: NO_IMPORT_TEXT,
                     inline: false,
                   });
                 }
@@ -798,10 +815,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 const bbDefFields: any[] = [];
                 if (importedBb.length > 0) {
                   if (unmaxedBbDef.length > 0) {
-                    const bbDefLines = unmaxedBbDef.map((d: any) => {
-                      const costStr = VillageImportService.formatCost(d.nextCostNumber, d.resource);
-                      return `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${costStr}`;
-                    });
+                    const bbDefLines = unmaxedBbDef.map(VillageImportService.formatGroupLine);
                     let bbChunk: string[] = [];
                     let bbChunkLen = 0;
                     let bbPart = 1;
@@ -836,7 +850,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 } else {
                   bbDefFields.push({
                     name: `🛡️ BB Defenses`,
-                    value: `💡 *Run \`/import-village\` to load your exact builder base defense levels.*`,
+                    value: NO_IMPORT_TEXT,
                     inline: false,
                   });
                 }
@@ -933,9 +947,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
                 }
 
-                const jsonNotice = (importedHome.length > 0 || importedHomeBuildings.length > 0 || importedBb.length > 0)
-                  ? getVillageJsonTimestampNotice(account.villageData, 'Defenses & buildings based on the latest JSON provided')
-                  : null;
+                const jsonNotice = getVillageJsonTimestampNotice(village, 'Defenses & buildings based on the export taken');
 
                 const embed = {
                   title: `🏰 [${account.name}] Live Upgrades & Maxing Overview`,
@@ -1018,6 +1030,8 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
                 const th = freshPlayer.townHallLevel;
                 const bh = freshPlayer.builderHallLevel || 0;
+                const village = VillageImportService.read(account.villageData);
+                const halls = { townHall: th, builderHall: bh };
                 // Without an import, list every defense the hall allows with its cap and the cost of its last level
                 const hallCapLines = (village: 'home' | 'builder', hallLevel: number) =>
                   itemsIn(village, ['defense'])
@@ -1028,7 +1042,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                       return `• ${d.count}x **${d.item.displayName}**: Max Lv ${d.max}${last ? ` — ${formatLevelCost(d.item, last)}` : ''}`;
                     });
 
-                const villageInProg: InProgressUpgrade[] = (account.villageData?.inProgressUpgrades || []) as InProgressUpgrade[];
+                const villageInProg: InProgressUpgrade[] = village?.inProgressUpgrades || [];
                 const legacyInProg: InProgressUpgrade[] = (account.activeUpgrades || [])
                   .filter((au: any) => !au.completed && new Date(au.finishesAt).getTime() > Date.now())
                   .map((au: any) => ({
@@ -1070,13 +1084,9 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
 
                 // Defense lines: use imported village data if available, otherwise show target caps
-                const importedHome = account.villageData?.homeDefenses as any[];
-                const homeCapLines = (importedHome && importedHome.length > 0)
-                  ? importedHome.map((d: any) =>
-                      d.isMaxed
-                        ? `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — Maxed ✨`
-                        : `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${VillageImportService.formatCost(d.nextCostNumber, d.resource)}`
-                    )
+                const importedHome = village ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls) : [];
+                const homeCapLines = importedHome.length > 0
+                  ? importedHome.map(VillageImportService.formatGroupLine)
                   : hallCapLines('home', th);
 
                 const fields: any[] = [];
@@ -1094,7 +1104,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   thUpgradeStr,
                   gearUpsStr,
                   '',
-                  `🛡️ **${importedHome && importedHome.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max TH${th}`}:**`,
+                  `🛡️ **${importedHome.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max TH${th}`}:**`,
                 ].join('\n');
 
                 const homeChunks: string[] = [];
@@ -1131,13 +1141,14 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   }
                 }
 
-                const importedBuildings = account.villageData?.homeBuildings as any[];
-                if (importedBuildings && importedBuildings.length > 0) {
-                  const bFields = VillageImportService.formatDefenseFields(
-                    importedBuildings,
-                    `🏛️ Other Buildings & Storages (TH${th})`
+                const importedBuildings = village ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls) : [];
+                if (importedBuildings.length > 0) {
+                  fields.push(
+                    ...VillageImportService.linesToFields(
+                      `🏛️ Other Buildings & Storages (TH${th})`,
+                      importedBuildings.map(VillageImportService.formatGroupLine)
+                    )
                   );
-                  fields.push(...bFields);
                 }
 
                 let bob: any = null;
@@ -1150,27 +1161,23 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
 
                   bob = PlayerTrackingService.calculateSixthBuilderProgress(
                     freshPlayer,
-                    account.activeUpgrades || [],
+                    village,
                     account.bobDefenseCompleted || false
                   );
                   const bobDefStr = bob.tasks.bbDefenseLv9.completed
                     ? '✅ **B.O.B Defense Lv 9**: Completed'
                     : `🔄 **B.O.B Defense Lv 9**: 0/1 (Upgrade any BB defense to Lv 9)`;
 
-                  const importedBb = account.villageData?.builderDefenses as any[];
-                  const bbCapLines = (importedBb && importedBb.length > 0)
-                    ? importedBb.map((d: any) =>
-                        d.isMaxed
-                          ? `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — Maxed ✨`
-                          : `• ${d.count}x **${d.name}**: Lv ${d.currentLevel}/${d.maxLevel} — ${VillageImportService.formatCost(d.nextCostNumber, d.resource)}`
-                      )
+                  const importedBb = village ? VillageImportService.groupsFor(village, 'builder', BB_DEFENSE_CATEGORIES, halls) : [];
+                  const bbCapLines = importedBb.length > 0
+                    ? importedBb.map(VillageImportService.formatGroupLine)
                     : hallCapLines('builder', bh);
 
                   const bbHeader = [
                     bhUpgradeStr,
                     bobDefStr,
                     '',
-                    `🛡️ **${importedBb && importedBb.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max BH${bh}`}:**`,
+                    `🛡️ **${importedBb.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max BH${bh}`}:**`,
                   ].join('\n');
 
                   const bbChunks: string[] = [];
@@ -1212,17 +1219,17 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
                 }
 
-                const hasImportedHome = Boolean(account.villageData?.homeDefenses?.length);
-                const hasImportedBb = Boolean(account.villageData?.builderDefenses?.length);
-                const hasImported = hasImportedHome || hasImportedBb;
-                const jsonNotice = hasImported ? getVillageJsonTimestampNotice(account.villageData) : null;
+                const hasImportedHome = importedHome.length > 0;
+                const hasImportedBb = Boolean(village && village.builderHallLevel > 0);
+                const hasImported = Boolean(village);
+                const jsonNotice = getVillageJsonTimestampNotice(village);
                 const desc = [
                   isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
                   hasImportedHome
                     ? (hasImportedBb
                         ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
                         : `Exact defenses for **Town Hall ${th}**.`)
-                    : `Defense level limits and Hall upgrade requirements for **Town Hall ${th}**${bh > 0 ? ` and **Builder Hall ${bh}**` : ''}.\n*(Note: Raw village defense levels are not exposed by the Supercell API. Run \`/import-village\` to sync your exact base levels!)*`,
+                    : `Defense level limits and Hall upgrade requirements for **Town Hall ${th}**${bh > 0 ? ` and **Builder Hall ${bh}**` : ''}.\n*(The Supercell API doesn't include building levels.)*\n${NO_IMPORT_TEXT}`,
                   jsonNotice || '',
                 ].filter(Boolean).join('\n');
 
@@ -1305,9 +1312,9 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
         if (attachments.length === 0 && !jsonText) {
           return respondPersonal({
             content:
-              '⚠️ **Please provide your village JSON export(s)!**\n\n' +
-              '• You can attach up to 4–6 `.json` files at once (e.g. Home Village & Builder Base exports for each of your accounts).\n' +
-              '• Or paste JSON text directly into the `json_text` option.\n\n' +
+              '⚠️ **Please provide your village JSON export!**\n\n' +
+              '• **One export per account; it includes both your Home Village and Builder Base.**\n' +
+              '• Attach up to 6 `.json` files at once if you have several accounts, or paste one export into the `json_text` option.\n\n' +
               '📖 **How to export from Clash of Clans:**\n' +
               '1. Open Clash of Clans ➔ Tap **Settings** ⚙️\n' +
               '2. Tap **More Settings**\n' +
@@ -1351,22 +1358,21 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
               return;
             }
 
-            // 2. Parse all JSON exports
-            const parsedExports: Array<{ fileName: string; json: any }> = [];
+            // 2. Parse every export; each one is a whole account (both villages)
+            const parsed: Array<{ fileName: string; village: VillageDataV2 }> = [];
             const parseErrors: string[] = [];
-
             for (const item of rawInputs) {
               try {
-                const parsed = VillageImportService.parseRawJson(item.raw);
-                parsedExports.push({ fileName: item.name, json: parsed });
+                const json = VillageImportService.parseRawJson(item.raw);
+                parsed.push({ fileName: item.name, village: VillageImportService.parseExport(json) });
               } catch (pErr: any) {
                 parseErrors.push(`• **${item.name}**: ${pErr.message}`);
               }
             }
 
-            if (parsedExports.length === 0) {
+            if (parsed.length === 0) {
               await editDeferredReply({
-                content: `❌ Could not parse any valid village JSON exports:\n${parseErrors.join('\n')}`,
+                content: `❌ Could not read any village exports:\n${parseErrors.join('\n')}`,
               });
               return;
             }
@@ -1374,256 +1380,101 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
             // 3. Load user's linked accounts
             const user = discordUserId ? await FirestoreService.getUser(discordUserId) : null;
             const userAccounts = user?.accounts || [];
-            if (userAccounts.length === 0) {
+            if (!user || userAccounts.length === 0) {
               await editDeferredReply({
                 content: '❌ No linked accounts found. Please `/link` your Clash of Clans account first!',
               });
               return;
             }
 
-            // 4. Group exports by matching linked account
-            // Map: playerTag (uppercase) -> Array of parsed JSONs
-            const accountExportsMap = new Map<string, any[]>();
-            const unmappedExports: string[] = [];
+            // 4. Match each export to an account by its tag (newest export wins per account)
+            const { byAccount, unmapped, notices } = VillageImportService.matchExportsToAccounts(
+              parsed,
+              userAccounts,
+              targetTag ? config.formatTag(targetTag) : undefined
+            );
 
-            for (const exp of parsedExports) {
-              const expTag = exp.json.tag || exp.json.playerTag;
-              let matchedAccount: LinkedAccount | undefined;
-
-              if (expTag) {
-                const cleanExp = config.formatTag(expTag).toUpperCase();
-                matchedAccount = userAccounts.find((a) => a.playerTag.toUpperCase() === cleanExp);
-              }
-
-              if (!matchedAccount && targetTag) {
-                const cleanTarget = config.formatTag(targetTag).toUpperCase();
-                matchedAccount = userAccounts.find((a) => a.playerTag.toUpperCase() === cleanTarget);
-              }
-
-              if (!matchedAccount && userAccounts.length === 1) {
-                matchedAccount = userAccounts[0];
-              }
-
-              if (matchedAccount) {
-                const tagKey = matchedAccount.playerTag.toUpperCase();
-                if (!accountExportsMap.has(tagKey)) {
-                  accountExportsMap.set(tagKey, []);
-                }
-                accountExportsMap.get(tagKey)!.push(exp.json);
-              } else {
-                unmappedExports.push(expTag ? `\`${expTag}\` (${exp.fileName})` : exp.fileName);
-              }
-            }
-
-            if (accountExportsMap.size === 0) {
+            if (byAccount.size === 0) {
               await editDeferredReply({
                 content:
                   `❌ None of the uploaded files could be matched to your linked accounts (${userAccounts.map((a) => a.playerTag).join(', ')}).\n` +
-                  (unmappedExports.length > 0 ? `Unmatched tags: ${unmappedExports.join(', ')}` : ''),
+                  (unmapped.length > 0 ? `Unmatched: ${unmapped.join(', ')}` : ''),
               });
               return;
             }
 
-            // 5. Process and merge village data for each account
+            // 5. Each export replaces that account's stored data
             const embedsToSend: any[] = [];
-            let totalDefensesImported = 0;
+            for (const { account, village, fileName } of byAccount.values()) {
+              // Compare with what was stored *before* overwriting it
+              const previous = VillageImportService.read(account.villageData);
+              const changes = VillageImportService.detectImportChanges(previous, village);
+              const events = eventsFromImportChanges(changes, village);
 
-            for (const [tagKey, exportsList] of accountExportsMap.entries()) {
-              const targetAccount = userAccounts.find((a) => a.playerTag.toUpperCase() === tagKey)!;
+              account.villageData = village;
+              if (events.length > 0) await notifyUpgrades(user, account, events);
 
-              // Fetch fresh player info for live TH / BH level
-              let th = targetAccount.townHallLevel || 9;
-              let bh = targetAccount.builderHallLevel || 0;
-              try {
-                const freshPlayer = await cocService.getPlayer(targetAccount.playerTag);
-                th = freshPlayer.townHallLevel;
-                bh = freshPlayer.builderHallLevel || 0;
-              } catch (fpErr) {
-                console.warn(`Could not fetch fresh player for ${targetAccount.playerTag}:`, fpErr);
-              }
-
-              // Process each export for this account and merge
-              let mergedHomeDefenses = targetAccount.villageData?.homeDefenses || [];
-              let mergedBuilderDefenses = targetAccount.villageData?.builderDefenses || [];
-              let mergedHomeBuildings = targetAccount.villageData?.homeBuildings || [];
-              let mergedInProgressUpgrades: InProgressUpgrade[] = (
-                (targetAccount.villageData?.inProgressUpgrades || []) as InProgressUpgrade[]
-              ).filter((u) => u.finishesAtMs > Date.now());
-
-              for (const exportJson of exportsList) {
-                const res = VillageImportService.processVillageData(exportJson, th, bh);
-                const isBB =
-                  (res.builderDefenses && res.builderDefenses.length > 0) ||
-                  (res.inProgressUpgrades && res.inProgressUpgrades.some((u) => u.village === 'builder'));
-                const villageType: 'home' | 'builder' = isBB ? 'builder' : 'home';
-
-                if (villageType === 'home') {
-                  if (res.homeDefenses && res.homeDefenses.length > 0) {
-                    mergedHomeDefenses = res.homeDefenses;
-                  }
-                  if (res.homeBuildings && res.homeBuildings.length > 0) {
-                    mergedHomeBuildings = res.homeBuildings;
-                  }
-                } else if (villageType === 'builder' && res.builderDefenses && res.builderDefenses.length > 0) {
-                  mergedBuilderDefenses = res.builderDefenses;
-                }
-
-                // Update in-progress upgrades for this village type
-                mergedInProgressUpgrades = [
-                  ...mergedInProgressUpgrades.filter((u) => u.village !== villageType),
-                  ...(res.inProgressUpgrades || []),
-                ];
-              }
-
-              const newVillageData = {
-                tag: targetAccount.playerTag,
-                timestamp: Date.now(),
-                updatedAt: new Date().toISOString(),
-                homeDefenses: mergedHomeDefenses,
-                builderDefenses: mergedBuilderDefenses,
-                homeBuildings: mergedHomeBuildings,
-                inProgressUpgrades: mergedInProgressUpgrades,
-                totalParsedDefenses: mergedHomeDefenses.length + mergedBuilderDefenses.length + mergedHomeBuildings.length,
-              };
-
-              targetAccount.villageData = newVillageData;
-
-              // Detect completed defense upgrades against previously saved villageData
-              const completedDefenses = VillageImportService.detectCompletedDefenseUpgrades(
-                targetAccount.villageData,
-                newVillageData
-              );
-
-              // Save to Firestore
-              if (discordUserId) {
-                await FirestoreService.saveVillageData(discordUserId, targetAccount.playerTag, newVillageData);
-              }
-
-              // Send completion DM(s) if enabled
-              if (completedDefenses.length > 0 && targetAccount.dmsEnabled !== false && discordUserId) {
-                for (const upgrade of completedDefenses) {
-                  const hallLevel = upgrade.village === 'builder' ? bh : th;
-                  const hallTag = upgrade.village === 'builder' ? `BH${hallLevel}` : `TH${hallLevel}`;
-                  const countPrefix = upgrade.count > 1 ? `${upgrade.count}x ` : '';
-
-                  const completionEmbed = {
-                    title: `🎉 [${targetAccount.name}] Upgrade Completed!`,
-                    description: [
-                      `Your **${countPrefix}${upgrade.name}** has reached **Level ${upgrade.newLevel}**!`,
-                      '',
-                      `📊 **Level ${upgrade.newLevel}/${upgrade.maxLevel}** for ${hallTag}`,
-                    ].join('\n'),
-                    color: COLORS.GOLD,
-                    thumbnail: {
-                      url: CocAssetService.getThumbnail(
-                        upgrade.name,
-                        'defense',
-                        upgrade.newLevel,
-                        upgrade.village
-                      ),
-                    },
-                    footer: { text: `Account: ${targetAccount.name} (${targetAccount.playerTag}) • Bimgus` },
-                    timestamp: new Date().toISOString(),
-                  };
-
-                  await DiscordService.sendDm(discordUserId, {
-                    embeds: [completionEmbed],
-                    components: [
-                      DiscordService.createActionRow([DiscordService.openGameLinkButton()]),
-                    ],
-                  });
-                }
-              }
-
-              // Format fields for embed
-              const allFields: any[] = [];
-
-              const activeInProg = (newVillageData.inProgressUpgrades || [])
-                .filter((u: any) => u.finishesAtMs > Date.now())
-                .sort((a: any, b: any) => a.finishesAtMs - b.finishesAtMs);
-
+              const fields: any[] = [];
+              const activeInProg = village.inProgressUpgrades.filter((u) => u.finishesAtMs > Date.now());
               if (activeInProg.length > 0) {
-                const timerText = VillageImportService.formatInProgressUpgrades(activeInProg);
-                allFields.push({
-                  name: `⏳ In-Progress Upgrades (${activeInProg.length})`,
-                  value: timerText.length > 1024 ? timerText.slice(0, 1020) + '...' : timerText,
-                  inline: false,
-                });
-              }
-              if (completedDefenses.length > 0) {
-                allFields.push({
-                  name: `🎉 Upgrade${completedDefenses.length > 1 ? 's' : ''} Completed (${completedDefenses.length})`,
-                  value: completedDefenses
-                    .map(
-                      (d) =>
-                        `• ${d.count > 1 ? `${d.count}x ` : ''}**${d.name}** reached **Level ${d.newLevel}/${d.maxLevel}**!`
-                    )
-                    .join('\n'),
-                  inline: false,
-                });
-              }
-
-              if (mergedHomeDefenses.length > 0) {
-                const homeFields = VillageImportService.formatDefenseFields(
-                  mergedHomeDefenses,
-                  `🛡️ Home Village Defenses (TH${th})`
+                fields.push(
+                  ...VillageImportService.linesToFields(
+                    `⏳ In-Progress Upgrades (${activeInProg.length})`,
+                    VillageImportService.formatInProgressUpgrades(activeInProg).split('\n')
+                  )
                 );
-                allFields.push(...homeFields);
+              }
+              if (events.length > 0) {
+                fields.push(...VillageImportService.linesToFields(`🎉 Changes Since Your Last Import (${events.length})`, groupWalls(events).map(describeEvent)));
+              }
+              const weapon = VillageImportService.weaponFor(village);
+              if (weapon) {
+                fields.push({ name: '🔥 Town Hall Weapon', value: `• **${weapon.name}**: Lv ${weapon.level}/${weapon.maxLevel}`, inline: false });
+              }
+              for (const section of VillageImportService.importSections(village)) {
+                fields.push(...VillageImportService.linesToFields(section.title, section.lines));
               }
 
-              if (mergedHomeBuildings.length > 0) {
-                const buildingFields = VillageImportService.formatDefenseFields(
-                  mergedHomeBuildings,
-                  `🏛️ Other Buildings & Storages (TH${th})`
-                );
-                allFields.push(...buildingFields);
-              }
-
-              if (mergedBuilderDefenses.length > 0) {
-                const builderFields = VillageImportService.formatDefenseFields(
-                  mergedBuilderDefenses,
-                  `🔨 Builder Base Defenses (BH${bh})`
-                );
-                allFields.push(...builderFields);
-              }
-
-              const accountDefCount = mergedHomeDefenses.length + mergedHomeBuildings.length + mergedBuilderDefenses.length;
-              totalDefensesImported += accountDefCount;
-
-              const importNotice = `📄 *Based on the latest JSON provided on <t:${Math.floor(Date.now() / 1000)}:f>*`;
-              const importDesc = [
-                mergedBuilderDefenses.length > 0
-                  ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
-                  : `Exact defenses for **Town Hall ${th}**.`,
-                importNotice,
-              ].join('\n');
-
-              embedsToSend.push({
-                title: `🛡️ [${targetAccount.name}] Imported Village Defenses & Buildings`,
-                description: importDesc,
-                color: COLORS.GOLD,
-                fields:
-                  allFields.length > 0
-                    ? allFields
-                    : [{ name: 'Defenses', value: 'No recognized defenses found in export.', inline: false }],
-                thumbnail: { url: CocAssetService.getTownHallUrl(th) },
-                footer: {
-                  text: `Account: ${targetAccount.name} (${targetAccount.playerTag}) • ${accountDefCount} defense groups imported (${exportsList.length} file${exportsList.length > 1 ? 's' : ''} merged)`,
-                },
-                timestamp: new Date().toISOString(),
-              });
+              const exportSec = Math.floor(village.exportTimestamp / 1000);
+              const staleWarning = VillageImportService.isStale(village)
+                ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
+                : '';
+              embedsToSend.push(
+                ...VillageImportService.fieldsToEmbeds(
+                  {
+                    title: `🛡️ [${account.name}] Imported Village`,
+                    description:
+                      `Town Hall **${village.townHallLevel}**${village.builderHallLevel ? ` and Builder Hall **${village.builderHallLevel}**` : ''}, from one export.\n` +
+                      `📄 *Export taken <t:${exportSec}:f> (<t:${exportSec}:R>)*${staleWarning}`,
+                    color: COLORS.GOLD,
+                    thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
+                    footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
+                  },
+                  fields
+                )
+              );
             }
 
-            let extraNotice = '';
-            if (unmappedExports.length > 0) {
-              extraNotice = `\n⚠️ *Warning: The following exports could not be matched to your accounts and were skipped: ${unmappedExports.join(', ')}*`;
+            // One save for the whole user (all accounts, notified keys and any DM pause)
+            await FirestoreService.saveUser(user);
+
+            if (unmapped.length > 0) {
+              notices.push(`⚠️ These exports didn't match a linked account and were skipped: ${unmapped.join(', ')}`);
+            }
+            if (parseErrors.length > 0) {
+              notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
             }
 
+            // Discord allows 10 embeds per message; send the rest as follow-ups
+            const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])];
             await editDeferredReply({
-              content: extraNotice.trim() || undefined,
+              content: notices.join('\n').slice(0, 1900) || undefined,
               embeds: embedsToSend.slice(0, 10),
-              components: [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])],
+              components,
             });
+            for (let i = 10; i < embedsToSend.length; i += 10) {
+              await sendFollowup({ embeds: embedsToSend.slice(i, i + 10) });
+            }
           } catch (importErr: any) {
             console.error('Failed to execute /import-village:', importErr);
             await editDeferredReply({
@@ -1913,8 +1764,8 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                   }
                 } catch (e: any) {
                   if (acc.lastSnapshot?.heroes) {
-                    baseData.heroes = Object.entries(acc.lastSnapshot.heroes).map(([name, val]: any) => ({
-                      name,
+                    baseData.heroes = Object.entries(acc.lastSnapshot.heroes).map(([key, val]: any) => ({
+                      name: val.name ?? key.replace(/^(home|builder):/, ''),
                       level: val.level,
                     }));
                   }
@@ -2028,7 +1879,7 @@ discordInteractionsRouter.post('/interactions', async (req: Request, res: Respon
                 },
                 {
                   name: '📥 `/import-village [file] [json_text] [account]`',
-                  value: 'Import your in-game village JSON export to track exact defense levels and costs sorted by price descending!\n\u200b',
+                  value: 'Import your in-game village JSON export to track exact building levels, timers and costs. One export per account; it includes both villages.\n\u200b',
                   inline: false,
                 },
               ],

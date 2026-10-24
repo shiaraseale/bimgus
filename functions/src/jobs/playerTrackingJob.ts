@@ -5,7 +5,8 @@ import { PlayerTrackingService } from '../services/playerTrackingService';
 import { CocAssetService } from '../services/cocAssetService';
 import { config } from '../config';
 import { getWarId } from '../diff/warDiff';
-import { InProgressUpgrade, ParsedDefenseGroup } from '../services/villageImportService';
+import { VillageImportService } from '../services/villageImportService';
+import { UpgradeEvent, eventFromTimer, isDmPaused, notifyUpgrades } from '../services/upgradeNotifier';
 
 export async function runPlayerTrackingJob(): Promise<{ success: boolean; checkedAccounts: number; dmsSent: number }> {
   const users = await FirestoreService.getAllUsers();
@@ -23,200 +24,58 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
     for (let i = 0; i < user.accounts.length; i++) {
       const account = user.accounts[i];
       checkedAccounts++;
+      const events: UpgradeEvent[] = [];
 
-      let freshPlayer: any = null;
       try {
-        freshPlayer = await cocService.getPlayer(account.playerTag);
+        const freshPlayer = await cocService.getPlayer(account.playerTag);
         account.townHallLevel = freshPlayer.townHallLevel;
         account.builderHallLevel = freshPlayer.builderHallLevel;
         account.name = freshPlayer.name;
 
-        // Check for completed upgrades if previous snapshot exists
-        if (account.lastSnapshot) {
-          const completedUpgrades = PlayerTrackingService.detectCompletedUpgrades(
-            account.lastSnapshot,
-            freshPlayer
-          );
+        events.push(...PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer));
 
-          if (completedUpgrades.length > 0 && account.dmsEnabled !== false) {
-            for (const upgrade of completedUpgrades) {
-              const hallLevel = upgrade.village === 'builder'
-                ? (freshPlayer.builderHallLevel || 10)
-                : freshPlayer.townHallLevel;
-              const hallTag = upgrade.village === 'builder' ? `BH${hallLevel}` : `TH${hallLevel}`;
-
-              const embed = {
-                title: `🎉 [${account.name}] Upgrade Completed!`,
-                description: [
-                  `Your **${upgrade.name}** has reached **Level ${upgrade.newLevel}**!`,
-                  '',
-                  `📊 **Level ${upgrade.newLevel}/${upgrade.maxLevel}** for ${hallTag}`,
-                ].join('\n'),
-                color: COLORS.GOLD,
-                thumbnail: {
-                  url: CocAssetService.getThumbnail(
-                    upgrade.name,
-                    upgrade.category,
-                    upgrade.newLevel,
-                    upgrade.village
-                  ),
-                },
-                footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` },
-                timestamp: new Date().toISOString(),
-              };
-
-              await DiscordService.sendDm(user.discordUserId, {
-                embeds: [embed],
-                components: [
-                  DiscordService.createActionRow([DiscordService.openGameLinkButton()]),
-                ],
-              });
-              dmsSent++;
-            }
-          }
-        }
-
-        // Keep stored snapshot fresh for /heroes, /sixth-builder, and /upgrades
+        // Keep stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast
         account.lastSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
         userModified = true;
       } catch (playerErr: any) {
         console.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
       }
 
-      // Check timer-based in-progress upgrades from imported village JSON
-      if (account.villageData && Array.isArray(account.villageData.inProgressUpgrades)) {
-        const remainingUpgrades: InProgressUpgrade[] = [];
-        const completedFromTimers: InProgressUpgrade[] = [];
-
-        for (const up of account.villageData.inProgressUpgrades as InProgressUpgrade[]) {
-          if (up.finishesAtMs && up.finishesAtMs <= Date.now()) {
-            completedFromTimers.push(up);
-          } else {
-            remainingUpgrades.push(up);
+      // Timers from the imported export: move the stored level up, and DM for what the API can't see
+      const village = VillageImportService.read(account.villageData);
+      if (village) {
+        const now = Date.now();
+        const due = village.inProgressUpgrades.filter((up) => up.finishesAtMs <= now);
+        if (due.length > 0) {
+          village.inProgressUpgrades = village.inProgressUpgrades.filter((up) => up.finishesAtMs > now);
+          for (const up of due) {
+            VillageImportService.applyCompletedTimer(village, up);
+            const event = eventFromTimer(up);
+            if (event) events.push(event);
           }
-        }
-
-        if (completedFromTimers.length > 0) {
-          account.villageData.inProgressUpgrades = remainingUpgrades;
+          account.villageData = village;
           userModified = true;
-
-          for (const up of completedFromTimers) {
-            // Update stored defense/building levels in villageData
-            const listKey = up.village === 'builder'
-              ? 'builderDefenses'
-              : (up.category === 'building' ? 'homeBuildings' : 'homeDefenses');
-
-            const list: ParsedDefenseGroup[] = account.villageData[listKey];
-            if (Array.isArray(list)) {
-              const oldEntry = list.find((d) => d.name === up.name && d.currentLevel === up.currentLevel);
-              if (oldEntry) {
-                if (oldEntry.count > 1) {
-                  oldEntry.count -= 1;
-                } else {
-                  const idx = list.indexOf(oldEntry);
-                  if (idx >= 0) list.splice(idx, 1);
-                }
-              }
-
-              const newEntry = list.find((d) => d.name === up.name && d.currentLevel === up.targetLevel);
-              if (newEntry) {
-                newEntry.count += 1;
-              } else {
-                list.push({
-                  name: up.name,
-                  count: 1,
-                  currentLevel: up.targetLevel,
-                  maxLevel: up.maxLevel,
-                  nextCostNumber: 0,
-                  resource: '',
-                  isMaxed: up.targetLevel >= up.maxLevel,
-                  base: up.village,
-                });
-              }
-            }
-
-            // Send Upgrade Completed DM if DMs enabled
-            if (account.dmsEnabled !== false) {
-              const hallLevel = up.village === 'builder'
-                ? (freshPlayer?.builderHallLevel || account.builderHallLevel || 10)
-                : (freshPlayer?.townHallLevel || account.townHallLevel || 12);
-              const hallTag = up.village === 'builder' ? `BH${hallLevel}` : `TH${hallLevel}`;
-
-              const embed = {
-                title: `🎉 [${account.name}] Upgrade Completed!`,
-                description: [
-                  `Your **${up.name}** has reached **Level ${up.targetLevel}**!`,
-                  '',
-                  `📊 **Level ${up.targetLevel}/${up.maxLevel}** for ${hallTag}`,
-                ].join('\n'),
-                color: COLORS.GOLD,
-                thumbnail: {
-                  url: CocAssetService.getThumbnail(
-                    up.name,
-                    up.category,
-                    up.targetLevel,
-                    up.village
-                  ),
-                },
-                footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` },
-                timestamp: new Date().toISOString(),
-              };
-
-              await DiscordService.sendDm(user.discordUserId, {
-                embeds: [embed],
-                components: [
-                  DiscordService.createActionRow([DiscordService.openGameLinkButton()]),
-                ],
-              });
-              dmsSent++;
-            }
-          }
         }
       }
 
-      // Check activeUpgrades timers
+      // Manually logged upgrades (legacy; nothing creates new ones)
       if (Array.isArray(account.activeUpgrades)) {
         for (const au of account.activeUpgrades) {
           if (!au.completed && new Date(au.finishesAt).getTime() <= Date.now()) {
             au.completed = true;
             userModified = true;
-
-            if (account.dmsEnabled !== false) {
-              const hallLevel = au.village === 'builder'
-                ? (freshPlayer?.builderHallLevel || account.builderHallLevel || 10)
-                : (freshPlayer?.townHallLevel || account.townHallLevel || 12);
-              const hallTag = au.village === 'builder' ? `BH${hallLevel}` : `TH${hallLevel}`;
-
-              const embed = {
-                title: `🎉 [${account.name}] Upgrade Completed!`,
-                description: [
-                  `Your **${au.name}** has reached **Level ${au.targetLevel}**!`,
-                  '',
-                  `📊 **Level ${au.targetLevel}/${au.maxLevelForTh || au.targetLevel}** for ${hallTag}`,
-                ].join('\n'),
-                color: COLORS.GOLD,
-                thumbnail: {
-                  url: CocAssetService.getThumbnail(
-                    au.name,
-                    au.category,
-                    au.targetLevel,
-                    au.village
-                  ),
-                },
-                footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` },
-                timestamp: new Date().toISOString(),
-              };
-
-              await DiscordService.sendDm(user.discordUserId, {
-                embeds: [embed],
-                components: [
-                  DiscordService.createActionRow([DiscordService.openGameLinkButton()]),
-                ],
-              });
-              dmsSent++;
-            }
+            events.push({
+              kind: 'expected', name: au.name, assetName: au.name, category: au.category, village: au.village,
+              oldLevel: au.targetLevel - 1, newLevel: au.targetLevel, maxLevel: au.maxLevelForTh || au.targetLevel,
+              count: 1, key: `manual:${au.id}`,
+            });
           }
         }
+      }
+
+      if (events.length > 0) {
+        dmsSent += await notifyUpgrades(user, account, events);
+        userModified = true;
       }
 
       // Check Builder's Apprentice timer
@@ -282,6 +141,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
             : Date.now() + 24 * 3600 * 1000;
 
           for (const user of users) {
+            if (isDmPaused(user)) continue;
             for (const account of user.accounts) {
               if (account.dmsEnabled === false) continue;
               const warMember = ourClan.members.find(

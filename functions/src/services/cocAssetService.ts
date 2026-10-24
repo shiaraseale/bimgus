@@ -102,6 +102,23 @@ export class CocAssetService {
   }
 
   /**
+   * Trap image by name and level (traps have their own folder, split by village).
+   */
+  static getTrapUrl(trapName: string, level: number = 1, village: 'home' | 'builder' = 'home'): string {
+    const subfolder = village === 'builder' ? 'builder-base' : 'home-village';
+    return `${this.BASE_URL}/traps/${subfolder}/${this.normalize(trapName)}/level_${level}.webp`;
+  }
+
+  /**
+   * Pet or guardian icon. Their folders drop dots rather than turning them into underscores
+   * (L.A.S.S.I → lassi).
+   */
+  static getPetOrGuardianUrl(name: string, folder: 'pets' | 'guardians'): string {
+    const slug = this.normalize(name.replace(/\./g, ''));
+    return `${this.BASE_URL}/${folder}/${slug}/icon.webp`;
+  }
+
+  /**
    * Official Building image URL by name and level.
    */
   static getBuildingUrl(buildingName: string, level: number = 1, village: 'home' | 'builder' = 'home'): string {
@@ -145,6 +162,17 @@ export class CocAssetService {
     ];
     if (category === 'hero' || knownHeroes.some((h) => lowerName.includes(h))) {
       return this.getHeroUrl(name);
+    }
+
+    // Traps, pets and guardians have their own folders
+    if (category === 'trap') {
+      return this.getTrapUrl(name, level || 1, village || 'home');
+    }
+    if (category === 'pet') {
+      return this.getPetOrGuardianUrl(name, 'pets');
+    }
+    if (category === 'guardian') {
+      return this.getPetOrGuardianUrl(name, 'guardians');
     }
 
     // 4. Equipment
