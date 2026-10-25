@@ -56,7 +56,7 @@ describe('game data', () => {
     expect(capFor(getByName('Barbarian', 'home', ['troop'])!, 1, 1)).toBeGreaterThanOrEqual(1);
   });
 
-  it('resolves every code in the real export except equipment newer than the datamine', () => {
+  it('resolves every code in the real export', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const unknown = new Set<number>();
     const sections = [
@@ -83,8 +83,10 @@ describe('game data', () => {
         }
       }
     }
-    expect([...unknown]).toEqual([90000061]);
-    expect(nameForCode(90000061)).toBe('Unknown (90000061)');
+    expect([...unknown]).toEqual([]);
+    // Added by hand until the datamine has it (MANUAL_ITEMS in buildGameData.mts)
+    expect(nameForCode(90000061)).toBe('Portal Pendant');
+    expect(nameForCode(99999999)).toBe('Unknown (99999999)');
     expect(warn).toHaveBeenCalled();
   });
 

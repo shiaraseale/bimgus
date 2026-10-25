@@ -65,6 +65,22 @@ const RESOURCES: Record<string, Resource> = {
   Gems: 'gems',
 };
 
+// Items the game has but the pinned datamine doesn't yet. Each is replaced by the datamine's own entry
+// once it has one (the generator then says so, and the entry here should be deleted). Caps are
+// unknown until then, so these show the player's own level as the cap.
+const MANUAL_ITEMS: Array<Omit<Item, 'displayName' | 'levels'> & { note: string }> = [
+  {
+    id: 90000061,
+    name: 'Portal Pendant',
+    category: 'equipment',
+    village: 'home',
+    resource: 'ores',
+    rarity: 'Epic',
+    hero: 'Minion Prince',
+    note: 'Minion Prince Epic equipment from the October 2026 season; the datamine stops at 90000060 (checked 2026-10-25)',
+  },
+];
+
 const BUILDING_CATEGORIES: Record<string, string> = {
   Defense: 'defense',
   Army: 'army',
@@ -286,6 +302,16 @@ function build(
       resource: toResource(g.upgrade_resource, 'other'),
       levels: unitLevels(g.levels),
     });
+  }
+
+  for (const { note: _note, ...manual } of MANUAL_ITEMS) {
+    if (items[manual.id]) {
+      console.warn(
+        `[buildGameData] ${manual.id} is now in the datamine as "${items[manual.id].name}"; delete it from MANUAL_ITEMS`
+      );
+      continue;
+    }
+    add({ ...manual, levels: [] });
   }
 
   // How many of each building and trap a hall level allows: the halls list what each level adds

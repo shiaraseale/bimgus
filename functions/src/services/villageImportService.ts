@@ -336,14 +336,43 @@ export class VillageImportService {
   }
 
   /**
-   * The import result for one account, one section per category for each village.
+   * One short line per item that still has upgrades left, e.g. "3x **Cannon**: Lv 12–13 → 17"
+   * (no count for a single item).
+   * Maxed items are left out; `/upgrades` and `/defenses` show everything, with costs.
+   */
+  static outstandingLines(data: VillageDataV2, village: Village, categories: readonly GameCategory[]): string[] {
+    const byCode = new Map<number, { name: string; count: number; lo: number; hi: number; cap: number }>();
+    for (const g of VillageImportService.groupsFor(data, village, categories)) {
+      if (g.isMaxed) continue;
+      const e = byCode.get(g.code) ?? {
+        name: g.name,
+        count: 0,
+        lo: g.currentLevel,
+        hi: g.currentLevel,
+        cap: g.maxLevel,
+      };
+      e.count += g.count;
+      e.lo = Math.min(e.lo, g.currentLevel);
+      e.hi = Math.max(e.hi, g.currentLevel);
+      e.cap = Math.max(e.cap, g.maxLevel);
+      byCode.set(g.code, e);
+    }
+    return [...byCode.values()].map(
+      (e) =>
+        `• ${e.count > 1 ? `${e.count}x ` : ''}**${e.name}**: Lv ${e.lo === e.hi ? e.lo : `${e.lo}–${e.hi}`} → ${e.cap}`
+    );
+  }
+
+  /**
+   * The import summary: what's left to upgrade, by category, for each village. Heroes, troops, spells
+   * and pets aren't listed, because `/upgrades` reads those live from the game.
    */
   static importSections(data: VillageDataV2): Array<{ title: string; lines: string[] }> {
     const th = data.townHallLevel;
     const bh = data.builderHallLevel;
     const section = (title: string, village: Village, categories: GameCategory[]) => ({
       title,
-      lines: VillageImportService.groupsFor(data, village, categories).map(VillageImportService.formatGroupLine),
+      lines: VillageImportService.outstandingLines(data, village, categories),
     });
 
     const sections = [
@@ -353,9 +382,6 @@ export class VillageImportService {
       section(`🧱 Walls (TH${th})`, 'home', ['wall']),
       section(`🗿 Guardians (TH${th})`, 'home', ['guardian']),
       section(`🕯️ Crafted Defenses (TH${th})`, 'home', ['craftedModule']),
-      section(`${EMOJIS.CROWN} Heroes (TH${th})`, 'home', ['hero']),
-      section(`🧪 Laboratory (TH${th})`, 'home', ['troop', 'siege', 'spell']),
-      section(`🐾 Pets (TH${th})`, 'home', ['pet']),
       section(`🛠️ Helpers (TH${th})`, 'home', ['helper']),
     ];
     if (bh > 0) {
@@ -363,9 +389,7 @@ export class VillageImportService {
         section(`🔨 BB Defenses (BH${bh})`, 'builder', ['defense']),
         section(`💣 BB Traps (BH${bh})`, 'builder', ['trap']),
         section(`🏛️ BB Resource & Army (BH${bh})`, 'builder', ['resource', 'army', 'other']),
-        section(`🧱 BB Walls (BH${bh})`, 'builder', ['wall']),
-        section(`${EMOJIS.CROWN} BB Heroes (BH${bh})`, 'builder', ['hero']),
-        section(`⚔️ BB Troops (BH${bh})`, 'builder', ['troop'])
+        section(`🧱 BB Walls (BH${bh})`, 'builder', ['wall'])
       );
     }
 
@@ -377,6 +401,30 @@ export class VillageImportService {
       });
     }
     return sections.filter((s) => s.lines.length > 0);
+  }
+
+  /**
+   * Shortens sections until they fit `budget` characters, trimming the longest first and ending each
+   * trimmed one with "…and N more", so a whole import fits in one Discord message.
+   */
+  static fitSections(sections: Array<{ title: string; lines: string[] }>, budget: number) {
+    const out = sections.map((s) => ({ title: s.title, lines: [...s.lines], hidden: 0 }));
+    const MORE_LINE = 45; // room for the "…and N more" line
+    const size = () =>
+      out.reduce(
+        (n, s) => n + s.title.length + s.lines.reduce((m, l) => m + l.length + 1, 0) + (s.hidden ? MORE_LINE : 0),
+        0
+      );
+    while (size() > budget) {
+      const longest = out.filter((s) => s.lines.length > 1).sort((a, b) => b.lines.length - a.lines.length)[0];
+      if (!longest) break;
+      longest.lines.pop();
+      longest.hidden++;
+    }
+    return out.map((s) => ({
+      title: s.title,
+      lines: s.hidden ? [...s.lines, `…and ${s.hidden} more (see \`/upgrades\`)`] : s.lines,
+    }));
   }
 
   /** Splits lines into embed fields under Discord's 1,024-character field limit. */
@@ -399,38 +447,6 @@ export class VillageImportService {
     return fields;
   }
 
-  /**
-   * Builds as many embeds as needed: Discord allows 25 fields and 6,000 characters per embed.
-   */
-  static fieldsToEmbeds(
-    base: { title: string; description: string; color: number; thumbnail?: { url: string }; footer?: { text: string } },
-    fields: Array<{ name: string; value: string; inline: boolean }>
-  ): any[] {
-    const embeds: any[] = [];
-    let current: any[] = [];
-    let size = base.title.length + base.description.length + (base.footer?.text.length ?? 0);
-    const flush = () => {
-      const first = embeds.length === 0;
-      embeds.push({
-        ...base,
-        title: first ? base.title : `${base.title} (cont.)`,
-        description: first ? base.description : undefined,
-        fields: current,
-        timestamp: new Date().toISOString(),
-      });
-      current = [];
-      size = base.title.length + 10 + (base.footer?.text.length ?? 0);
-    };
-    for (const f of fields) {
-      const fieldSize = f.name.length + f.value.length;
-      if (current.length > 0 && (current.length >= 25 || size + fieldSize > 5500)) flush();
-      current.push(f);
-      size += fieldSize;
-    }
-    if (current.length > 0 || embeds.length === 0) flush();
-    return embeds;
-  }
-
   /** Characters Discord counts towards its limit for one embed. */
   static embedSize(embed: any): number {
     return (
@@ -439,28 +455,6 @@ export class VillageImportService {
       (embed.footer?.text?.length ?? 0) +
       (embed.fields ?? []).reduce((n: number, f: any) => n + f.name.length + f.value.length, 0)
     );
-  }
-
-  /**
-   * Groups embeds into messages: Discord allows at most 10 embeds and 6,000 characters across all
-   * the embeds in one message.
-   */
-  static embedsToMessages(embeds: any[], maxChars: number = 5800): any[][] {
-    const messages: any[][] = [];
-    let current: any[] = [];
-    let size = 0;
-    for (const e of embeds) {
-      const s = VillageImportService.embedSize(e);
-      if (current.length > 0 && (current.length >= 10 || size + s > maxChars)) {
-        messages.push(current);
-        current = [];
-        size = 0;
-      }
-      current.push(e);
-      size += s;
-    }
-    if (current.length > 0) messages.push(current);
-    return messages;
   }
 
   /**

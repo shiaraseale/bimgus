@@ -18,6 +18,11 @@ import {
 import { InteractionReply, interactionReply } from './interactionReply';
 import { log } from '../utils/log';
 
+// Room for the import summary in one message (Discord's limit is 6,000 characters across all embeds),
+// and what each account's embed needs besides its fields (title, description, footer)
+const MESSAGE_BUDGET = 5700;
+const EMBED_OVERHEAD = 450;
+
 export interface ImportTaskData {
   discordUserId: string;
   applicationId: string;
@@ -111,6 +116,12 @@ export async function runImportTask(
 
     // 5. Each export replaces that account's stored data
     const embedsToSend: any[] = [];
+    const pending: Array<{
+      account: any;
+      village: VillageDataV2;
+      fileName: string;
+      sections: Array<{ title: string; lines: string[] }>;
+    }> = [];
     for (const { account, village, fileName } of byAccount.values()) {
       // Compare with what was stored *before* overwriting it
       const previous = VillageImportService.read(account.villageData);
@@ -121,54 +132,56 @@ export async function runImportTask(
       account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
-      const fields: any[] = [];
+      // What changed, what's running, and what's left: maxed items and lab/hero levels are in /upgrades
+      const sections: Array<{ title: string; lines: string[] }> = [];
       const activeInProg = village.inProgressUpgrades.filter((u) => u.finishesAtMs > Date.now());
       if (activeInProg.length > 0) {
-        fields.push(
-          ...VillageImportService.linesToFields(
-            `⏳ In-Progress Upgrades (${activeInProg.length})`,
-            VillageImportService.formatInProgressUpgrades(activeInProg).split('\n')
-          )
-        );
-      }
-      if (events.length > 0) {
-        fields.push(
-          ...VillageImportService.linesToFields(
-            `🎉 Changes Since Your Last Import (${events.length})`,
-            groupWalls(events).map(describeEvent)
-          )
-        );
-      }
-      const weapon = VillageImportService.weaponFor(village);
-      if (weapon) {
-        fields.push({
-          name: '🔥 Town Hall Weapon',
-          value: `• **${weapon.name}**: Lv ${weapon.level}/${weapon.maxLevel}`,
-          inline: false,
+        sections.push({
+          title: `⏳ In Progress (${activeInProg.length})`,
+          lines: VillageImportService.formatInProgressUpgrades(activeInProg).split('\n'),
         });
       }
-      for (const section of VillageImportService.importSections(village)) {
-        fields.push(...VillageImportService.linesToFields(section.title, section.lines));
+      if (events.length > 0) {
+        sections.push({
+          title: `🎉 Since Your Last Import (${events.length})`,
+          lines: groupWalls(events).map(describeEvent),
+        });
       }
+      const weapon = VillageImportService.weaponFor(village);
+      if (weapon && weapon.level < weapon.maxLevel) {
+        sections.push({
+          title: '🔥 Town Hall Weapon',
+          lines: [`• **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`],
+        });
+      }
+      sections.push(...VillageImportService.importSections(village));
+      pending.push({ account, village, fileName, sections });
+    }
 
+    // One message for the whole import: Discord allows 10 embeds and 6,000 characters across them
+    const perAccountBudget = Math.floor(MESSAGE_BUDGET / Math.max(1, pending.length)) - EMBED_OVERHEAD;
+    for (const { account, village, fileName, sections } of pending) {
+      const fitted = VillageImportService.fitSections(sections, perAccountBudget);
+      const fields = fitted.flatMap((sec) => VillageImportService.linesToFields(sec.title, sec.lines)).slice(0, 25);
       const exportSec = Math.floor(village.exportTimestamp / 1000);
       const staleWarning = VillageImportService.isStale(village)
         ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
         : '';
-      embedsToSend.push(
-        ...VillageImportService.fieldsToEmbeds(
-          {
-            title: `🛡️ [${account.name}] Imported Village`,
-            description:
-              `Town Hall **${village.townHallLevel}**${village.builderHallLevel ? ` and Builder Hall **${village.builderHallLevel}**` : ''}, from one export.\n` +
-              `📄 *Export taken <t:${exportSec}:f> (<t:${exportSec}:R>)*${staleWarning}`,
-            color: COLORS.GOLD,
-            thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
-            footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
-          },
-          fields
-        )
-      );
+      embedsToSend.push({
+        title: `🛡️ [${account.name}] Imported Village`,
+        description:
+          `Town Hall **${village.townHallLevel}**${village.builderHallLevel ? ` and Builder Hall **${village.builderHallLevel}**` : ''}. ` +
+          `Showing what's left to upgrade; \`/upgrades\` has everything, including heroes and the lab.\n` +
+          `📄 *Export taken <t:${exportSec}:f> (<t:${exportSec}:R>)*${staleWarning}`,
+        color: COLORS.GOLD,
+        thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
+        fields:
+          fields.length > 0
+            ? fields
+            : [{ name: '✨ All maxed', value: 'Nothing left to upgrade in this export.', inline: false }],
+        footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // One save for the whole user (all accounts, notified keys and any DM pause)
@@ -181,12 +194,10 @@ export async function runImportTask(
       notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
     }
 
-    // Split across messages to stay within Discord's per-message limits; the rest go as follow-ups
     const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])];
-    const [first = [], ...rest] = VillageImportService.embedsToMessages(embedsToSend);
     const ok = await reply.edit({
       content: notices.join('\n').slice(0, 1900) || undefined,
-      embeds: first,
+      embeds: embedsToSend.slice(0, 10),
       components,
     });
     if (!ok) {
@@ -195,9 +206,6 @@ export async function runImportTask(
           "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/upgrades` or `/defenses`.",
       });
       return;
-    }
-    for (const embeds of rest) {
-      await reply.followup({ embeds });
     }
   } catch (importErr: any) {
     log.error('Failed to execute /import-village:', importErr);

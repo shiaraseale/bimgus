@@ -64,12 +64,16 @@ describe('processClanGamesDiff start announcement', () => {
   });
 
   it('the maxed-points message has no role line', async () => {
-    const maxed = { getPlayer: vi.fn(async () => ({ achievements: [{ name: 'Games Champion', value: 11000 }] })) } as unknown as CocService;
+    const maxed = {
+      getPlayer: vi.fn(async () => ({ achievements: [{ name: 'Games Champion', value: 11000 }] })),
+    } as unknown as CocService;
     const start = await processClanGamesDiff(members, null, config, maxed, '#CLAN', utc('2026-11-22T08:00:00'));
     sendWebhook.mockClear();
     const withBaseline = { ...start, memberBaselinePoints: { '#P1': 1000 } };
     await processClanGamesDiff(members, withBaseline, config, maxed, '#CLAN', utc('2026-11-22T10:00:00'));
-    const maxedMsg = sendWebhook.mock.calls.map(([, p]: any[]) => p.embeds[0]).find((e: any) => e.title.includes('Maxed'));
+    const maxedMsg = sendWebhook.mock.calls
+      .map(([, p]: any[]) => p.embeds[0])
+      .find((e: any) => e.title.includes('Maxed'));
     expect(maxedMsg.description).not.toContain('Role');
   });
 

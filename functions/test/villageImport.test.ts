@@ -67,18 +67,19 @@ describe('parseExport (one file, both villages)', () => {
     expect(VillageImportService.weaponFor(data)).toBeNull();
   });
 
-  it('shows real names: the only unknown is the equipment newer than the datamine', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const text = VillageImportService.importSections(data)
-      .map((s) => `${s.title}\n${s.lines.join('\n')}`)
-      .join('\n');
-    const ids = text.match(/\(\d{7,}\)/g) ?? [];
-    expect(ids).toEqual(['(90000061)']);
-    expect(text).toContain('Unknown (90000061)');
+  it('summarises only what is left to upgrade, one line per item, with real names', () => {
+    const sections = VillageImportService.importSections(data);
+    const text = sections.map((s) => `${s.title}\n${s.lines.join('\n')}`).join('\n');
+    expect(text.match(/\(\d{7,}\)/g) ?? []).toEqual([]);
+    expect(text).not.toContain('Maxed');
     expect(text).toContain('Cannon (BB)');
-    expect(text).toContain('**Wall**');
-    expect(text).toContain('**Workshop**');
-    expect(text).toContain('**Hero Hall**');
+    expect(text).toContain('• 180x **Wall (BB)**: Lv 4–5 → 9');
+    expect(text).toContain('• **Mega Tesla**: Lv 3 → 9'); // a single item has no count
+    expect(text).not.toContain('**Wall**:'); // the home walls are maxed for TH12
+    // Heroes, the lab and pets are left to /upgrades, which reads them live
+    expect(sections.map((s) => s.title).join(' ')).not.toMatch(/Heroes|Laboratory|Pets|Troops/);
+    // One line per item: the 7 Cannons appear once, even though they're at different levels
+    expect(text.match(/\*\*Cannon\*\*/g)?.length ?? 0).toBeLessThanOrEqual(1);
   });
 
   it('has hero caps for TH12 / BH9', () => {
@@ -95,20 +96,17 @@ describe('parseExport (one file, both villages)', () => {
     expect(cap('Battle Copter')).toBe(30);
   });
 
-  it('fits Discord limits when split into embeds', () => {
-    const fields = VillageImportService.importSections(data).flatMap((s) =>
-      VillageImportService.linesToFields(s.title, s.lines)
+  it('trims the longest sections to fit a size budget, saying how many were left out', () => {
+    const sections = VillageImportService.importSections(data);
+    const fitted = VillageImportService.fitSections(sections, 1500);
+    const size = fitted.reduce((n, s) => n + s.title.length + s.lines.join('\n').length + 1, 0);
+    expect(size).toBeLessThanOrEqual(1500);
+    expect(fitted.map((s) => s.title)).toEqual(sections.map((s) => s.title));
+    expect(fitted.some((s) => s.lines.some((l) => /…and \d+ more/.test(l)))).toBe(true);
+    // A generous budget changes nothing
+    expect(VillageImportService.fitSections(sections, 100_000).map((s) => s.lines)).toEqual(
+      sections.map((s) => s.lines)
     );
-    const embeds = VillageImportService.fieldsToEmbeds({ title: 'T', description: 'D', color: 0 }, fields);
-    for (const e of embeds) {
-      expect(e.fields.length).toBeLessThanOrEqual(25);
-      const size =
-        e.title.length +
-        (e.description?.length ?? 0) +
-        e.fields.reduce((n: number, f: any) => n + f.name.length + f.value.length, 0);
-      expect(size).toBeLessThanOrEqual(6000);
-      for (const f of e.fields) expect(f.value.length).toBeLessThanOrEqual(1024);
-    }
   });
 
   it('discards stored data from before version 2', () => {

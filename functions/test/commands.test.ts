@@ -117,10 +117,10 @@ describe('slash commands end to end (mocked services)', () => {
     const text = allText(reply) + allText(followups);
     expect(text).toContain('Imported Village');
     expect(text).toContain('Cannon (BB)');
-    expect(text).toContain('Rage Spell');
-    expect(text.match(/\(\d{7,}\)/g)).toEqual(['(90000061)']);
-    // Discord's per-message limits: 10 embeds and 6,000 characters across them
-    for (const msg of [reply, ...followups]) {
+    expect(text.match(/\(\d{7,}\)/g)).toBeNull();
+    // One message per import, within Discord's limits: 10 embeds and 6,000 characters across them
+    expect(followups).toHaveLength(0);
+    for (const msg of [reply]) {
       expect(msg.embeds.length).toBeLessThanOrEqual(10);
       const chars = msg.embeds.reduce((n: number, e: any) => n + VillageImportService.embedSize(e), 0);
       expect(chars).toBeLessThanOrEqual(6000);
@@ -137,7 +137,7 @@ describe('slash commands end to end (mocked services)', () => {
     vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(next) }) as any);
     const reply = await importFile();
     expect(DiscordService.sendDmResult).toHaveBeenCalledTimes(1);
-    expect(allText(reply)).toContain('Changes Since Your Last Import (1)');
+    expect(allText(reply)).toContain('Since Your Last Import (1)');
   });
 
   it('/upgrades and /defenses use the stored import', async () => {
