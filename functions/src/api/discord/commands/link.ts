@@ -71,6 +71,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
             `👥 **Total Linked Accounts**: ${updatedUser.accounts.length}`,
             '',
             `🔔 **Automated DMs**: ${dmsEnabled ? 'Enabled ✅ (War roster pings)' : 'Disabled 🔕 (No DMs will be sent)'}`,
+            ...(dmsEnabled ? ['*Upgrade DMs start once you run `/import-village` for this account.*'] : []),
           ].join('\n'),
           color: COLORS.GREEN,
           thumbnail: {

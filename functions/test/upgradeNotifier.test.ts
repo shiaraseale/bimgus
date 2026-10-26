@@ -24,6 +24,7 @@ const newUser = (): { user: UserDoc; account: LinkedAccount } => {
     townHallLevel: 12,
     builderHallLevel: 9,
     isPrimary: true,
+    villageData: { version: 2 } as any, // upgrade DMs need an import
   };
   const user: UserDoc = { discordUserId: '42', accounts: [account], createdAt: '', updatedAt: '' };
   return { user, account };
@@ -225,6 +226,16 @@ describe('notifyUpgrades', () => {
       key: 'equipment:home:Henchmen Puppet:7',
     });
     expect(await notifyUpgrades(user, account, [puppet, { ...puppet, kind: 'unlocked', key: 'x' }])).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('sends no upgrade DMs for an account that has never been imported, even after it is', async () => {
+    const { user, account } = newUser();
+    delete account.villageData;
+    const hero = event({ category: 'hero', key: 'hero:home:Barbarian King:37' });
+    expect(await notifyUpgrades(user, account, [hero])).toBe(0);
+    account.villageData = { version: 2 } as any;
+    expect(await notifyUpgrades(user, account, [hero])).toBe(0); // already seen before the import
     expect(send).not.toHaveBeenCalled();
   });
 

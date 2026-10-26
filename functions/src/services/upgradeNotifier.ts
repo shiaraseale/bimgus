@@ -7,7 +7,7 @@ import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { Village, capFor, getById, getLevel } from './gameDataService';
-import { ImportChange, InProgressUpgrade, VillageDataV2 } from './villageImportService';
+import { ImportChange, InProgressUpgrade, VillageDataV2, VillageImportService } from './villageImportService';
 import { LinkedAccount, PendingUpgrade, UserDoc } from '../types/user';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
@@ -254,6 +254,9 @@ export async function notifyUpgrades(
   }
 
   if (account.dmsEnabled === false || user.dmsEnabled === false || isDmPaused(user, now)) return 0;
+  // Upgrade DMs start with the account's first import, so linking alone never sends them (requested
+  // 2026-10-26). Keys are recorded above, so nothing seen before the import is sent afterwards.
+  if (!VillageImportService.read(account.villageData)) return 0;
   const grouped = groupWalls(fresh);
   if (grouped.length === 0) return 0;
 
