@@ -4,11 +4,13 @@ import exportFixture from './fixtures/export-th12-bh9.json';
 import { DiscordService } from '../src/services/discordService';
 import { PlayerTrackingService } from '../src/services/playerTrackingService';
 import { VillageImportService } from '../src/services/villageImportService';
+import { CocService } from '../src/services/cocService';
+import { FirestoreService } from '../src/services/firestoreService';
+import { runPlayerTrackingJob } from '../src/jobs/playerTrackingJob';
 import {
   UpgradeEvent,
   eventFromTimer,
   eventsFromImportChanges,
-  groupWalls,
   heroUpgradeStarts,
   notifyUpgrades,
   withoutImportedTimers,
@@ -149,16 +151,27 @@ describe('timers and imports', () => {
     );
   });
 
-  it('groups 40 walls reaching the same level into one line with totals', () => {
+  it('ignores walls, from imports and from timers', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const before = VillageImportService.parseExport(clone(exportFixture));
     const after = VillageImportService.parseExport(clone(exportFixture));
     const wall = after.items.find((i) => i.code === 1000010 && i.count >= 40)!;
     wall.count -= 40;
     after.items.push({ ...wall, level: wall.level + 1, count: 40 });
-    const events = groupWalls(eventsFromImportChanges(VillageImportService.detectImportChanges(before, after), after));
-    expect(events).toHaveLength(1);
-    expect(events[0].wallTotals?.total).toBe(300);
+    expect(eventsFromImportChanges(VillageImportService.detectImportChanges(before, after))).toEqual([]);
+    expect(
+      eventFromTimer({
+        code: 1000010,
+        name: 'Wall',
+        category: 'wall',
+        village: 'home',
+        currentLevel: 10,
+        targetLevel: 11,
+        maxLevel: 14,
+        timerSeconds: 1,
+        finishesAtMs: 1,
+      })
+    ).toBeNull();
   });
 });
 
@@ -314,5 +327,77 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
     const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
     expect(withoutImportedTimers([pending], importWithAqTimer(now + 1000))).toEqual([]);
     expect(withoutImportedTimers([pending], null)).toEqual([pending]);
+  });
+});
+
+describe('the 2-minute poll: API upgrades only DM accounts that have been imported', () => {
+  // Every kind of level-up the live API reports, in one poll, plus a hero timer from an earlier poll
+  const levelledUp = () => {
+    const p = clone(apiFixture) as any;
+    p.townHallLevel += 1;
+    p.builderHallLevel += 1;
+    p.troops.find((t: any) => t.name === 'Barbarian').level += 1;
+    p.troops.find((t: any) => t.name === 'Wall Wrecker').level += 1; // siege
+    p.spells.find((t: any) => t.name === 'Rage Spell').level += 1;
+    p.heroes.find((t: any) => t.name === 'Grand Warden').level += 1; // starts a hero timer
+    return p;
+  };
+  const linkedOnly = (): UserDoc => ({
+    discordUserId: '42',
+    createdAt: '',
+    updatedAt: '',
+    accounts: [
+      {
+        playerTag: '#ANON12345',
+        name: 'Tester',
+        townHallLevel: 12,
+        isPrimary: true,
+        lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture),
+        pendingUpgrades: [
+          {
+            code: 28000000,
+            name: 'Barbarian King',
+            category: 'hero',
+            village: 'home',
+            currentLevel: 36,
+            targetLevel: 37,
+            maxLevel: 65,
+            timerSeconds: 60,
+            finishesAtMs: Date.now() - 1000,
+          },
+        ],
+      },
+    ],
+  });
+  let send: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(CocService, 'shared').mockReturnValue({
+      getPlayer: vi.fn(async () => levelledUp()),
+      getCurrentWar: vi.fn(async () => ({ state: 'notInWar' })),
+    } as any);
+    vi.spyOn(FirestoreService, 'saveUser').mockResolvedValue(undefined as any);
+    send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
+  });
+
+  it('sends nothing for a linked account without an import', async () => {
+    vi.spyOn(FirestoreService, 'getAllUsers').mockResolvedValue([linkedOnly()]);
+    const result = await runPlayerTrackingJob();
+    expect(result.dmsSent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('sends them once the account has an import', async () => {
+    const user = linkedOnly();
+    user.accounts[0].villageData = VillageImportService.parseExport(clone(exportFixture));
+    vi.spyOn(FirestoreService, 'getAllUsers').mockResolvedValue([user]);
+    await runPlayerTrackingJob();
+    const text = JSON.stringify(send.mock.calls);
+    for (const name of ['Town Hall', 'Builder Hall', 'Barbarian', 'Wall Wrecker', 'Rage Spell', 'Barbarian King']) {
+      expect(text, name).toContain(name);
+    }
   });
 });

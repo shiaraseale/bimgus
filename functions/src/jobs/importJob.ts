@@ -11,7 +11,6 @@ import { VillageDataV2, VillageImportService } from '../services/villageImportSe
 import {
   describeEvent,
   eventsFromImportChanges,
-  groupWalls,
   notifyUpgrades,
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
@@ -126,7 +125,7 @@ export async function runImportTask(
       // Compare with what was stored *before* overwriting it
       const previous = VillageImportService.read(account.villageData);
       const changes = VillageImportService.detectImportChanges(previous, village);
-      const events = eventsFromImportChanges(changes, village);
+      const events = eventsFromImportChanges(changes);
 
       account.villageData = village;
       account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
@@ -144,7 +143,7 @@ export async function runImportTask(
       if (events.length > 0) {
         sections.push({
           title: `🎉 Since Your Last Import (${events.length})`,
-          lines: groupWalls(events).map(describeEvent),
+          lines: events.map(describeEvent),
         });
       }
       const weapon = VillageImportService.weaponFor(village);

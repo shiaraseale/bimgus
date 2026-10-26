@@ -1,12 +1,12 @@
 /**
  * Every upgrade-related DM goes through here: completions found by the live API, by comparing
- * imports, and by import timers. Wording depends on how sure we are (2.4 step 5), walls are grouped,
+ * imports, and by import timers. Wording depends on how sure we are (2.4 step 5), walls are skipped,
  * repeats are suppressed, and users who block DMs are paused (2.4 step 10).
  */
 import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
-import { Village, capFor, getById, getLevel } from './gameDataService';
+import { Village, getById, getLevel } from './gameDataService';
 import { ImportChange, InProgressUpgrade, VillageDataV2, VillageImportService } from './villageImportService';
 import { LinkedAccount, PendingUpgrade, UserDoc } from '../types/user';
 
@@ -25,13 +25,14 @@ export interface UpgradeEvent {
   count: number;
   // A stable key for events that must never be sent twice (API levels, timer instances)
   key?: string;
-  // Walls only: how many are at max after this change, out of how many in total
-  wallTotals?: { atMax: number; total: number };
 }
 
 const NOTIFIED_KEYS_LIMIT = 200;
 // Categories that never send DMs (still tracked for /upgrades). Hero equipment muted on request, 2026-10-24.
 export const MUTED_CATEGORIES = new Set(['equipment']);
+// Categories that never become events at all, so they're also left out of import summaries. Walls on
+// request, 2026-10-26: there are hundreds of segments and the updates serve no purpose.
+const IGNORED_CATEGORIES = new Set(['wall']);
 export const DM_BLOCK_PAUSE_MS = 7 * 24 * 60 * 60 * 1000;
 // Above this many events in one cycle, send a single summary instead of one DM each
 const MAX_SEPARATE_MESSAGES = 3;
@@ -58,10 +59,6 @@ function hallTag(account: LinkedAccount, village: Village): string {
 export function describeEvent(e: UpgradeEvent): string {
   const countPrefix = e.count > 1 ? `${e.count}x ` : '';
   const levels = `Lv ${e.newLevel}/${e.maxLevel}`;
-  if (e.category === 'wall') {
-    const totals = e.wallTotals ? ` (now ${e.wallTotals.atMax}/${e.wallTotals.total} at max)` : '';
-    return `🧱 ${countPrefix}**${e.name}** upgraded to level ${e.newLevel}${totals}`;
-  }
   switch (e.kind) {
     case 'unlocked':
       return `🔓 **${e.name}** unlocked! (${levels})`;
@@ -72,30 +69,6 @@ export function describeEvent(e: UpgradeEvent): string {
     default:
       return `🎉 ${countPrefix}**${e.name}** reached **level ${e.newLevel}** (${levels})`;
   }
-}
-
-/** Merges wall events that reach the same level into one line (there can be hundreds of segments). */
-export function groupWalls(events: UpgradeEvent[]): UpgradeEvent[] {
-  const out: UpgradeEvent[] = [];
-  const walls = new Map<string, UpgradeEvent>();
-  for (const e of events) {
-    if (e.category !== 'wall') {
-      out.push(e);
-      continue;
-    }
-    const key = `${e.village}:${e.code}:${e.newLevel}`;
-    const existing = walls.get(key);
-    if (existing) {
-      existing.count += e.count;
-      existing.oldLevel = Math.min(existing.oldLevel, e.oldLevel);
-      existing.wallTotals = e.wallTotals ?? existing.wallTotals;
-    } else {
-      const copy = { ...e };
-      walls.set(key, copy);
-      out.push(copy);
-    }
-  }
-  return out;
 }
 
 // The live API reports these when they finish, so their import timers only update stored levels (no DM).
@@ -112,44 +85,33 @@ export const API_COVERED_CATEGORIES = new Set([
   'builderHall',
 ]);
 
-const BUILT_CATEGORIES = new Set(['defense', 'resource', 'army', 'other', 'trap', 'wall', 'guardian']);
-
-function wallTotals(data: VillageDataV2, village: Village, code: number): { atMax: number; total: number } {
-  const wall = getById(code);
-  const hall = village === 'builder' ? data.builderHallLevel : data.townHallLevel;
-  let atMax = 0;
-  let total = 0;
-  for (const vi of data.items) {
-    if (vi.code !== code || vi.village !== village) continue;
-    total += vi.count;
-    if (wall && vi.level >= capFor(wall, hall, vi.level)) atMax += vi.count;
-  }
-  return { atMax, total };
-}
+const BUILT_CATEGORIES = new Set(['defense', 'resource', 'army', 'other', 'trap', 'guardian']);
 
 /** Events for what changed between two imports (2.4). */
-export function eventsFromImportChanges(changes: ImportChange[], newData: VillageDataV2): UpgradeEvent[] {
-  return changes.map((c) => ({
-    kind: c.kind,
-    code: c.code,
-    name: c.name,
-    assetName: getById(c.code)?.name ?? c.name,
-    category: c.category,
-    village: c.village,
-    oldLevel: c.oldLevel,
-    newLevel: c.newLevel,
-    maxLevel: c.maxLevel,
-    count: c.count,
-    ...(c.category === 'wall' ? { wallTotals: wallTotals(newData, c.village, c.code) } : {}),
-  }));
+export function eventsFromImportChanges(changes: ImportChange[]): UpgradeEvent[] {
+  return changes
+    .filter((c) => !IGNORED_CATEGORIES.has(c.category))
+    .map((c) => ({
+      kind: c.kind,
+      code: c.code,
+      name: c.name,
+      assetName: getById(c.code)?.name ?? c.name,
+      category: c.category,
+      village: c.village,
+      oldLevel: c.oldLevel,
+      newLevel: c.newLevel,
+      maxLevel: c.maxLevel,
+      count: c.count,
+    }));
 }
 
 /**
  * The event for an import timer that has run out, or null when the live API reports that category
- * itself. Timers are estimates (boosts shorten them), so a level-up is only "expected" (2.4 step 5).
+ * itself or it's ignored. Timers are estimates (boosts shorten them), so a level-up is only "expected"
+ * (2.4 step 5).
  */
 export function eventFromTimer(up: InProgressUpgrade): UpgradeEvent | null {
-  if (API_COVERED_CATEGORIES.has(up.category)) return null;
+  if (API_COVERED_CATEGORIES.has(up.category) || IGNORED_CATEGORIES.has(up.category)) return null;
   const item = up.code ? getById(up.code) : undefined;
   const kind: UpgradeKind =
     up.currentLevel === 0 ? (BUILT_CATEGORIES.has(up.category) ? 'built' : 'unlocked') : 'expected';
@@ -257,25 +219,24 @@ export async function notifyUpgrades(
   // Upgrade DMs start with the account's first import, so linking alone never sends them (requested
   // 2026-10-26). Keys are recorded above, so nothing seen before the import is sent afterwards.
   if (!VillageImportService.read(account.villageData)) return 0;
-  const grouped = groupWalls(fresh);
-  if (grouped.length === 0) return 0;
+  if (fresh.length === 0) return 0;
 
   const footer = { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` };
   const components = [
     DiscordService.createActionRow([DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)]),
   ];
   const messages =
-    grouped.length > MAX_SEPARATE_MESSAGES
+    fresh.length > MAX_SEPARATE_MESSAGES
       ? [
           {
-            title: `🎉 [${account.name}] ${grouped.length} Upgrades`,
-            description: grouped.map(describeEvent).join('\n').slice(0, 4000),
+            title: `🎉 [${account.name}] ${fresh.length} Upgrades`,
+            description: fresh.map(describeEvent).join('\n').slice(0, 4000),
             color: COLORS.GOLD,
             footer,
             timestamp: new Date(now).toISOString(),
           },
         ]
-      : grouped.map((e) => ({
+      : fresh.map((e) => ({
           title: `${e.kind === 'unlocked' ? '🔓' : e.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[e.kind]}`,
           description: [
             describeEvent(e),
