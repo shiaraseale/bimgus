@@ -2,6 +2,7 @@ import * as help from './help';
 import * as link from './link';
 import * as unlink from './unlink';
 import * as accounts from './accounts';
+import * as dms from './dms';
 import * as sixthBuilder from './sixthBuilder';
 import * as heroes from './heroes';
 import * as upgrades from './upgrades';
@@ -17,6 +18,7 @@ export const COMMANDS = [
   link,
   unlink,
   accounts,
+  dms,
   sixthBuilder,
   heroes,
   upgrades,

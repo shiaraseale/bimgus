@@ -5,6 +5,7 @@
  */
 import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
+import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { Village, capFor, getById, getLevel } from './gameDataService';
 import { ImportChange, InProgressUpgrade, VillageDataV2 } from './villageImportService';
 import { LinkedAccount, PendingUpgrade, UserDoc } from '../types/user';
@@ -257,7 +258,9 @@ export async function notifyUpgrades(
   if (grouped.length === 0) return 0;
 
   const footer = { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` };
-  const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton()])];
+  const components = [
+    DiscordService.createActionRow([DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)]),
+  ];
   const messages =
     grouped.length > MAX_SEPARATE_MESSAGES
       ? [
@@ -275,7 +278,9 @@ export async function notifyUpgrades(
             describeEvent(e),
             '',
             `📊 **Level ${e.newLevel}/${e.maxLevel}** for ${hallTag(account, e.village)}`,
-            e.kind === 'expected' ? "*Estimated from your import's timer; boosts may have finished it sooner.*" : '',
+            e.kind === 'expected'
+              ? "*Estimated from your import's timer (boosts active then are counted); gems or a boost used since may have finished it sooner.*"
+              : '',
           ]
             .filter(Boolean)
             .join('\n'),

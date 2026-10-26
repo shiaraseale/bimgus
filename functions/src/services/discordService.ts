@@ -31,14 +31,18 @@ export class DiscordService {
     if (/^\d{17,20}$/.test(clean)) {
       return clean;
     }
-    const match = clean.match(/discord\.com\/api\/webhooks\/(\d+)/);
+    const match = clean.match(/discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/(\d+)\/([\w-]+)/);
     if (match) {
-      const webhookId = match[1];
+      const [, webhookId, webhookToken] = match;
       if (this.webhookToChannelMap[webhookId]) {
         return this.webhookToChannelMap[webhookId];
       }
       try {
-        const res = await axios.get(`https://discord.com/api/v10/webhooks/${webhookId}`);
+        // With the token in the path no authorisation is needed. Without a channel the message falls
+        // back to the webhook, which can't show the bot's application emojis.
+        const res = await axios.get(`https://discord.com/api/v10/webhooks/${webhookId}/${webhookToken}`, {
+          timeout: 8000,
+        });
         if (res.data?.channel_id) {
           this.webhookToChannelMap[webhookId] = res.data.channel_id;
           return res.data.channel_id;
@@ -193,7 +197,7 @@ export class DiscordService {
   /**
    * Creates an Action Row wrapping multiple buttons.
    */
-  static createActionRow(buttons: ReturnType<typeof DiscordService.createLinkButton>[]) {
+  static createActionRow<B extends { type: 2 }>(buttons: B[]) {
     return {
       type: 1 as const,
       components: buttons,

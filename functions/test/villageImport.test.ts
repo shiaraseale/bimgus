@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import exportFixture from './fixtures/export-th12-bh9.json';
-import { VillageDataV2, VillageImportService } from '../src/services/villageImportService';
+import { VillageDataV2, VillageImportService, boostedSeconds } from '../src/services/villageImportService';
 import { getByName } from '../src/services/gameDataService';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -213,5 +213,61 @@ describe('detectImportChanges', () => {
     VillageImportService.applyCompletedTimer(data, up);
     expect(total(data, 1000008)).toBe(7);
     expect(data.items.some((i) => i.code === 1000008 && i.level === 14 && i.count === 1)).toBe(true);
+  });
+});
+
+describe('boosted timers', () => {
+  const HOUR = 3600;
+  afterEach(() => vi.restoreAllMocks());
+
+  it('works out real time left with one or more boosts', () => {
+    expect(boostedSeconds(5 * HOUR, [])).toBe(5 * HOUR);
+    // A 10x potion for 1 hour does 10 hours of work, so a 5 hour upgrade finishes in 30 minutes
+    expect(boostedSeconds(5 * HOUR, [{ seconds: HOUR, rate: 10 }])).toBe(HOUR / 2);
+    // 20 hours left: 10 in the potion's hour, then 10 more at normal speed
+    expect(boostedSeconds(20 * HOUR, [{ seconds: HOUR, rate: 10 }])).toBe(11 * HOUR);
+    // Potion (10x, 1h) with a level 4 apprentice (5x, 1h) overlapping: 14x for the hour
+    expect(
+      boostedSeconds(20 * HOUR, [
+        { seconds: HOUR, rate: 10 },
+        { seconds: HOUR, rate: 5 },
+      ])
+    ).toBe(7 * HOUR);
+    // Different lengths: 14 h of work in the first hour, 10 h in the second, then 6 h at normal speed
+    expect(
+      boostedSeconds(30 * HOUR, [
+        { seconds: 2 * HOUR, rate: 10 },
+        { seconds: HOUR, rate: 5 },
+      ])
+    ).toBe(8 * HOUR);
+  });
+
+  it("applies the export's boosts and helper timers to the matching upgrades only", () => {
+    const exp = clone(exportFixture) as any;
+    exp.boosts = { builder_boost: HOUR, lab_boost: HOUR, clocktower_boost: 1800, clocktower_cooldown: 9999 };
+    const cannon = exp.buildings.find((b: any) => b.data === 1000008 && b.timer); // 22680 s
+    cannon.helper_timer = HOUR;
+    const data = VillageImportService.parseExport(exp);
+    const find = (code: number, village = 'home') =>
+      data.inProgressUpgrades.find((u) => u.code === code && u.village === village)!;
+    const exportMs = data.exportTimestamp;
+
+    // Cannon: builder potion (10x) plus a level 4 apprentice (5x) for an hour = 14x
+    expect(find(1000008).timerSeconds).toBe(Math.ceil(22680 / 14));
+    // Rage Spell: 24x research potion for an hour does 24 h; 122052 s needs a little more
+    expect(find(26000002).timerSeconds).toBe(HOUR + (122052 - 24 * HOUR));
+    // Builder Base: Clock Tower 10x for 30 minutes
+    expect(find(1000046, 'builder').timerSeconds).toBe(Math.ceil(9726 / 10));
+    expect(find(1000046, 'builder').finishesAtMs).toBe(exportMs + Math.ceil(9726 / 10) * 1000);
+    expect(data.boosts).toEqual(exp.boosts);
+  });
+
+  it('leaves timers alone without boosts, and warns about boosts it does not know', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const exp = clone(exportFixture) as any;
+    exp.boosts = { mystery_boost: 100 };
+    const data = VillageImportService.parseExport(exp);
+    expect(data.inProgressUpgrades.find((u) => u.code === 1000008)!.timerSeconds).toBe(22680);
+    expect(warn.mock.calls.flat().join(' ')).toContain('mystery_boost');
   });
 });

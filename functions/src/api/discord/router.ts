@@ -5,6 +5,7 @@ import { createCommandContext } from './context';
 import { COMMANDS_BY_NAME } from './commands';
 import { queueTask } from './tasks';
 import { handleBobDefenseButton, isBobDefenseButton } from './components/bobDefense';
+import { handleDmToggleButton, isDmToggleButton } from './components/dmToggle';
 import { log } from '../../utils/log';
 
 export const discordInteractionsRouter = Router();
@@ -80,6 +81,9 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
     const discordUserId = (user || member?.user)?.id;
     if (isBobDefenseButton(customId)) {
       return res.json(await handleBobDefenseButton(customId, discordUserId));
+    }
+    if (isDmToggleButton(customId)) {
+      return res.json(await handleDmToggleButton(customId, discordUserId));
     }
     return res.status(400).send('Unknown component interaction');
   }

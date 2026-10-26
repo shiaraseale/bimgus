@@ -78,13 +78,14 @@ describe('slash commands end to end (mocked services)', () => {
     });
   });
 
-  const command = async (name: string, options: any[] = [], resolved: any = undefined) => {
+  /** Sends a signed interaction and returns Discord's immediate response. */
+  const interact = async (type: number, data: any) => {
     const body = JSON.stringify({
-      type: 2,
+      type,
       token: 'tok',
       application_id: 'app',
       user: { id: '42', username: 'tester' },
-      data: { name, options, ...(resolved ? { resolved } : {}) },
+      data,
     });
     const timestamp = String(Math.floor(Date.now() / 1000));
     const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
@@ -98,6 +99,11 @@ describe('slash commands end to end (mocked services)', () => {
       body,
     });
     expect(res.status).toBe(200);
+    return res.json();
+  };
+
+  const command = async (name: string, options: any[] = [], resolved: any = undefined) => {
+    await interact(2, { name, options, ...(resolved ? { resolved } : {}) });
     await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
     return patches[0];
   };
@@ -203,5 +209,61 @@ describe('slash commands end to end (mocked services)', () => {
     const reply = await command('sixth-builder');
     // This BH9 account has BB defenses at level 9+, so task 3 shows as done
     expect(allText(reply)).toContain('✅ **3. Upgrade BB Defense to Level 9**');
+  });
+
+  it('/dms off turns DMs off for every account, and /dms on for one clears a DM pause', async () => {
+    user.accounts.push({ playerTag: '#SECOND', name: 'Alt', townHallLevel: 10, isPrimary: false });
+    user.dmsBlockedAt = new Date().toISOString();
+    const update = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn((FirestoreService as any).usersCol, 'doc').mockReturnValue({ update });
+
+    const off = await interact(2, { name: 'dms', options: [{ name: 'setting', value: 'off' }] });
+    expect(allText(off)).toContain('Tester');
+    expect(allText(off)).toContain('Alt');
+    expect(user.accounts.map((a) => a.dmsEnabled)).toEqual([false, false]);
+    expect(update).not.toHaveBeenCalled();
+
+    const on = await interact(2, {
+      name: 'dms',
+      options: [
+        { name: 'setting', value: 'on' },
+        { name: 'account', value: 'alt' },
+      ],
+    });
+    expect(allText(on)).toContain('DMs On');
+    expect(user.accounts.map((a) => a.dmsEnabled)).toEqual([false, true]);
+    expect(Object.keys(update.mock.calls[0][0]).sort()).toEqual(['dmsBlockedAt', 'dmsBlockedNoticeShown']);
+
+    const missing = await interact(2, {
+      name: 'dms',
+      options: [
+        { name: 'setting', value: 'on' },
+        { name: 'account', value: '#NOPE' },
+      ],
+    });
+    expect(allText(missing)).toContain('Could not find linked account');
+  });
+
+  it("the button on a DM turns that account's DMs off, with a button to turn them back on", async () => {
+    const off = await interact(3, { custom_id: 'dms_off:#ANON12345', component_type: 2 });
+    expect(user.accounts[0].dmsEnabled).toBe(false);
+    expect(off.data.content).toContain('off');
+    const undo = off.data.components[0].components[0];
+    expect(undo.custom_id).toBe('dms_on:#ANON12345');
+
+    await interact(3, { custom_id: undo.custom_id, component_type: 2 });
+    expect(user.accounts[0].dmsEnabled).toBe(true);
+  });
+
+  it('upgrade DMs carry the turn-off button', async () => {
+    await importFile();
+    const changed = clone(exportFixture) as any;
+    changed.buildings.find((b: any) => b.data === 1000008 && b.cnt === 5).cnt = 4;
+    changed.buildings.push({ data: 1000008, lvl: 14 });
+    vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(changed) }) as any);
+    patches = [];
+    await importFile();
+    const dm = (DiscordService.sendDmResult as any).mock.calls[0][1];
+    expect(JSON.stringify(dm.components)).toContain('dms_off:#ANON12345');
   });
 });

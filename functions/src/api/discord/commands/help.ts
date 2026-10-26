@@ -34,6 +34,11 @@ export async function execute(ctx: CommandContext): Promise<any> {
             inline: false,
           },
           {
+            name: '🔔 `/dms [on|off] [account]`',
+            value: 'Turn Bimgus DMs on or off for all your accounts, or just one.\n\u200b',
+            inline: false,
+          },
+          {
             name: '🗑️ `/unlink [tag]`',
             value: 'Unlink an account from your Discord profile.\n\u200b',
             inline: false,

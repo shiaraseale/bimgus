@@ -34,14 +34,23 @@ export interface DiscordButtonEmoji {
   animated?: boolean;
 }
 
-export interface DiscordButtonComponent {
-  type: 2; // Button
-  style: 5; // Link button
-  label: string;
-  url: string;
-  emoji?: DiscordButtonEmoji;
-  disabled?: boolean;
-}
+export type DiscordButtonComponent =
+  | {
+      type: 2; // Button
+      style: 5; // Link button
+      label: string;
+      url: string;
+      emoji?: DiscordButtonEmoji;
+      disabled?: boolean;
+    }
+  | {
+      type: 2; // Button
+      style: 1 | 2 | 3 | 4; // Primary, secondary, success, danger
+      label: string;
+      custom_id: string;
+      emoji?: DiscordButtonEmoji;
+      disabled?: boolean;
+    };
 
 export interface DiscordActionRowComponent {
   type: 1; // Action row

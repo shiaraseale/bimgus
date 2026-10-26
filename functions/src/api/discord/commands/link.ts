@@ -22,7 +22,7 @@ export const definition = {
     },
     {
       name: 'dms',
-      description: 'Receive private DMs when war rosters lock in (default: true)',
+      description: 'Receive DMs for upgrades and war rosters (default: true; change later with /dms)',
       type: 5, // BOOLEAN
       required: false,
     },

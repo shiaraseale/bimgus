@@ -42,7 +42,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
               '',
               '💡 *All linked accounts are of equal status! Commands like `/heroes`, `/sixth-builder`, and `/upgrades` automatically send an individual message for each of your linked accounts.*',
               '',
-              '*To toggle DMs for an account, run `/link tag:#TAG dms:true|false`.*',
+              '*To turn DMs on or off, run `/dms on` or `/dms off` (add `account:` for just one).*',
             ].join('\n'),
             color: COLORS.DISCORD_BLURPLE,
             thumbnail: {

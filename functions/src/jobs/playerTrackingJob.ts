@@ -16,6 +16,7 @@ import {
   notifyUpgrades,
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
+import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { log } from '../utils/log';
 
 const USER_CONCURRENCY = 3;
@@ -172,6 +173,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
                       timestamp: new Date().toISOString(),
                     },
                   ],
+                  components: [DiscordService.createActionRow([dmToggleButton(account.playerTag)])],
                 });
                 dmsSent++;
               }

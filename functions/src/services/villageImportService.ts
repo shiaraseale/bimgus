@@ -59,6 +59,52 @@ const SECTIONS: Array<[string, Village]> = [
   ['heroes2', 'builder'],
 ];
 
+// Which workshop's boosts speed up each home section; every Builder Base timer uses the Clock Tower
+type Workshop = 'builder' | 'lab' | 'pet' | 'clockTower';
+const HOME_WORKSHOPS: Record<string, Workshop> = {
+  buildings: 'builder',
+  traps: 'builder',
+  heroes: 'builder',
+  guardians: 'builder',
+  units: 'lab',
+  spells: 'lab',
+  siege_machines: 'lab',
+  pets: 'pet',
+};
+
+// Keys in the export's `boosts` (seconds left on each), and how many times faster each runs.
+// Names and rates follow the ClashOfNotifications parser; see docs/IMPLEMENTATION_PLAN.md (A3).
+const BOOSTS: Record<string, { workshop: Workshop; rate: number }> = {
+  builder_boost: { workshop: 'builder', rate: 10 }, // Builder Potion
+  lab_boost: { workshop: 'lab', rate: 24 }, // Research Potion
+  pet_boost: { workshop: 'pet', rate: 24 }, // Pet Potion
+  clocktower_boost: { workshop: 'clockTower', rate: 10 }, // Clock Tower / Clock Tower Potion
+  builder_consumable: { workshop: 'builder', rate: 2 },
+  lab_consumable: { workshop: 'lab', rate: 4 },
+};
+
+// Builder's Apprentice and Lab Assistant: a level N helper adds N hours of work per hour
+const HELPER_WORKSHOPS: Record<number, Workshop> = { 93000000: 'builder', 93000001: 'lab' };
+
+/**
+ * Real seconds until an upgrade with `timer` seconds of work left finishes, given boosts that each
+ * run for a number of seconds from the export. Overlapping boosts add their extra speed together.
+ */
+export function boostedSeconds(timer: number, boosts: Array<{ seconds: number; rate: number }>): number {
+  const active = boosts.filter((b) => b.seconds > 0 && b.rate > 1).sort((a, b) => a.seconds - b.seconds);
+  let remaining = timer;
+  let elapsed = 0;
+  for (let i = 0; i < active.length && remaining > 0; i++) {
+    // Between the previous boost ending and this one ending, this boost and every longer one run
+    const rate = 1 + active.slice(i).reduce((sum, b) => sum + b.rate - 1, 0);
+    const span = active[i].seconds - elapsed;
+    if (span * rate >= remaining) return Math.ceil(elapsed + remaining / rate);
+    remaining -= span * rate;
+    elapsed = active[i].seconds;
+  }
+  return Math.ceil(elapsed + remaining);
+}
+
 const TOWN_HALL = 1000001;
 const BUILDER_HALL = 1000034;
 const STALE_EXPORT_MS = 24 * 60 * 60 * 1000;
@@ -126,13 +172,37 @@ export class VillageImportService {
     let builderHallLevel = 0;
     let townHallWeaponLevel: number | undefined;
 
+    const exportBoosts: Record<string, unknown> =
+      exportJson.boosts && typeof exportJson.boosts === 'object' ? exportJson.boosts : {};
+    const helperLevels = new Map<Workshop, number>();
+    for (const h of Array.isArray(exportJson.helpers) ? exportJson.helpers : []) {
+      const workshop = HELPER_WORKSHOPS[Number(h?.data)];
+      if (workshop) helperLevels.set(workshop, Number(h.lvl) || 0);
+    }
+    const unknownBoosts = Object.keys(exportBoosts).filter((k) => !BOOSTS[k] && !k.endsWith('_cooldown'));
+    if (unknownBoosts.length) log.warn(`[VillageImport] Unknown boosts in export: ${unknownBoosts.join(', ')}`);
+
+    /** Seconds until an upgrade finishes once the potions, Clock Tower and helpers on it are counted. */
+    const finishSeconds = (timer: number, workshop: Workshop | undefined, helperTimer: number): number => {
+      if (!workshop) return timer;
+      const active: Array<{ seconds: number; rate: number }> = [];
+      for (const [key, seconds] of Object.entries(exportBoosts)) {
+        if (BOOSTS[key]?.workshop === workshop) active.push({ seconds: Number(seconds) || 0, rate: BOOSTS[key].rate });
+      }
+      const helperLevel = helperLevels.get(workshop) ?? 0;
+      if (helperTimer > 0 && helperLevel > 0) active.push({ seconds: helperTimer, rate: helperLevel + 1 });
+      return boostedSeconds(timer, active);
+    };
+
     const addItem = (
       code: number,
       village: Village,
       level: number,
       count: number,
       gearedUp: boolean,
-      timer: number
+      timer: number,
+      workshop?: Workshop,
+      helperTimer = 0
     ) => {
       const item = getById(code);
       if (!item) {
@@ -149,6 +219,7 @@ export class VillageImportService {
       else groups.set(key, { code, category, village, level, count, ...(gearedUp ? { gearedUp: true } : {}) });
 
       if (timer > 0) {
+        const seconds = finishSeconds(timer, workshop, helperTimer);
         inProgress.push({
           code,
           name: item?.displayName ?? nameForCode(code),
@@ -156,8 +227,8 @@ export class VillageImportService {
           village,
           currentLevel: level,
           targetLevel: level + 1,
-          timerSeconds: timer,
-          finishesAtMs: exportTimestamp + timer * 1000,
+          timerSeconds: seconds,
+          finishesAtMs: exportTimestamp + seconds * 1000,
         });
       }
     };
@@ -165,6 +236,7 @@ export class VillageImportService {
     for (const [section, village] of SECTIONS) {
       const entries = exportJson[section];
       if (!Array.isArray(entries)) continue;
+      const workshop = village === 'builder' ? 'clockTower' : HOME_WORKSHOPS[section];
 
       for (const entry of entries) {
         const code = Number(entry?.data);
@@ -174,7 +246,16 @@ export class VillageImportService {
         if (Array.isArray(entry.types)) {
           for (const type of entry.types) {
             for (const m of type.modules ?? []) {
-              addItem(Number(m.data), village, Number(m.lvl) || 0, 1, false, Number(m.timer) || 0);
+              addItem(
+                Number(m.data),
+                village,
+                Number(m.lvl) || 0,
+                1,
+                false,
+                Number(m.timer) || 0,
+                workshop,
+                Number(m.helper_timer) || 0
+              );
             }
           }
           continue;
@@ -188,7 +269,16 @@ export class VillageImportService {
         if (code === BUILDER_HALL) builderHallLevel = Math.max(builderHallLevel, level);
 
         // A missing cnt means 1; upgrading and geared-up items are listed on their own
-        addItem(code, village, level, Number(entry.cnt) || 1, Boolean(entry.gear_up), Number(entry.timer) || 0);
+        addItem(
+          code,
+          village,
+          level,
+          Number(entry.cnt) || 1,
+          Boolean(entry.gear_up),
+          Number(entry.timer) || 0,
+          workshop,
+          Number(entry.helper_timer) || 0
+        );
       }
     }
 
@@ -204,7 +294,7 @@ export class VillageImportService {
       ...(townHallWeaponLevel !== undefined ? { townHallWeaponLevel } : {}),
       items: [...groups.values()],
       inProgressUpgrades: [],
-      boosts: exportJson.boosts && typeof exportJson.boosts === 'object' ? exportJson.boosts : {},
+      boosts: exportBoosts,
     };
 
     data.inProgressUpgrades = inProgress

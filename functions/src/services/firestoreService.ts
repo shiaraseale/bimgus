@@ -266,6 +266,43 @@ export class FirestoreService {
   }
 
   /**
+   * Turns DMs on or off for one linked account (by tag or name), or for all of them when none is
+   * given. Returns the accounts changed, or null if the user or account wasn't found.
+   */
+  static async setDmsEnabled(
+    discordUserId: string,
+    enabled: boolean,
+    account?: string
+  ): Promise<LinkedAccount[] | null> {
+    const user = await this.getUser(discordUserId);
+    if (!user || !user.accounts?.length) return null;
+    let targets = user.accounts;
+    if (account) {
+      const query = account.trim().toUpperCase();
+      const tag = config.formatTag(account).toUpperCase();
+      targets = user.accounts.filter((a) => a.playerTag.toUpperCase() === tag || a.name.toUpperCase() === query);
+      if (targets.length === 0) return null;
+    }
+    for (const a of targets) a.dmsEnabled = enabled;
+    if (!account) user.dmsEnabled = enabled;
+    const wasPaused = Boolean(user.dmsBlockedAt);
+    if (enabled) {
+      delete user.dmsBlockedAt;
+      delete user.dmsBlockedNoticeShown;
+    }
+    await this.saveUser(user);
+    // Turning DMs on clears a pause from Discord refusing an earlier DM, so they resume now
+    // (saveUser merges, so the fields have to be deleted explicitly)
+    if (enabled && wasPaused) {
+      await this.usersCol.doc(discordUserId).update({
+        dmsBlockedAt: FieldValue.delete(),
+        dmsBlockedNoticeShown: FieldValue.delete(),
+      });
+    }
+    return targets;
+  }
+
+  /**
    * Gets all users registered for upgrade tracking.
    */
   static async getAllUsers(): Promise<UserDoc[]> {

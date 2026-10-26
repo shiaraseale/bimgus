@@ -64,3 +64,14 @@ describe('DiscordService DRY_RUN_DISCORD', () => {
     );
   });
 });
+
+describe('DiscordService.resolveChannelId', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("looks up an unknown webhook's channel with its token, so the bot can post it (and show app emojis)", async () => {
+    const get = vi.spyOn(axios, 'get').mockResolvedValue({ data: { channel_id: '777' } } as any);
+    const channel = await DiscordService.resolveChannelId('https://discord.com/api/webhooks/123456/abc-DEF_9');
+    expect(channel).toBe('777');
+    expect(get.mock.calls[0][0]).toBe('https://discord.com/api/v10/webhooks/123456/abc-DEF_9');
+  });
+});
