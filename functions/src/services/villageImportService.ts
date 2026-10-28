@@ -53,10 +53,10 @@ const IMPORT_SECTIONS: Record<Village, Array<[string, GameCategory[], string]>> 
     ['🛠️ Helpers', ['helper'], 'helper'],
   ],
   builder: [
-    ['🔨 BB Defenses', ['defense'], 'defense'],
-    ['💣 BB Traps', ['trap'], 'trap'],
-    ['🏛️ BB Resource & Army', ['resource', 'army', 'other'], 'building'],
-    ['🧱 BB Walls', ['wall'], 'wall'],
+    ['🛡️ Defenses', ['defense'], 'defense'],
+    ['💣 Traps', ['trap'], 'trap'],
+    ['🏛️ Resource & Army', ['resource', 'army', 'other'], 'building'],
+    ['🧱 Walls', ['wall'], 'wall'],
   ],
 };
 
@@ -246,6 +246,9 @@ export class VillageImportService {
         );
       }
       const category = item?.category ?? 'unknown';
+      // The export, like the API, already shows an upgrading hero at its new level (found 2026-10-28,
+      // when import timers were a level above the API's and showed twice), so it's one level lower
+      if (timer > 0 && category === 'hero') level -= 1;
       const key = `${village}:${code}:${level}:${gearedUp ? 1 : 0}`;
       const existing = groups.get(key);
       if (existing) existing.count += count;
@@ -328,6 +331,7 @@ export class VillageImportService {
       items: [...groups.values()],
       inProgressUpgrades: [],
       boosts: exportBoosts,
+      heroTimersFixed: true,
     };
 
     data.inProgressUpgrades = inProgress
@@ -394,7 +398,27 @@ export class VillageImportService {
 
   /** Returns stored village data in the current format, or null (older formats are discarded). */
   static read(villageData: any): VillageDataV2 | null {
-    return villageData && villageData.version === VILLAGE_DATA_VERSION ? (villageData as VillageDataV2) : null;
+    if (!villageData || villageData.version !== VILLAGE_DATA_VERSION) return null;
+    const data = villageData as VillageDataV2;
+    if (!data.heroTimersFixed) VillageImportService.fixHeroTimers(data);
+    return data;
+  }
+
+  /**
+   * Imports from before 2026-10-28 put each upgrading hero, and its timer, one level too high; moves
+   * them down once (the flag is saved with the data the next time it's written).
+   */
+  static fixHeroTimers(data: VillageDataV2): void {
+    for (const up of data.inProgressUpgrades ?? []) {
+      if (up.category !== 'hero') continue;
+      const item = data.items?.find(
+        (i) => i.code === up.code && i.village === up.village && i.level === up.currentLevel
+      );
+      if (item) item.level -= 1;
+      up.currentLevel -= 1;
+      up.targetLevel -= 1;
+    }
+    data.heroTimersFixed = true;
   }
 
   static isStale(data: VillageDataV2, now: number = Date.now()): boolean {
@@ -505,23 +529,16 @@ export class VillageImportService {
   }
 
   /**
-   * What's left to upgrade in an import, by category, for each village. Heroes, troops, spells and pets
-   * aren't listed, because `/upgrades` reads those live from the game.
+   * What's left to upgrade in one village of an import, by category, e.g. "🛡️ Defenses (32)". Heroes,
+   * troops, spells and pets aren't listed, because `/upgrades` reads those live from the game.
    */
-  static importSections(data: VillageDataV2): ImportSection[] {
-    const halls: Array<[Village, string]> = [['home', `TH${data.townHallLevel}`]];
-    if (data.builderHallLevel > 0) halls.push(['builder', `BH${data.builderHallLevel}`]);
+  static importSections(data: VillageDataV2, village: Village): ImportSection[] {
+    const sections: ImportSection[] = IMPORT_SECTIONS[village].map(([title, categories, noun]) => {
+      const { lines, count } = VillageImportService.outstanding(data, village, categories);
+      return { title: `${title} (${count})`, village, noun, lines, count };
+    });
 
-    const sections: ImportSection[] = halls.flatMap(([village, hall]) =>
-      IMPORT_SECTIONS[village].map(([title, categories, noun]) => ({
-        title: `${title} (${hall})`,
-        village,
-        noun,
-        ...VillageImportService.outstanding(data, village, categories),
-      }))
-    );
-
-    const unknown = VillageImportService.unknownItems(data);
+    const unknown = VillageImportService.unknownItems(data).filter((u) => u.village === village);
     if (unknown.length > 0) {
       sections.push({
         title: '❔ Not in the game data yet',
@@ -532,17 +549,12 @@ export class VillageImportService {
     return sections.filter((s) => s.lines.length > 0);
   }
 
-  /** What's left in one line per village: "🏰 **Home (TH12)**: 32 defenses · 10 traps · 19 buildings". */
-  static importSummary(data: VillageDataV2): string[] {
-    const sections = VillageImportService.importSections(data);
-    const villages: Array<[Village, string]> = [['home', `🏰 **Home (TH${data.townHallLevel})**`]];
-    if (data.builderHallLevel > 0) villages.push(['builder', `🔨 **Builder Base (BH${data.builderHallLevel})**`]);
-    return villages.map(([village, label]) => {
-      const parts = sections
-        .filter((s) => s.village === village)
-        .map((s) => `${s.count} ${s.noun}${s.count === 1 ? '' : 's'}`);
-      return `${label}: ${parts.length > 0 ? parts.join(' · ') : '✨ all maxed'}`;
-    });
+  /** What's left in one village, in a line: "32 defenses · 10 traps · 19 buildings". */
+  static importSummary(data: VillageDataV2, village: Village): string {
+    const parts = VillageImportService.importSections(data, village)
+      .filter((s) => s.noun)
+      .map((s) => `${s.count} ${s.noun}${s.count === 1 ? '' : 's'}`);
+    return parts.length > 0 ? parts.join(' · ') : '✨ All maxed';
   }
 
   /**
@@ -573,26 +585,6 @@ export class VillageImportService {
     }));
   }
 
-  /** Splits lines into embed fields under Discord's 1,024-character field limit. */
-  static linesToFields(title: string, lines: string[]): Array<{ name: string; value: string; inline: boolean }> {
-    const fields: Array<{ name: string; value: string; inline: boolean }> = [];
-    let current: string[] = [];
-    let length = 0;
-    const flush = () => {
-      if (current.length === 0) return;
-      fields.push({ name: fields.length === 0 ? title : `${title} (cont.)`, value: current.join('\n'), inline: false });
-      current = [];
-      length = 0;
-    };
-    for (const line of lines) {
-      if (length + line.length + 1 > 1000) flush();
-      current.push(line.length > 1000 ? line.slice(0, 997) + '...' : line);
-      length += line.length + 1;
-    }
-    flush();
-    return fields;
-  }
-
   /** Characters Discord counts towards its limit for one embed. */
   static embedSize(embed: any): number {
     return (
@@ -606,7 +598,7 @@ export class VillageImportService {
   /**
    * One line per running upgrade, soonest first, with a countdown and the date:
    * "• 2x **Spring Trap** → Lv 6 · in 5 hours (22/10/2026, 11:11)". The same upgrade finishing within an
-   * hour shares a line.
+   * hour shares a line. Callers list each village under its own heading.
    */
   static formatInProgressUpgrades(upgrades: InProgressUpgrade[], now: number = Date.now()): string {
     const rows: Array<{ up: InProgressUpgrade; count: number }> = [];
@@ -626,8 +618,7 @@ export class VillageImportService {
     return rows
       .map(({ up, count }) => {
         const name = up.code ? nameForCode(up.code) : up.name;
-        const label = up.village === 'builder' && !name.endsWith('(BB)') ? `${name} (BB)` : name;
-        return `• ${count > 1 ? `${count}x ` : ''}**${label}** → Lv ${up.targetLevel} · ${discordTime(up.finishesAtMs)}`;
+        return `• ${count > 1 ? `${count}x ` : ''}**${name}** → Lv ${up.targetLevel} · ${discordTime(up.finishesAtMs)}`;
       })
       .join('\n');
   }

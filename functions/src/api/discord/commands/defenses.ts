@@ -1,4 +1,4 @@
-import { DiscordService, COLORS } from '../../../services/discordService';
+import { DiscordService } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import {
   MAX_BUILDER_HALL,
@@ -22,6 +22,9 @@ import {
   BB_DEFENSE_CATEGORIES,
   BUILDING_CATEGORIES,
   activeInProgress,
+  villageCards,
+  CardSection,
+  VillageCard,
 } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -43,6 +46,9 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+// Room for the lists across both cards (Discord allows 6,000 characters per message)
+const CARDS_BUDGET = 5300;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { sendAccountMessage, getPlayerWithFallback } = ctx;
   return forEachLinkedAccount(ctx, 'defense data', async (account, idx) => {
@@ -61,7 +67,18 @@ export async function execute(ctx: CommandContext): Promise<any> {
           return `• ${d.count}x **${d.item.displayName}**: Max Lv ${d.max}${last ? ` — ${formatLevelCost(d.item, last)}` : ''}`;
         });
 
-    const activeInProgressList = activeInProgress(account, village);
+    // Running timers, under each village's own card
+    const timers = activeInProgress(account, village);
+    const upgrading = (v: 'home' | 'builder'): CardSection[] => {
+      const own = timers.filter((u) => u.village === v);
+      if (own.length === 0) return [];
+      return [
+        {
+          title: `⏳ Upgrading (${own.length})`,
+          lines: VillageImportService.formatInProgressUpgrades(own).split('\n'),
+        },
+      ];
+    };
 
     // Town Hall Status
     const townHall = getById(1000001);
@@ -69,7 +86,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const thUpgradeStr =
       th >= MAX_TOWN_HALL
         ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
-        : `• **Town Hall**: 0/1${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
+        : `• **Town Hall**: Lv ${th}/${th + 1}${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
 
     // High Gear achievement
     const highGear = (freshPlayer.achievements || []).find((a: any) => a.name === 'High Gear');
@@ -83,70 +100,32 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const importedHome = village ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls) : [];
     const homeCapLines =
       importedHome.length > 0 ? importedHome.map(VillageImportService.formatGroupLine) : hallCapLines('home', th);
-
-    const fields: any[] = [];
-
-    if (activeInProgressList.length > 0) {
-      const timerText = VillageImportService.formatInProgressUpgrades(activeInProgressList);
-      fields.push({
-        name: `⏳ In-Progress Upgrades (${activeInProgressList.length})`,
-        value: timerText.length > 1024 ? timerText.slice(0, 1020) + '...' : timerText,
-        inline: false,
-      });
-    }
-
-    const homeHeader = [
-      thUpgradeStr,
-      gearUpsStr,
-      '',
-      `🛡️ **${importedHome.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max TH${th}`}:**`,
-    ].join('\n');
-
-    const homeChunks: string[] = [];
-    let curChunk = '';
-    for (const line of homeCapLines) {
-      if ((curChunk + line + '\n').length > 850 && curChunk.length > 0) {
-        homeChunks.push(curChunk.trim());
-        curChunk = '';
-      }
-      curChunk += line + '\n';
-    }
-    if (curChunk.trim().length > 0) {
-      homeChunks.push(curChunk.trim());
-    }
-
-    if (homeChunks.length <= 1) {
-      fields.push({
-        name: `🏰 Home Village Defenses (TH${th})`,
-        value: [homeHeader, homeChunks[0] || 'No defenses recorded.'].join('\n'),
-        inline: false,
-      });
-    } else {
-      fields.push({
-        name: `🏰 Home Village Defenses (TH${th})`,
-        value: [homeHeader, homeChunks[0]].join('\n'),
-        inline: false,
-      });
-      for (let c = 1; c < homeChunks.length; c++) {
-        fields.push({
-          name: `🏰 Home Village Defenses (TH${th} Cont. ${c + 1})`,
-          value: homeChunks[c],
-          inline: false,
-        });
-      }
-    }
-
     const importedBuildings = village
       ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls)
       : [];
-    if (importedBuildings.length > 0) {
-      fields.push(
-        ...VillageImportService.linesToFields(
-          `🏛️ Other Buildings & Storages (TH${th})`,
-          importedBuildings.map(VillageImportService.formatGroupLine)
-        )
-      );
-    }
+
+    const cards: VillageCard[] = [
+      {
+        village: 'home',
+        hallLevel: th,
+        sections: [
+          ...upgrading('home'),
+          { title: '🏰 Town Hall & Gear-Ups', lines: [thUpgradeStr, gearUpsStr] },
+          {
+            title: `🛡️ ${importedHome.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max TH${th}`}`,
+            lines: homeCapLines.length > 0 ? homeCapLines : ['No defenses recorded.'],
+          },
+          ...(importedBuildings.length > 0
+            ? [
+                {
+                  title: '🏛️ Other Buildings & Storages',
+                  lines: importedBuildings.map(VillageImportService.formatGroupLine),
+                },
+              ]
+            : []),
+        ],
+      },
+    ];
 
     let bob: any = null;
     if (bh > 0) {
@@ -155,7 +134,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       const bhUpgradeStr =
         bh >= MAX_BUILDER_HALL
           ? `🏆 **Builder Hall**: Maxed (BH${MAX_BUILDER_HALL})`
-          : `• **Builder Hall**: 0/1${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
+          : `• **Builder Hall**: Lv ${bh}/${bh + 1}${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
 
       bob = PlayerTrackingService.calculateSixthBuilderProgress(
         freshPlayer,
@@ -172,58 +151,26 @@ export async function execute(ctx: CommandContext): Promise<any> {
       const bbCapLines =
         importedBb.length > 0 ? importedBb.map(VillageImportService.formatGroupLine) : hallCapLines('builder', bh);
 
-      const bbHeader = [
-        bhUpgradeStr,
-        bobDefStr,
-        '',
-        `🛡️ **${importedBb.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max BH${bh}`}:**`,
-      ].join('\n');
-
-      const bbChunks: string[] = [];
-      let curBbChunk = '';
-      for (const line of bbCapLines) {
-        if ((curBbChunk + line + '\n').length > 850 && curBbChunk.length > 0) {
-          bbChunks.push(curBbChunk.trim());
-          curBbChunk = '';
-        }
-        curBbChunk += line + '\n';
-      }
-      if (curBbChunk.trim().length > 0) {
-        bbChunks.push(curBbChunk.trim());
-      }
-
-      if (bbChunks.length <= 1) {
-        fields.push({
-          name: `🔨 Builder Base Defenses (BH${bh})`,
-          value: [bbHeader, bbChunks[0] || 'No builder defenses recorded.'].join('\n'),
-          inline: false,
-        });
-      } else {
-        fields.push({
-          name: `🔨 Builder Base Defenses (BH${bh})`,
-          value: [bbHeader, bbChunks[0]].join('\n'),
-          inline: false,
-        });
-        for (let c = 1; c < bbChunks.length; c++) {
-          fields.push({
-            name: `🔨 Builder Base Defenses (BH${bh} Cont. ${c + 1})`,
-            value: bbChunks[c],
-            inline: false,
-          });
-        }
-      }
-    }
-
-    for (const f of fields) {
-      if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
+      cards.push({
+        village: 'builder',
+        hallLevel: bh,
+        sections: [
+          ...upgrading('builder'),
+          { title: '🔨 Builder Hall & B.O.B', lines: [bhUpgradeStr, bobDefStr] },
+          {
+            title: `🛡️ ${importedBb.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max BH${bh}`}`,
+            lines: bbCapLines.length > 0 ? bbCapLines : ['No builder defenses recorded.'],
+          },
+        ],
+      });
     }
 
     const hasImportedHome = importedHome.length > 0;
     const hasImportedBb = Boolean(village && village.builderHallLevel > 0);
     const hasImported = Boolean(village);
     const jsonNotice = getVillageJsonTimestampNotice(village);
-    const desc = [
-      isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
+    cards[0].intro = [
+      isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
       hasImportedHome
         ? hasImportedBb
           ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
@@ -234,15 +181,14 @@ export async function execute(ctx: CommandContext): Promise<any> {
       .filter(Boolean)
       .join('\n');
 
-    const embed = {
-      title: `🛡️ [${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
-      description: desc,
-      color: COLORS.GOLD,
-      fields,
-      thumbnail: { url: CocAssetService.getTownHallUrl(th) },
-      footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` },
-      timestamp: new Date().toISOString(),
+    // A card per village, each list in full
+    const embeds: any[] = villageCards(cards, CARDS_BUDGET);
+    embeds[0].author = {
+      name: `[${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
     };
+    embeds[0].thumbnail = { url: CocAssetService.getTownHallUrl(th) };
+    embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` };
+    embeds[embeds.length - 1].timestamp = new Date().toISOString();
 
     const defButtons: any[] = [];
     if (bh >= 1 && bob) {
@@ -252,7 +198,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     defButtons.push(DiscordService.openGameLinkButton('Open CoC'));
 
     await sendAccountMessage(idx, {
-      embeds: [embed],
+      embeds,
       components: [DiscordService.createActionRow(defButtons)],
     });
   });

@@ -1,7 +1,9 @@
 /** Display helpers shared by the slash commands. */
 import { GameCategory } from '../../services/gameDataService';
 import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../services/villageImportService';
-import { withoutImportedTimers } from '../../services/upgradeNotifier';
+import { VILLAGE_HEADINGS, withoutImportedTimers } from '../../services/upgradeNotifier';
+import { COLORS } from '../../services/discordService';
+import { Village } from '../../services/gameDataService';
 import { LinkedAccount } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
 
@@ -31,6 +33,55 @@ export function getVillageJsonTimestampNotice(
   return `📄 *${prefix} ${discordTime(village.exportTimestamp)}*${stale}`;
 }
 
+/** "🏰 Home Village (TH13)" or "🔨 Builder Base (BH9)", the heading of a village's card. */
+export function villageHeading(village: Village, hallLevel: number): string {
+  return `${VILLAGE_HEADINGS[village]} (${village === 'home' ? 'TH' : 'BH'}${hallLevel})`;
+}
+
+export const VILLAGE_COLORS: Record<Village, number> = { home: COLORS.GOLD, builder: COLORS.BLUE };
+
+export interface CardSection {
+  title: string;
+  lines: string[];
+}
+
+export interface VillageCard {
+  village: Village;
+  hallLevel: number;
+  intro?: string; // shown above the sections, e.g. when the export was taken
+  sections: CardSection[];
+}
+
+// Room for one card's lists: Discord allows 4,096 characters in an embed's description
+const CARD_LIMIT = 3900;
+
+/**
+ * One embed per village, headed "🏰 Home Village (TH13)" or "🔨 Builder Base (BH9)", each listing its
+ * sections in full in the description ("**⏳ Upgrading (7)**" then the lines), so no list is split into
+ * "(cont.)" fields. Lists are trimmed, longest first, to fit `budget` characters across all the cards
+ * (Discord allows 6,000 per message) and 4,096 per card; a trimmed list ends "…and N more".
+ */
+export function villageCards(cards: VillageCard[], budget: number, more?: (hidden: number) => string) {
+  const fixed = cards.reduce((n, c) => n + 40 + (c.intro?.length ?? 0), 0);
+  const all = VillageImportService.fitSections(
+    cards.flatMap((c) => c.sections),
+    budget - fixed,
+    more
+  );
+  let next = 0;
+  return cards.map((c) => {
+    const own = all.slice(next, (next += c.sections.length));
+    const fitted = VillageImportService.fitSections(own, CARD_LIMIT - (c.intro?.length ?? 0), more);
+    return {
+      title: villageHeading(c.village, c.hallLevel),
+      color: VILLAGE_COLORS[c.village],
+      description: [c.intro, ...fitted.map((s) => `**${s.title}**\n${s.lines.join('\n')}`)]
+        .filter(Boolean)
+        .join('\n\n'),
+    };
+  });
+}
+
 /**
  * Upgrades still running, soonest first: the import's timers plus hero upgrades seen starting in the
  * API that the import doesn't cover. Each timer is its own upgrade (two traps can both be going to 6).
@@ -44,32 +95,4 @@ export function activeInProgress(
   return [...(village?.inProgressUpgrades || []), ...heroTimers]
     .filter((u) => u.finishesAtMs > now)
     .sort((a, b) => a.finishesAtMs - b.finishesAtMs);
-}
-
-/**
- * Splits lines into embed fields under Discord's 1,024-character limit: "Title (N)" first, then
- * "Title (Cont. 2)", "Title (Cont. 3)", …
- */
-export function numberedFields(title: string, count: number, lines: string[], limit: number = 900) {
-  const fields: Array<{ name: string; value: string; inline: boolean }> = [];
-  let chunk: string[] = [];
-  let length = 0;
-  const flush = () => {
-    if (chunk.length === 0) return;
-    const part = fields.length + 1;
-    fields.push({
-      name: part === 1 ? `${title} (${count})` : `${title} (Cont. ${part})`,
-      value: chunk.join('\n'),
-      inline: false,
-    });
-    chunk = [];
-    length = 0;
-  };
-  for (const line of lines) {
-    if (length + line.length + 1 > limit && chunk.length > 0) flush();
-    chunk.push(line);
-    length += line.length + 1;
-  }
-  flush();
-  return fields;
 }

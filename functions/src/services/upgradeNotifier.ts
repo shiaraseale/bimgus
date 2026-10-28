@@ -36,6 +36,8 @@ export const MUTED_CATEGORIES = new Set(['equipment']);
 const IGNORED_CATEGORIES = new Set(['wall']);
 export const DM_BLOCK_PAUSE_MS = 7 * 24 * 60 * 60 * 1000;
 
+export const VILLAGE_HEADINGS: Record<Village, string> = { home: '🏰 Home Village', builder: '🔨 Builder Base' };
+
 const KIND_TITLES: Record<UpgradeKind, string> = {
   upgraded: 'Upgrade Completed!',
   unlocked: 'Unlocked!',
@@ -71,6 +73,15 @@ export function describeEvent(e: UpgradeEvent, hall?: string): string {
     default:
       return `🎉 ${countPrefix}**${e.name}** reached ${levels}`;
   }
+}
+
+/** Event lines, under a heading per village when both have some. */
+function byVillage(events: UpgradeEvent[]): string {
+  const groups = (['home', 'builder'] as const)
+    .map((v) => ({ v, lines: events.filter((e) => e.village === v).map((e) => describeEvent(e)) }))
+    .filter((g) => g.lines.length > 0);
+  if (groups.length === 1) return groups[0].lines.join('\n');
+  return groups.map((g) => `**${VILLAGE_HEADINGS[g.v]}**\n${g.lines.join('\n')}`).join('\n\n');
 }
 
 // The live API reports these when they finish, so their import timers only update stored levels (no DM).
@@ -198,13 +209,23 @@ export function supersededHeroTimer(
   return Boolean(live && live.level > up.targetLevel);
 }
 
-/** Pending API-start timers that an import now covers (the import's own timer is more accurate). */
+/**
+ * Pending API-start timers that an import now covers (the import's own timer is more accurate), or
+ * whose hero the import has on a later upgrade (so that one's done; a hero upgrades one level at a time).
+ */
 export function withoutImportedTimers(
   pending: PendingUpgrade[] | undefined,
   village: VillageDataV2 | null
 ): PendingUpgrade[] {
   if (!pending || !village) return pending ?? [];
-  return pending.filter((p) => !village.inProgressUpgrades.some((u) => sameUpgrade(u, p)));
+  const covered = (p: PendingUpgrade, u: InProgressUpgrade) =>
+    sameUpgrade(u, p) ||
+    (p.category === 'hero' &&
+      u.code !== undefined &&
+      u.code === p.code &&
+      u.village === p.village &&
+      u.targetLevel > p.targetLevel);
+  return pending.filter((p) => !village.inProgressUpgrades.some((u) => covered(p, u)));
 }
 
 export function isDmPaused(user: UserDoc, now: number = Date.now()): boolean {
@@ -265,10 +286,7 @@ export async function notifyUpgrades(
         }
       : {
           title: `🎉 [${account.name}] ${fresh.length} Upgrades`,
-          description: fresh
-            .map((e) => describeEvent(e))
-            .join('\n')
-            .slice(0, 4000),
+          description: byVillage(fresh).slice(0, 4000),
           color: COLORS.GOLD,
           footer,
           timestamp: new Date(now).toISOString(),

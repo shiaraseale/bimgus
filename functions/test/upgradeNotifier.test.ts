@@ -205,6 +205,21 @@ describe('notifyUpgrades', () => {
     expect((send.mock.calls[0][1] as any).embeds[0].description.split('\n')).toHaveLength(5);
   });
 
+  it('lists each village under its own heading when both had upgrades', async () => {
+    const { user, account } = newUser();
+    await notifyUpgrades(user, account, [
+      event(),
+      event({ code: 1000032, name: 'Cannon (BB)', village: 'builder', newLevel: 5, maxLevel: 9 }),
+    ]);
+    expect((send.mock.calls[0][1] as any).embeds[0].description.split('\n')).toEqual([
+      '**🏰 Home Village**',
+      '🎉 **Cannon** reached Lv 14/17',
+      '',
+      '**🔨 Builder Base**',
+      '🎉 **Cannon (BB)** reached Lv 5/9',
+    ]);
+  });
+
   it('shows the level once in a single DM, with the hall it is the max for', async () => {
     const { user, account } = newUser();
     await notifyUpgrades(user, account, [event()]);
@@ -391,6 +406,16 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
     const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
     expect(withoutImportedTimers([pending], importWithAqTimer(now + 1000))).toEqual([]);
     expect(withoutImportedTimers([pending], null)).toEqual([pending]);
+  });
+
+  it("drops a pending hero timer the import has on a later upgrade, but not one that's ahead of it", () => {
+    const [pending] = heroUpgradeStarts([aqStart], null, now).pending; // Archer Queen → 19
+    const later = importWithAqTimer(now + 1000);
+    later.inProgressUpgrades.at(-1)!.targetLevel = 20;
+    expect(withoutImportedTimers([pending], later)).toEqual([]);
+    const earlier = importWithAqTimer(now + 1000);
+    earlier.inProgressUpgrades.at(-1)!.targetLevel = 18;
+    expect(withoutImportedTimers([pending], earlier)).toEqual([pending]);
   });
 });
 

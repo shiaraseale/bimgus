@@ -1,12 +1,12 @@
 import { InteractionResponseType } from 'discord-interactions';
-import { COLORS } from '../../../services/discordService';
 import { FirestoreService } from '../../../services/firestoreService';
+import { Village } from '../../../services/gameDataService';
 import { VillageImportService } from '../../../services/villageImportService';
-import { getVillageJsonTimestampNotice } from '../ui';
+import { getVillageJsonTimestampNotice, VillageCard, villageCards } from '../ui';
 
 const PREFIX = 'import_list:';
-// Room for the list in one embed (Discord's limit is 6,000 characters, including the title and footer)
-const LIST_BUDGET = 5000;
+// Room for the lists across both cards (Discord allows 6,000 characters per message)
+const LIST_BUDGET = 5300;
 
 /** The "Full list" button on an import reply: every item still to upgrade in that account's import. */
 export function importListButton(playerTag: string, label: string = 'Full list') {
@@ -36,35 +36,31 @@ export async function handleImportListButton(customId: string, discordUserId: st
     };
   }
 
-  const sections: Array<{ title: string; lines: string[] }> = [];
+  // A card per village, each with its lists in full
   const weapon = VillageImportService.weaponFor(village);
-  if (weapon && weapon.level < weapon.maxLevel) {
-    sections.push({
-      title: '🔥 Town Hall Weapon',
-      lines: [`• **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`],
-    });
-  }
-  sections.push(...VillageImportService.importSections(village));
-  const fields = VillageImportService.fitSections(sections, LIST_BUDGET)
-    .flatMap((sec) => VillageImportService.linesToFields(sec.title, sec.lines))
-    .slice(0, 25);
+  const villages: Village[] = village.builderHallLevel > 0 ? ['home', 'builder'] : ['home'];
+  const cards = villages.map((v): VillageCard => {
+    const sections = [
+      ...(v === 'home' && weapon && weapon.level < weapon.maxLevel
+        ? [{ title: '🔥 Town Hall Weapon', lines: [`• **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`] }]
+        : []),
+      ...VillageImportService.importSections(village, v),
+    ];
+    return {
+      village: v,
+      hallLevel: v === 'home' ? village.townHallLevel : village.builderHallLevel,
+      sections: sections.length > 0 ? sections : [{ title: '✨ All maxed', lines: ['Nothing left to upgrade.'] }],
+    };
+  });
+  cards[0].intro = getVillageJsonTimestampNotice(village) ?? undefined;
+  const embeds: any[] = villageCards(cards, LIST_BUDGET);
+  embeds[0].author = { name: `[${account.name}] Left to Upgrade` };
+  embeds[embeds.length - 1].footer = {
+    text: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /upgrades`,
+  };
 
   return {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      embeds: [
-        {
-          title: `📋 [${account.name}] Left to Upgrade`,
-          description: getVillageJsonTimestampNotice(village),
-          color: COLORS.GOLD,
-          fields:
-            fields.length > 0
-              ? fields
-              : [{ name: '✨ All maxed', value: 'Nothing left to upgrade in this export.', inline: false }],
-          footer: { text: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /upgrades` },
-        },
-      ],
-      flags: 64,
-    },
+    data: { embeds, flags: 64 },
   };
 }

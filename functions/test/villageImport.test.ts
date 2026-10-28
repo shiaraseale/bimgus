@@ -68,7 +68,10 @@ describe('parseExport (one file, both villages)', () => {
   });
 
   it('summarises only what is left to upgrade, one line per item, with real names', () => {
-    const sections = VillageImportService.importSections(data);
+    const sections = [
+      ...VillageImportService.importSections(data, 'home'),
+      ...VillageImportService.importSections(data, 'builder'),
+    ];
     const text = sections.map((s) => `${s.title}\n${s.lines.join('\n')}`).join('\n');
     expect(text.match(/\(\d{7,}\)/g) ?? []).toEqual([]);
     expect(text).not.toContain('Maxed');
@@ -86,10 +89,12 @@ describe('parseExport (one file, both villages)', () => {
   });
 
   it('sums up what is left in one line per village', () => {
-    expect(VillageImportService.importSummary(data)).toEqual([
-      '🏰 **Home (TH12)**: 32 defenses · 10 traps · 19 buildings · 9 modules · 4 helpers',
-      '🔨 **Builder Base (BH9)**: 24 defenses · 20 traps · 18 buildings · 180 walls',
-    ]);
+    expect(VillageImportService.importSummary(data, 'home')).toBe(
+      '32 defenses · 10 traps · 19 buildings · 9 modules · 4 helpers'
+    );
+    expect(VillageImportService.importSummary(data, 'builder')).toBe(
+      '24 defenses · 20 traps · 18 buildings · 180 walls'
+    );
   });
 
   it('has hero caps for TH12 / BH9', () => {
@@ -107,7 +112,10 @@ describe('parseExport (one file, both villages)', () => {
   });
 
   it('trims the longest sections to fit a size budget, saying how many were left out', () => {
-    const sections = VillageImportService.importSections(data);
+    const sections = [
+      ...VillageImportService.importSections(data, 'home'),
+      ...VillageImportService.importSections(data, 'builder'),
+    ];
     const fitted = VillageImportService.fitSections(sections, 1500);
     const size = fitted.reduce((n, s) => n + s.title.length + s.lines.join('\n').length + 1, 0);
     expect(size).toBeLessThanOrEqual(1500);
@@ -136,10 +144,43 @@ describe('parseExport (one file, both villages)', () => {
     const xBow = data.inProgressUpgrades.find((u) => u.name === 'X-Bow')!;
     const sec = Math.floor(xBow.finishesAtMs / 1000);
     expect(lines.at(-1)).toBe(`• **X-Bow** → Lv 6 · <t:${sec}:R> (<t:${sec}:s>)`);
-    // Builder Base items say so, and the two Spring Traps finishing minutes apart share a line
-    expect(lines[0]).toMatch(/^• \*\*Star Laboratory \(BB\)\*\* → Lv 9 · /);
+    // The two Spring Traps finishing minutes apart share a line
+    expect(lines[0]).toMatch(/^• \*\*Star Laboratory\*\* → Lv 9 · /);
     expect(lines[1]).toMatch(/^• 2x \*\*Spring Trap\*\* → Lv 6 · /);
     expect(lines).toHaveLength(6);
+  });
+
+  it('reads an upgrading hero at its current level: the export, like the API, shows the new one', () => {
+    const upgrading = clone(exportFixture) as any;
+    upgrading.heroes.find((h: any) => h.data === 28000001).timer = 3600; // Archer Queen, listed at 37
+    const parsed = VillageImportService.parseExport(upgrading);
+    const queen = parsed.inProgressUpgrades.find((u) => u.code === 28000001)!;
+    expect([queen.currentLevel, queen.targetLevel]).toEqual([36, 37]);
+    expect(parsed.items.find((i) => i.code === 28000001)?.level).toBe(36);
+    expect(parsed.heroTimersFixed).toBe(true);
+  });
+
+  it('moves the upgrading heroes in imports from before that fix down a level, once', () => {
+    const upgrading = clone(exportFixture) as any;
+    upgrading.heroes.find((h: any) => h.data === 28000001).timer = 3600;
+    const stored = clone(VillageImportService.parseExport(upgrading)) as any;
+    // As an older import stored it: the hero and its timer a level too high
+    delete stored.heroTimersFixed;
+    stored.items.find((i: any) => i.code === 28000001).level = 37;
+    Object.assign(
+      stored.inProgressUpgrades.find((u: any) => u.code === 28000001),
+      { currentLevel: 37, targetLevel: 38 }
+    );
+    const cannonTimer = { ...stored.inProgressUpgrades.find((u: any) => u.name === 'Cannon') };
+
+    const read = VillageImportService.read(stored)!;
+    const queen = read.inProgressUpgrades.find((u) => u.code === 28000001)!;
+    expect([queen.currentLevel, queen.targetLevel]).toEqual([36, 37]);
+    expect(read.items.find((i) => i.code === 28000001)?.level).toBe(36);
+    expect(read.inProgressUpgrades.find((u) => u.name === 'Cannon')).toEqual(cannonTimer);
+    // Reading it again changes nothing
+    VillageImportService.read(read);
+    expect(queen.targetLevel).toBe(37);
   });
 
   it('keeps the same upgrade on separate lines when the timers are hours apart', () => {

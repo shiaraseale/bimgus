@@ -1,4 +1,4 @@
-import { DiscordService, COLORS } from '../../../services/discordService';
+import { DiscordService } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { CocService } from '../../../services/cocService';
 import { FirestoreService } from '../../../services/firestoreService';
@@ -22,7 +22,9 @@ import {
   BB_DEFENSE_CATEGORIES,
   BUILDING_CATEGORIES,
   activeInProgress,
-  numberedFields,
+  villageCards,
+  CardSection,
+  VillageCard,
 } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -44,7 +46,7 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
-export type UpgradesView = 'overview' | 'buildings' | 'defenses' | 'heroes' | 'lab' | 'builder';
+export type UpgradesView = 'overview' | 'buildings' | 'defenses' | 'heroes' | 'lab' | 'bob';
 
 // "<:crown:123>" as a component emoji
 const customEmoji = (markup: string) => {
@@ -52,16 +54,12 @@ const customEmoji = (markup: string) => {
   return id ? { name, id } : { name: markup };
 };
 
-// The sections in the menu under each /upgrades message; picking one redraws the message (1 message, not 4)
+// The sections in the menu under each /upgrades message; picking one redraws the message. Each shows
+// the Home Village and the Builder Base on separate cards.
 const VIEWS: Array<{ value: UpgradesView; label: string; description: string; emoji: { name: string; id?: string } }> =
   [
     { value: 'overview', label: 'Overview', description: 'Timers and what is left, in short', emoji: { name: '📋' } },
-    {
-      value: 'buildings',
-      label: 'Buildings',
-      description: 'Town Hall, resources, army and walls',
-      emoji: { name: '🏛️' },
-    },
+    { value: 'buildings', label: 'Buildings', description: 'Halls, resources, army and walls', emoji: { name: '🏛️' } },
     {
       value: 'defenses',
       label: 'Defenses',
@@ -71,18 +69,18 @@ const VIEWS: Array<{ value: UpgradesView; label: string; description: string; em
     { value: 'heroes', label: 'Heroes', description: 'Heroes and hero equipment', emoji: customEmoji(EMOJIS.CROWN) },
     { value: 'lab', label: 'Lab', description: 'Troops and spells', emoji: { name: '🧪' } },
     {
-      value: 'builder',
-      label: 'Builder Base',
-      description: 'B.O.B, buildings, defenses, heroes, troops',
-      emoji: { name: '🔨' },
+      value: 'bob',
+      label: '6th Builder (B.O.B)',
+      description: 'Progress to the Builder Base 6th builder',
+      emoji: { name: '🤖' },
     },
   ];
 
 const VIEW_MENU = 'upgrades_view:';
 // Walls get their own line: hundreds of segments would swamp the building counts
 const NON_WALL_BUILDINGS = BUILDING_CATEGORIES.filter((c) => c !== 'wall');
-// Room for one view's fields: Discord's limit is 6,000 characters per embed, with the description and footer
-const VIEW_BUDGET = 4800;
+// Room for one view's lists across its cards (Discord allows 6,000 characters per message)
+const VIEW_BUDGET = 5300;
 
 /** One category in a view, e.g. the home defenses: its lines and how much is left. */
 interface Section {
@@ -150,6 +148,7 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
   const unmaxed = (v: Village, categories: readonly GameCategory[]) =>
     village ? VillageImportService.groupsFor(village, v, categories, halls).filter((g) => !g.isMaxed) : null;
 
+  // Builder Base sections drop the "BB" from their names: they're on the Builder Base card
   const sections = {
     buildings: importSection(
       '🏛️',
@@ -171,20 +170,20 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
     spells: itemSection('🧪', 'Spells', home.spells, `✅ All spells maxed for TH${th}!`),
     bbBuildings: importSection(
       '🏛️',
-      'BB Buildings',
+      'Buildings',
       unmaxed('builder', NON_WALL_BUILDINGS),
       `✅ All BB buildings maxed for BH${bh}!`,
       withHallLevels(bb.buildings, bh)
     ),
-    bbWalls: importSection('🧱', 'BB Walls', unmaxed('builder', ['wall']), `✅ All BB walls maxed for BH${bh}!`),
+    bbWalls: importSection('🧱', 'Walls', unmaxed('builder', ['wall']), `✅ All BB walls maxed for BH${bh}!`),
     bbDefenses: importSection(
       '🛡️',
-      'BB Defenses',
+      'Defenses',
       unmaxed('builder', BB_DEFENSE_CATEGORIES),
       `✅ All BB defenses maxed for BH${bh}!`
     ),
-    bbHeroes: itemSection(EMOJIS.CROWN, 'BB Heroes', bb.heroes, `✅ All BB heroes maxed for BH${bh}!`),
-    bbTroops: itemSection('⚔️', 'BB Troops', bb.troops, `✅ All BB troops maxed for BH${bh}!`),
+    bbHeroes: itemSection(EMOJIS.CROWN, 'Heroes', bb.heroes, `✅ All BB heroes maxed for BH${bh}!`),
+    bbTroops: itemSection('⚔️', 'Troops', bb.troops, `✅ All BB troops maxed for BH${bh}!`),
   };
 
   // The API's levels plus the import's (the import is the only source for defenses and buildings)
@@ -209,25 +208,15 @@ function summaryLine(s: Section): string {
   return `${s.emoji} **${s.name}**: ${status}`;
 }
 
-/** A section's full list as embed fields, or the "all maxed" / "import first" text. */
-function sectionFields(s: Section) {
+/** A section's full list under its heading, or the "all maxed" / "import first" line. */
+function cardSection(s: Section): CardSection {
   const title = `${s.emoji} ${s.name}`;
-  if (s.needsImport) return [{ name: title, value: NO_IMPORT_TEXT, inline: false }];
-  if (s.lines.length === 0) return [{ name: `${title} (0)`, value: s.done, inline: false }];
-  return numberedFields(title, s.count, s.lines);
+  if (s.needsImport) return { title, lines: [...s.lines, NO_IMPORT_TEXT] };
+  if (s.lines.length === 0) return { title: `${title} (0)`, lines: [s.done] };
+  return { title: `${title} (${s.count})`, lines: s.lines };
 }
 
-/** Trims the longest sections so one view fits in one message, ending each with "…and N more". */
-function fitToView(sections: Section[]): Section[] {
-  const fitted = VillageImportService.fitSections(
-    sections.map((s) => ({ title: `${s.emoji} ${s.name}`, lines: s.lines })),
-    VIEW_BUDGET,
-    (hidden) => `…and ${hidden} more`
-  );
-  return sections.map((s, i) => ({ ...s, lines: fitted[i].lines }));
-}
-
-function bobText(bob: ReturnType<typeof upgradeData>['bob']): string {
+function bobText(bob: ReturnType<typeof upgradeData>['bob']): string[] {
   const mark = (done: boolean) => (done ? '✅' : '🔄');
   return [
     bob.unlocked
@@ -237,12 +226,12 @@ function bobText(bob: ReturnType<typeof upgradeData>['bob']): string {
     `${mark(bob.tasks.bbTroopLv18.completed)} **Troop Lv 18**: ${bob.tasks.bbTroopLv18.highestTroopName} (${bob.tasks.bbTroopLv18.current}/18)`,
     `${mark(bob.tasks.bbDefenseLv9.completed)} **Defense Lv 9**: ${bob.tasks.bbDefenseLv9.completed ? '1/1' : '0/1 (e.g. Mega Tesla)'}`,
     `${mark(bob.tasks.bbHeroesLv45.completed)} **Heroes Lv 45**: ${bob.tasks.bbHeroesLv45.current}/45`,
-  ].join('\n');
+  ];
 }
 
 /**
  * One /upgrades message: the overview (timers, then one line per category) or one section's full list,
- * with the menu to switch between them.
+ * with a card for each village and the menu to switch between views.
  */
 export function buildUpgradesMessage(
   account: LinkedAccount,
@@ -252,70 +241,86 @@ export function buildUpgradesMessage(
 ) {
   const village = VillageImportService.read(account.villageData);
   const { th, bh, bob, sections: s, totalLevels, timers } = upgradeData(account, player, village);
-  if (view === 'builder' && bh === 0) view = 'overview';
+  if (view === 'bob' && bh === 0) view = 'overview';
 
-  const fields: any[] = [];
+  const upgrading = (v: Village): CardSection[] => {
+    const own = timers.filter((u) => u.village === v);
+    if (own.length === 0) return [];
+    return [
+      { title: `⏳ Upgrading (${own.length})`, lines: VillageImportService.formatInProgressUpgrades(own).split('\n') },
+    ];
+  };
+
+  // Each view's sections for the Home Village and the Builder Base cards
+  let home: CardSection[] = [];
+  let builder: CardSection[] = [];
   if (view === 'overview') {
-    if (timers.length > 0) {
-      const lines = VillageImportService.formatInProgressUpgrades(timers).split('\n');
-      fields.push(...numberedFields('⏳ Upgrading', timers.length, lines));
-    }
-    fields.push({
-      name: `🏰 Home Village (TH${th})`,
-      value: [s.buildings, ...wallsLeft(s.walls), s.defenses, s.heroes, s.equipment, s.troops, s.spells]
-        .map(summaryLine)
-        .join('\n'),
-      inline: false,
-    });
-    if (bh > 0) {
-      const bobLine = bob.unlocked
-        ? '🤖 **B.O.B**: 🎉 unlocked'
-        : `🤖 **B.O.B**: ${formatProgressBar(bob.overallPercentage, 6)}`;
-      fields.push({
-        name: `🔨 Builder Base (BH${bh})`,
-        value: [
+    home = [
+      ...upgrading('home'),
+      {
+        title: '📋 Left to Upgrade',
+        lines: [s.buildings, ...wallsLeft(s.walls), s.defenses, s.heroes, s.equipment, s.troops, s.spells].map(
+          summaryLine
+        ),
+      },
+    ];
+    const bobLine = bob.unlocked
+      ? '🤖 **B.O.B**: 🎉 unlocked'
+      : `🤖 **B.O.B**: ${formatProgressBar(bob.overallPercentage, 6)}`;
+    builder = [
+      ...upgrading('builder'),
+      {
+        title: '📋 Left to Upgrade',
+        lines: [
           bobLine,
           ...[s.bbBuildings, ...wallsLeft(s.bbWalls), s.bbDefenses, s.bbHeroes, s.bbTroops].map(summaryLine),
-        ].join('\n'),
-        inline: false,
-      });
-    }
+        ],
+      },
+    ];
+  } else if (view === 'bob') {
+    builder = [{ title: '🤖 6th Builder (B.O.B)', lines: bobText(bob) }];
   } else {
-    const shown: Record<Exclude<UpgradesView, 'overview'>, Section[]> = {
-      buildings: [s.buildings, ...wallsLeft(s.walls)],
-      defenses: [s.defenses],
-      heroes: [s.heroes, s.equipment],
-      lab: [s.troops, s.spells],
-      builder: [s.bbBuildings, ...wallsLeft(s.bbWalls), s.bbDefenses, s.bbHeroes, s.bbTroops],
+    const shown: Record<Exclude<UpgradesView, 'overview' | 'bob'>, [Section[], Section[]]> = {
+      buildings: [
+        [s.buildings, ...wallsLeft(s.walls)],
+        [s.bbBuildings, ...wallsLeft(s.bbWalls)],
+      ],
+      defenses: [[s.defenses], [s.bbDefenses]],
+      heroes: [[s.heroes, s.equipment], [s.bbHeroes]],
+      lab: [[s.troops, s.spells], [s.bbTroops]],
     };
-    if (view === 'builder') fields.push({ name: '🤖 6th Builder (B.O.B)', value: bobText(bob), inline: false });
-    fields.push(...fitToView(shown[view]).flatMap(sectionFields));
+    home = shown[view][0].map(cardSection);
+    builder = shown[view][1].map(cardSection);
   }
 
-  const usesImport = ['overview', 'buildings', 'defenses', 'builder'].includes(view);
-  const embed = {
-    title: `🏰 [${account.name}] Upgrades${view === 'overview' ? '' : `: ${VIEWS.find((v) => v.value === view)!.label}`}`,
-    description: [
-      isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-      usesImport ? getVillageJsonTimestampNotice(village, 'Defenses & buildings based on the export taken') : '',
-      view === 'overview' ? `**${totalLevels}** levels left in total. Pick a section below for the full list.` : '',
-    ]
-      .filter(Boolean)
-      .join('\n'),
-    fields: fields.slice(0, 25),
-    color: COLORS.GOLD,
-    thumbnail: {
-      url: CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th),
-    },
-    footer: { text: `Account: ${account.name} (${account.playerTag})` },
-    timestamp: new Date().toISOString(),
+  const usesImport = ['overview', 'buildings', 'defenses'].includes(view);
+  const intro = [
+    isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
+    usesImport ? getVillageJsonTimestampNotice(village, 'Defenses & buildings based on the export taken') : '',
+    view === 'overview' ? `**${totalLevels}** levels left in total. Pick a section below for the full list.` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const cards: VillageCard[] = [];
+  if (home.length > 0) cards.push({ village: 'home', hallLevel: th, sections: home });
+  if (bh > 0 && builder.length > 0) cards.push({ village: 'builder', hallLevel: bh, sections: builder });
+  if (intro) cards[0].intro = intro;
+
+  const embeds: any[] = villageCards(cards, VIEW_BUDGET, (hidden) => `…and ${hidden} more`);
+  const label = VIEWS.find((v) => v.value === view)!.label;
+  embeds[0].author = { name: `[${account.name}] Upgrades${view === 'overview' ? '' : `: ${label}`}` };
+  embeds[0].thumbnail = {
+    url: CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th),
   };
+  embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag})` };
+  embeds[embeds.length - 1].timestamp = new Date().toISOString();
 
   const menu = {
     type: 3,
     custom_id: `${VIEW_MENU}${account.playerTag}`,
     placeholder: 'Show a section',
-    options: VIEWS.filter((v) => v.value !== 'builder' || bh > 0).map((v) => ({
+    options: VIEWS.filter((v) => v.value !== 'bob' || bh > 0).map((v) => ({
       label: v.label,
       value: v.value,
       description: v.description,
@@ -324,10 +329,10 @@ export function buildUpgradesMessage(
     })),
   };
   const buttons: any[] = [];
-  if (view === 'builder') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
+  if (view === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
   buttons.push(DiscordService.openGameLinkButton('Open CoC'));
 
-  return { embeds: [embed], components: [{ type: 1, components: [menu] }, DiscordService.createActionRow(buttons)] };
+  return { embeds, components: [{ type: 1, components: [menu] }, DiscordService.createActionRow(buttons)] };
 }
 
 export async function execute(ctx: CommandContext): Promise<any> {

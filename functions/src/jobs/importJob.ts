@@ -5,7 +5,7 @@
 import axios from 'axios';
 import { config } from '../config';
 import { FirestoreService } from '../services/firestoreService';
-import { DiscordService, COLORS } from '../services/discordService';
+import { DiscordService } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
 import {
@@ -16,6 +16,8 @@ import {
 } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
 import { importListButton } from '../api/discord/components/importList';
+import { CardSection, VillageCard, villageCards } from '../api/discord/ui';
+import { Village } from '../services/gameDataService';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -117,12 +119,7 @@ export async function runImportTask(
 
     // 5. Each export replaces that account's stored data
     const embedsToSend: any[] = [];
-    const pending: Array<{
-      account: any;
-      village: VillageDataV2;
-      fileName: string;
-      sections: Array<{ title: string; lines: string[] }>;
-    }> = [];
+    const pending: Array<{ account: any; village: VillageDataV2; fileName: string; cards: VillageCard[] }> = [];
     for (const { account, village, fileName } of byAccount.values()) {
       // Compare with what was stored *before* overwriting it
       const previous = VillageImportService.read(account.villageData);
@@ -133,52 +130,56 @@ export async function runImportTask(
       account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
-      // What's running and what changed, then what's left as one line per village; the "Full list"
+      // A card per village: what's running and what changed, then what's left in a line. The "Full list"
       // button lists every item, and /upgrades has heroes and the lab
-      const sections: Array<{ title: string; lines: string[] }> = [];
-      const activeInProg = village.inProgressUpgrades.filter((u) => u.finishesAtMs > Date.now());
-      if (activeInProg.length > 0) {
-        sections.push({
-          title: `⏳ Upgrading (${activeInProg.length})`,
-          lines: VillageImportService.formatInProgressUpgrades(activeInProg).split('\n'),
-        });
-      }
-      if (events.length > 0) {
-        sections.push({
-          title: `🎉 Since Your Last Import (${events.length})`,
-          lines: events.map((e) => describeEvent(e)),
-        });
-      }
       const weapon = VillageImportService.weaponFor(village);
-      sections.push({
-        title: '📋 Left to Upgrade',
-        lines: [
-          ...VillageImportService.importSummary(village),
-          ...(weapon && weapon.level < weapon.maxLevel
+      const villages: Village[] = village.builderHallLevel > 0 ? ['home', 'builder'] : ['home'];
+      const cards = villages.map((v): VillageCard => {
+        const sections: CardSection[] = [];
+        const running = village.inProgressUpgrades.filter((u) => u.village === v && u.finishesAtMs > Date.now());
+        if (running.length > 0) {
+          sections.push({
+            title: `⏳ Upgrading (${running.length})`,
+            lines: VillageImportService.formatInProgressUpgrades(running).split('\n'),
+          });
+        }
+        const changed = events.filter((e) => e.village === v);
+        if (changed.length > 0) {
+          sections.push({
+            title: `🎉 Since Your Last Import (${changed.length})`,
+            lines: changed.map((e) => describeEvent(e)),
+          });
+        }
+        const weaponLine =
+          v === 'home' && weapon && weapon.level < weapon.maxLevel
             ? [`🔥 **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`]
-            : []),
-        ],
+            : [];
+        sections.push({
+          title: '📋 Left to Upgrade',
+          lines: [VillageImportService.importSummary(village, v), ...weaponLine],
+        });
+        return {
+          village: v,
+          hallLevel: v === 'home' ? village.townHallLevel : village.builderHallLevel,
+          sections,
+        };
       });
-      pending.push({ account, village, fileName, sections });
+      pending.push({ account, village, fileName, cards });
     }
 
     // One message for the whole import: Discord allows 10 embeds and 6,000 characters across them
     const perAccountBudget = Math.floor(MESSAGE_BUDGET / Math.max(1, pending.length)) - EMBED_OVERHEAD;
-    for (const { account, village, fileName, sections } of pending) {
-      const fitted = VillageImportService.fitSections(sections, perAccountBudget);
-      const fields = fitted.flatMap((sec) => VillageImportService.linesToFields(sec.title, sec.lines)).slice(0, 25);
+    for (const { account, village, fileName, cards } of pending) {
       const staleWarning = VillageImportService.isStale(village)
         ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
         : '';
-      embedsToSend.push({
-        title: `🛡️ [${account.name}] Imported Village`,
-        description: `📄 *Export taken ${discordTime(village.exportTimestamp)}*${staleWarning}`,
-        color: COLORS.GOLD,
-        thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
-        fields,
-        footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
-        timestamp: new Date().toISOString(),
-      });
+      cards[0].intro = `📄 *Export taken ${discordTime(village.exportTimestamp)}*${staleWarning}`;
+      const embeds: any[] = villageCards(cards, perAccountBudget);
+      embeds[0].author = { name: `[${account.name}] Imported Village` };
+      embeds[0].thumbnail = { url: CocAssetService.getTownHallUrl(village.townHallLevel) };
+      embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` };
+      embeds[embeds.length - 1].timestamp = new Date().toISOString();
+      embedsToSend.push(...embeds);
     }
 
     // One save for the whole user (all accounts, notified keys and any DM pause)

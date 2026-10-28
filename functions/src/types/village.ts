@@ -34,4 +34,6 @@ export interface VillageDataV2 {
   items: VillageItem[];
   inProgressUpgrades: InProgressUpgrade[];
   boosts: Record<string, unknown>;
+  // Set on imports whose upgrading heroes are at their current level (see VillageImportService.read)
+  heroTimersFixed?: boolean;
 }

@@ -115,6 +115,18 @@ describe('slash commands end to end (mocked services)', () => {
 
   const allText = (msg: any) => JSON.stringify(msg);
 
+  /** A message of village cards: within Discord's limits, and no list split into "(cont.)" fields. */
+  const expectCards = (msg: any, label = '') => {
+    expect(msg.embeds.map((e: any) => e.title)).toEqual(['🏰 Home Village (TH12)', '🔨 Builder Base (BH9)']);
+    const chars = msg.embeds.reduce((n: number, e: any) => n + VillageImportService.embedSize(e), 0);
+    expect(chars, label).toBeLessThanOrEqual(6000);
+    for (const e of msg.embeds) {
+      expect(e.description.length, label).toBeLessThanOrEqual(4096);
+      expect(e.fields ?? []).toEqual([]);
+    }
+    expect(allText(msg)).not.toMatch(/cont\./i);
+  };
+
   it('/import-village stores both villages and replies with real names', async () => {
     const reply = await importFile();
     const stored = user.accounts[0].villageData;
@@ -144,8 +156,10 @@ describe('slash commands end to end (mocked services)', () => {
     expect(text).toContain('Cannon (BB)');
     expect(text).toContain('• **Mega Tesla**: Lv 3 → 9');
     expect(text.match(/\(\d{7,}\)/g)).toBeNull();
-    expect(VillageImportService.embedSize(list.data.embeds[0])).toBeLessThanOrEqual(6000);
-    expect(list.data.embeds[0].fields.length).toBeLessThanOrEqual(25);
+    expectCards(list.data);
+    // Each village's lists are on its own card
+    expect(list.data.embeds[0].description).not.toContain('Mega Tesla');
+    expect(list.data.embeds[1].description).toContain('**🛡️ Defenses (24)**');
   });
 
   it('/import-village again with one more upgraded cannon sends one DM and lists the change', async () => {
@@ -171,8 +185,8 @@ describe('slash commands end to end (mocked services)', () => {
     followups = [];
     const overview = await command('upgrades');
     expect(followups).toHaveLength(0);
-    expect(VillageImportService.embedSize(overview.embeds[0])).toBeLessThanOrEqual(6000);
-    expect(allText(overview)).toContain('🧱 **BB Walls**: 180 to upgrade');
+    expectCards(overview);
+    expect(overview.embeds[1].description).toContain('🧱 **Walls**: 180 to upgrade');
     const menu = overview.components[0].components[0];
     expect(menu.custom_id).toBe('upgrades_view:#ANON12345');
 
@@ -182,9 +196,8 @@ describe('slash commands end to end (mocked services)', () => {
       expect(ack.type).toBe(6); // "deferred update": the message is edited in place
       await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
       const msg = patches[0];
-      expect(msg.embeds).toHaveLength(1);
-      expect(VillageImportService.embedSize(msg.embeds[0]), view).toBeLessThanOrEqual(6000);
-      expect(msg.embeds[0].fields.length).toBeLessThanOrEqual(25);
+      if (view === 'bob') expect(msg.embeds.map((e: any) => e.title)).toEqual(['🔨 Builder Base (BH9)']);
+      else expectCards(msg, view);
       expect(msg.components[0].components[0].options.find((o: any) => o.default).value).toBe(view);
     }
     expect(followups).toHaveLength(0);
@@ -195,8 +208,14 @@ describe('slash commands end to end (mocked services)', () => {
     patches = [];
     await interact(3, { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['defenses'] });
     await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
-    expect(patches[0].embeds[0].title).toContain('Upgrades: Defenses');
-    expect(allText(patches[0])).toMatch(/\*\*Cannon\*\*: Lv 13\/17 — /);
+    const [home, builder] = patches[0].embeds;
+    expect(home.author.name).toBe('[Tester] Upgrades: Defenses');
+    // The whole list is in one piece under one heading per village
+    expect(home.description).toMatch(/\*\*🛡️ Defenses \(51\)\*\*\n• /);
+    expect(home.description).toMatch(/\*\*Cannon\*\*: Lv 13\/17 — /);
+    expect(builder.description).toMatch(/\*\*🛡️ Defenses \(44\)\*\*\n• /);
+    expect(builder.description).toContain('Cannon (BB)');
+    expect(home.description).not.toContain('(BB)');
   });
 
   it('/upgrades and /defenses use the stored import', async () => {
@@ -208,7 +227,8 @@ describe('slash commands end to end (mocked services)', () => {
     patches = [];
     const defenses = await command('defenses');
     expect(allText(defenses)).toContain('Current Defenses & Next Upgrades');
-    expect(allText(defenses)).toContain('Cannon (BB)');
+    expectCards(defenses);
+    expect(defenses.embeds[1].description).toContain('Cannon (BB)');
   });
 
   it('/defenses without an import lists hall caps and asks for one', async () => {
@@ -243,7 +263,7 @@ describe('slash commands end to end (mocked services)', () => {
       data: { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['lab'] },
     });
     expect(patches).toHaveLength(1);
-    expect(patches[0].embeds[0].title).toContain('Upgrades: Lab');
+    expect(patches[0].embeds[0].author.name).toBe('[Tester] Upgrades: Lab');
   });
 
   it('/upgrades lists every running timer, with two of the same trap on one line', async () => {
@@ -254,8 +274,11 @@ describe('slash commands end to end (mocked services)', () => {
     patches = [];
     const reply = await command('upgrades');
     // The real export has two Spring Traps upgrading to level 6, finishing minutes apart
-    expect(allText(reply)).toContain('2x **Spring Trap** → Lv 6');
-    expect(allText(reply)).toContain('⏳ Upgrading (7)');
+    // Each village's timers are on its own card
+    const [home, builder] = reply.embeds;
+    expect(home.description).toContain('**⏳ Upgrading (6)**\n');
+    expect(home.description).toContain('2x **Spring Trap** → Lv 6');
+    expect(builder.description).toContain('**⏳ Upgrading (1)**\n• **Star Laboratory** → Lv 9');
   });
 
   it('/spells, /troops and /accounts reply for the linked account', async () => {
