@@ -148,9 +148,22 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
           "📭 *Bimgus couldn't DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*";
         messageData = { ...messageData, content: [notice, messageData.content].filter(Boolean).join('\n') };
       }
-      await editDeferredReply(messageData);
+      // If Discord refuses the message, say so rather than leaving "thinking…" up
+      if (!(await editDeferredReply(messageData))) {
+        await editDeferredReply({ content: "❌ Bimgus couldn't display this. Please try again.", embeds: [] });
+      }
     } else {
       await sendFollowup(messageData);
+    }
+  };
+
+  // One account's embeds as consecutive messages (one each, so each gets Discord's full size limit),
+  // with the buttons on the last
+  const sendAccountEmbeds = async (index: number, embeds: any[], components: any[]) => {
+    for (const [i, embed] of embeds.entries()) {
+      const message = { embeds: [embed], ...(i === embeds.length - 1 ? { components } : {}) };
+      if (i === 0) await sendAccountMessage(index, message);
+      else await sendFollowup(message);
     }
   };
 
@@ -207,6 +220,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     editDeferredReply,
     sendFollowup,
     sendAccountMessage,
+    sendAccountEmbeds,
     getTargetAccounts,
     getPlayerWithFallback: (account: LinkedAccount) => getPlayerWithFallback(cocService, account),
   };

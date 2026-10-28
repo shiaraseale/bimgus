@@ -160,7 +160,7 @@ export async function processWarDiff(
     opponentDestruction: currentWar.opponent.destructionPercentage,
     opponentAttacksCount: currentWar.opponent.attacks,
     loggedAttackOrders: Array.from(loggedOrders),
-    pingedMissedAttacks: prevSnapshot?.pingedMissedAttacks || false,
+    pingedMissedAttacks: isSameWar ? Boolean(prevSnapshot?.pingedMissedAttacks) : false,
     matchupAnnounced,
     rosterNotified: isSameWar ? Boolean(prevSnapshot?.rosterNotified) : false,
     postWarAudit,

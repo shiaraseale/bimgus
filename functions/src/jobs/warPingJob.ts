@@ -4,6 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { config } from '../config';
 import { CurrentWarResponse } from '../types/coc';
 import { findActiveCwlWar } from '../diff/cwlWars';
+import { getWarId } from '../diff/warDiff';
 import { isExpectedApiMiss, log } from '../utils/log';
 
 export async function runWarPingJob(clanTagOverride?: string): Promise<{ success: boolean; message: string }> {
@@ -118,7 +119,11 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
       } else {
         // Standard War
         const warSnap = await FirestoreService.getWarSnapshot(targetTag);
-        if (warSnap?.pingedMissedAttacks) {
+        // The war task saves each war's snapshot first; another war's flag doesn't apply to this one
+        if (warSnap?.warId !== getWarId(activeWar)) {
+          return { success: true, message: "This war's snapshot isn't saved yet; checking again next time" };
+        }
+        if (warSnap.pingedMissedAttacks) {
           return { success: true, message: 'Missed attacks reminder already sent for this war' };
         }
 
@@ -152,12 +157,7 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
             components: [DiscordService.warReminderActionRow(targetTag)],
           });
 
-          if (warSnap) {
-            await FirestoreService.saveWarSnapshot(targetTag, {
-              ...warSnap,
-              pingedMissedAttacks: true,
-            });
-          }
+          await FirestoreService.saveWarSnapshot(targetTag, { ...warSnap, pingedMissedAttacks: true });
         }
       }
     }

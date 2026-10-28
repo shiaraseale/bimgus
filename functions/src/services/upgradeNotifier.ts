@@ -8,7 +8,8 @@ import { CocAssetService } from './cocAssetService';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { Village, getById, getLevel } from './gameDataService';
 import { ImportChange, InProgressUpgrade, VillageDataV2, VillageImportService } from './villageImportService';
-import { LinkedAccount, PendingUpgrade, UserDoc } from '../types/user';
+import { snapshotKey } from './playerTrackingService';
+import { LinkedAccount, PendingUpgrade, PlayerSnapshot, UserDoc } from '../types/user';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
 
@@ -179,6 +180,21 @@ export function heroUpgradeStarts(
     });
   }
   return { events: remaining, pending };
+}
+
+/**
+ * A hero timer the live API has moved past. The API shows a hero's new level when its upgrade starts,
+ * so a level above the timer's target means that upgrade finished early (gems, a Book, a boost after
+ * the export) and the next one has started. It's done, and its DM would arrive after the newer
+ * upgrade's ("should now be level 12" after "level 13", seen 2026-10-27).
+ */
+export function supersededHeroTimer(
+  up: { category: string; code?: number; name: string; village: Village; targetLevel: number },
+  snapshot: PlayerSnapshot | undefined
+): boolean {
+  if (up.category !== 'hero' || !snapshot) return false;
+  const live = snapshot.heroes[snapshotKey(up.village, (up.code && getById(up.code)?.name) || up.name)];
+  return Boolean(live && live.level > up.targetLevel);
 }
 
 /** Pending API-start timers that an import now covers (the import's own timer is more accurate). */

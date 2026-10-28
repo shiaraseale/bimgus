@@ -14,6 +14,7 @@ import {
   heroUpgradeStarts,
   isDmPaused,
   notifyUpgrades,
+  supersededHeroTimer,
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
@@ -76,7 +77,9 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
       // Hero timers started from the API: DM when they should be done (unless an import now covers them)
       if (account.pendingUpgrades?.length) {
         const now = Date.now();
-        const pending = withoutImportedTimers(account.pendingUpgrades, village);
+        const pending = withoutImportedTimers(account.pendingUpgrades, village).filter(
+          (p) => !supersededHeroTimer(p, account.lastSnapshot)
+        );
         for (const up of pending.filter((p) => p.finishesAtMs <= now)) {
           const event = eventFromTimer(up as InProgressUpgrade);
           if (event) events.push(event);
@@ -88,15 +91,18 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         }
       }
 
-      // Timers from the imported export: move the stored level up, and DM for what the API can't see
+      // Timers from the imported export: move the stored level up, and DM for what the API can't see.
+      // A hero timer the API has moved past is finished too, but too late to DM about.
       if (village) {
         const now = Date.now();
-        const due = village.inProgressUpgrades.filter((up) => up.finishesAtMs <= now);
+        const superseded = (up: InProgressUpgrade) => supersededHeroTimer(up, account.lastSnapshot);
+        const done = (up: InProgressUpgrade) => up.finishesAtMs <= now || superseded(up);
+        const due = village.inProgressUpgrades.filter(done);
         if (due.length > 0) {
-          village.inProgressUpgrades = village.inProgressUpgrades.filter((up) => up.finishesAtMs > now);
+          village.inProgressUpgrades = village.inProgressUpgrades.filter((up) => !done(up));
           for (const up of due) {
             VillageImportService.applyCompletedTimer(village, up);
-            const event = eventFromTimer(up);
+            const event = superseded(up) ? null : eventFromTimer(up);
             if (event) events.push(event);
           }
           account.villageData = village;
@@ -124,8 +130,9 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         const warSnap = await FirestoreService.getWarSnapshot(clanTag);
         const warId = getWarId(warData);
 
-        // If we haven't already notified users about this war's roster
-        if (!warSnap?.rosterNotified || warSnap.warId !== warId) {
+        // Only once the war task has saved this war: writing the new war id onto the previous war's
+        // snapshot would carry over its logged attacks and matchup flag, so this war's posts never went out
+        if (warSnap?.warId === warId && !warSnap.rosterNotified) {
           const ourClan =
             warData.clan.tag.toUpperCase() === config.formatTag(clanTag).toUpperCase()
               ? warData.clan
@@ -180,13 +187,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
             }
           }
 
-          if (warSnap) {
-            await FirestoreService.saveWarSnapshot(clanTag, {
-              ...warSnap,
-              warId,
-              rosterNotified: true,
-            });
-          }
+          await FirestoreService.saveWarSnapshot(clanTag, { ...warSnap, rosterNotified: true });
         }
       }
     }

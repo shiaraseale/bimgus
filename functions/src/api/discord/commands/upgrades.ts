@@ -15,6 +15,7 @@ import {
   BUILDING_CATEGORIES,
   activeInProgress,
   numberedFields,
+  splitEmbed,
 } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -37,7 +38,7 @@ export const definition = {
 export const runsAsTask = true;
 
 export async function execute(ctx: CommandContext): Promise<any> {
-  const { sendAccountMessage, getPlayerWithFallback } = ctx;
+  const { sendAccountEmbeds, getPlayerWithFallback } = ctx;
   return forEachLinkedAccount(ctx, 'upgrades', async (account, idx) => {
     const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
     const village = VillageImportService.read(account.villageData);
@@ -298,9 +299,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     }
     upgradeButtons.push(DiscordService.openGameLinkButton('Open CoC'));
 
-    await sendAccountMessage(idx, {
-      embeds: [embed],
-      components: [DiscordService.createActionRow(upgradeButtons)],
-    });
+    // Usually over Discord's 6,000-character limit for one embed, so it's split into a few messages
+    await sendAccountEmbeds(idx, splitEmbed(embed), [DiscordService.createActionRow(upgradeButtons)]);
   });
 }

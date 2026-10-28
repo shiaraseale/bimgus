@@ -19,6 +19,9 @@ export function getExpectedProxyKey(): string {
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 5000;
+// The proxy allows 20 requests a second in total, and production and staging share it, so each
+// container spaces its requests out (8 a second). A poll's burst of ~25 at once got 429s every tick.
+const MIN_REQUEST_GAP_MS = 125;
 
 function isRetryable(err: AxiosError): boolean {
   const status = err.response?.status;
@@ -37,6 +40,7 @@ let shared: CocService | null = null;
 
 export class CocService {
   private client: AxiosInstance;
+  private nextRequestAt = 0;
 
   /**
    * One client per container (3.8), created on first use because the proxy key secret is only
@@ -47,7 +51,7 @@ export class CocService {
     return shared;
   }
 
-  constructor(token?: string, baseUrl?: string, proxyKey?: string) {
+  constructor(token?: string, baseUrl?: string, proxyKey?: string, minRequestGapMs: number = MIN_REQUEST_GAP_MS) {
     const key = proxyKey !== undefined ? proxyKey : getExpectedProxyKey();
     const base = baseUrl || config.coc.baseUrl;
     const apiToken = token || config.coc.token;
@@ -67,6 +71,15 @@ export class CocService {
       baseURL: base,
       timeout: 10000,
       headers,
+    });
+
+    // Retries pass through here too, so they're spaced out like everything else
+    this.client.interceptors.request.use(async (cfg) => {
+      const now = Date.now();
+      const wait = this.nextRequestAt - now;
+      this.nextRequestAt = Math.max(now, this.nextRequestAt) + minRequestGapMs;
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      return cfg;
     });
 
     this.client.interceptors.response.use(undefined, async (err: AxiosError) => {

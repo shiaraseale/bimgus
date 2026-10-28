@@ -146,6 +146,27 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(reply)).toContain('Since Your Last Import (1)');
   });
 
+  it('/upgrades splits a long overview into messages Discord accepts (it was refused at over 6,000)', async () => {
+    // Every home building one level lower, so nearly everything is still to upgrade
+    const lowered = clone(exportFixture) as any;
+    for (const b of lowered.buildings) if (b.lvl > 1) b.lvl -= 1;
+    vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(lowered) }) as any);
+    await importFile();
+    patches = [];
+    followups = [];
+    await command('upgrades');
+    await vi.waitFor(() => expect(followups.length).toBeGreaterThan(0));
+    const messages = [patches[0], ...followups];
+    expect(messages.length).toBeGreaterThan(1);
+    for (const msg of messages) {
+      expect(msg.embeds).toHaveLength(1);
+      expect(VillageImportService.embedSize(msg.embeds[0])).toBeLessThanOrEqual(6000);
+      expect(msg.embeds[0].fields.length).toBeLessThanOrEqual(25);
+    }
+    expect(messages.at(-1).components).toBeDefined();
+    expect(patches[0].components).toBeUndefined();
+  });
+
   it('/upgrades and /defenses use the stored import', async () => {
     await importFile();
     patches = [];

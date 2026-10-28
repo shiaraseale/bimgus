@@ -62,6 +62,17 @@ describe('CocService retries (3.8)', () => {
     expect(calls).toBe(1);
   });
 
+  it('spaces requests out, retries included, to stay under the proxy limit', async () => {
+    const times: number[] = [];
+    const svc = new CocService(undefined, base, 'key', 50);
+    responses = [{ status: 429, headers: { 'Retry-After': '0' } }];
+    const started = Date.now();
+    await Promise.all([1, 2, 3].map(() => svc.getPlayer('#P').then(() => times.push(Date.now() - started))));
+    // Four requests (one retried) at least 50 ms apart: the last can't finish before 150 ms
+    expect(calls).toBe(4);
+    expect(Math.max(...times)).toBeGreaterThanOrEqual(150);
+  });
+
   it('shares one instance per container', () => {
     expect(CocService.shared()).toBe(CocService.shared());
   });

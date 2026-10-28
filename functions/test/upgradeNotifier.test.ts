@@ -13,6 +13,7 @@ import {
   eventsFromImportChanges,
   heroUpgradeStarts,
   notifyUpgrades,
+  supersededHeroTimer,
   withoutImportedTimers,
 } from '../src/services/upgradeNotifier';
 import { LinkedAccount, UserDoc } from '../src/types/user';
@@ -321,6 +322,56 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
     await notifyUpgrades(user, account, [fromImport]);
     expect(send).toHaveBeenCalledTimes(1);
     expect((send.mock.calls[0][1] as any).embeds[0].description).toContain('Archer Queen** should now be level 19');
+  });
+
+  it('drops an import timer the API has moved past, without a DM (level 12 after level 13)', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(FirestoreService, 'saveUser').mockResolvedValue(undefined as any);
+    const send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
+    // The import's Warden 11 → 12 timer hasn't run out, but the API shows 13: 12 finished early and
+    // 13 has started
+    const player = clone(apiFixture) as any;
+    const warden = player.heroes.find((h: any) => h.name === 'Grand Warden');
+    warden.level = 13;
+    const village = VillageImportService.parseExport(clone(exportFixture));
+    village.inProgressUpgrades = [
+      {
+        code: 28000002,
+        name: 'Grand Warden',
+        category: 'hero',
+        village: 'home',
+        currentLevel: 11,
+        targetLevel: 12,
+        maxLevel: 40,
+        timerSeconds: 1,
+        finishesAtMs: Date.now() + 3600_000,
+      },
+    ];
+    const { user, account } = newUser();
+    account.villageData = village;
+    account.lastSnapshot = PlayerTrackingService.createSnapshot(player);
+    vi.spyOn(CocService, 'shared').mockReturnValue({
+      getPlayer: vi.fn(async () => player),
+      getCurrentWar: vi.fn(async () => ({ state: 'notInWar' })),
+    } as any);
+    vi.spyOn(FirestoreService, 'getAllUsers').mockResolvedValue([user]);
+
+    await runPlayerTrackingJob();
+    const stored = VillageImportService.read(account.villageData)!;
+    expect(stored.inProgressUpgrades.some((u) => u.code === 28000002)).toBe(false);
+    expect(stored.items.find((i) => i.code === 28000002)?.level).toBe(12);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('keeps a hero timer whose level the API shows (that upgrade is the one running)', () => {
+    const player = clone(apiFixture) as any;
+    player.heroes.find((h: any) => h.name === 'Grand Warden').level = 12;
+    const snap = PlayerTrackingService.createSnapshot(player);
+    const timer = { code: 28000002, name: 'Grand Warden', category: 'hero', village: 'home' as const };
+    expect(supersededHeroTimer({ ...timer, targetLevel: 12 }, snap)).toBe(false);
+    expect(supersededHeroTimer({ ...timer, targetLevel: 11 }, snap)).toBe(true);
+    expect(supersededHeroTimer({ ...timer, category: 'defense', targetLevel: 11 }, snap)).toBe(false);
+    expect(supersededHeroTimer({ ...timer, targetLevel: 11 }, undefined)).toBe(false);
   });
 
   it('drops a pending timer once an import covers the same upgrade', () => {

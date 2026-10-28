@@ -73,3 +73,37 @@ export function numberedFields(title: string, count: number, lines: string[], li
   flush();
   return fields;
 }
+
+// Discord's limits per embed: 6,000 characters across its text, and 25 fields
+const EMBED_CHAR_BUDGET = 5800;
+const MAX_FIELDS = 25;
+
+/**
+ * Splits an embed that's over Discord's limits into several, to send as separate messages (Discord
+ * rejects the whole message otherwise, which left /upgrades on "thinking…"). Fields stay in order; the
+ * first part keeps the description and thumbnail, the others are titled "(cont.)".
+ */
+export function splitEmbed(embed: any, budget: number = EMBED_CHAR_BUDGET): any[] {
+  const { fields = [], ...rest } = embed;
+  if (VillageImportService.embedSize(embed) <= budget && fields.length <= MAX_FIELDS) return [embed];
+
+  const continuation = () => ({
+    title: `${embed.title} (cont.)`,
+    color: embed.color,
+    ...(embed.footer ? { footer: embed.footer } : {}),
+    ...(embed.timestamp ? { timestamp: embed.timestamp } : {}),
+  });
+  const parts: any[] = [{ ...rest, fields: [] }];
+  for (const field of fields) {
+    const current = parts[parts.length - 1];
+    if (
+      current.fields.length > 0 &&
+      (current.fields.length >= MAX_FIELDS ||
+        VillageImportService.embedSize(current) + field.name.length + field.value.length > budget)
+    ) {
+      parts.push({ ...continuation(), fields: [] });
+    }
+    parts[parts.length - 1].fields.push(field);
+  }
+  return parts;
+}
