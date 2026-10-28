@@ -112,11 +112,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
       title: `⚔️ [${account.name}] Laboratory & Barracks Troop Research`,
       description: [
         isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-        `Troop research remaining to max current levels:`,
-        '',
         totalTroopLevels === 0
-          ? '🎉 **All troops are currently maxed for your Hall level!**'
-          : `⚡ **Total Outstanding Troop Levels**: **${totalTroopLevels}**`,
+          ? '🎉 **All troops are maxed for your hall level!**'
+          : `⚡ **${totalTroopLevels}** troop levels left`,
       ]
         .filter(Boolean)
         .join('\n'),

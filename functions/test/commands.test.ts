@@ -122,8 +122,9 @@ describe('slash commands end to end (mocked services)', () => {
     expect(stored.builderHallLevel).toBe(9);
     const text = allText(reply) + allText(followups);
     expect(text).toContain('Imported Village');
-    expect(text).toContain('Cannon (BB)');
-    expect(text.match(/\(\d{7,}\)/g)).toBeNull();
+    // What's left is one line per village; the full list is behind a button
+    expect(text).toContain('32 defenses · 10 traps');
+    expect(text).not.toContain('Mega Tesla');
     // One message per import, within Discord's limits: 10 embeds and 6,000 characters across them
     expect(followups).toHaveLength(0);
     for (const msg of [reply]) {
@@ -131,6 +132,20 @@ describe('slash commands end to end (mocked services)', () => {
       const chars = msg.embeds.reduce((n: number, e: any) => n + VillageImportService.embedSize(e), 0);
       expect(chars).toBeLessThanOrEqual(6000);
     }
+  });
+
+  it("the import's Full list button lists every item still to upgrade, with real names", async () => {
+    const reply = await importFile();
+    const button = reply.components[0].components[0];
+    expect(button.custom_id).toBe('import_list:#ANON12345');
+    const list = await interact(3, { custom_id: button.custom_id, component_type: 2 });
+    expect(list.data.flags).toBe(64);
+    const text = allText(list);
+    expect(text).toContain('Cannon (BB)');
+    expect(text).toContain('• **Mega Tesla**: Lv 3 → 9');
+    expect(text.match(/\(\d{7,}\)/g)).toBeNull();
+    expect(VillageImportService.embedSize(list.data.embeds[0])).toBeLessThanOrEqual(6000);
+    expect(list.data.embeds[0].fields.length).toBeLessThanOrEqual(25);
   });
 
   it('/import-village again with one more upgraded cannon sends one DM and lists the change', async () => {
@@ -146,7 +161,7 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(reply)).toContain('Since Your Last Import (1)');
   });
 
-  it('/upgrades splits a long overview into messages Discord accepts (it was refused at over 6,000)', async () => {
+  it('/upgrades is one message, and each section picked from its menu redraws it within Discord limits', async () => {
     // Every home building one level lower, so nearly everything is still to upgrade
     const lowered = clone(exportFixture) as any;
     for (const b of lowered.buildings) if (b.lvl > 1) b.lvl -= 1;
@@ -154,25 +169,42 @@ describe('slash commands end to end (mocked services)', () => {
     await importFile();
     patches = [];
     followups = [];
-    await command('upgrades');
-    await vi.waitFor(() => expect(followups.length).toBeGreaterThan(0));
-    const messages = [patches[0], ...followups];
-    expect(messages.length).toBeGreaterThan(1);
-    for (const msg of messages) {
+    const overview = await command('upgrades');
+    expect(followups).toHaveLength(0);
+    expect(VillageImportService.embedSize(overview.embeds[0])).toBeLessThanOrEqual(6000);
+    expect(allText(overview)).toContain('🧱 **BB Walls**: 180 to upgrade');
+    const menu = overview.components[0].components[0];
+    expect(menu.custom_id).toBe('upgrades_view:#ANON12345');
+
+    for (const view of menu.options.map((o: any) => o.value)) {
+      patches = [];
+      const ack = await interact(3, { custom_id: menu.custom_id, component_type: 3, values: [view] });
+      expect(ack.type).toBe(6); // "deferred update": the message is edited in place
+      await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
+      const msg = patches[0];
       expect(msg.embeds).toHaveLength(1);
-      expect(VillageImportService.embedSize(msg.embeds[0])).toBeLessThanOrEqual(6000);
+      expect(VillageImportService.embedSize(msg.embeds[0]), view).toBeLessThanOrEqual(6000);
       expect(msg.embeds[0].fields.length).toBeLessThanOrEqual(25);
+      expect(msg.components[0].components[0].options.find((o: any) => o.default).value).toBe(view);
     }
-    expect(messages.at(-1).components).toBeDefined();
-    expect(patches[0].components).toBeUndefined();
+    expect(followups).toHaveLength(0);
+  });
+
+  it('the /upgrades Defenses section lists the imported defenses with costs', async () => {
+    await importFile();
+    patches = [];
+    await interact(3, { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['defenses'] });
+    await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
+    expect(patches[0].embeds[0].title).toContain('Upgrades: Defenses');
+    expect(allText(patches[0])).toMatch(/\*\*Cannon\*\*: Lv 13\/17 — /);
   });
 
   it('/upgrades and /defenses use the stored import', async () => {
     await importFile();
     patches = [];
     const upgrades = await command('upgrades');
-    expect(allText(upgrades)).toContain('Cannon');
-    expect(allText(upgrades)).not.toContain('Run `/import-village`');
+    expect(allText(upgrades)).toContain('🛡️ **Defenses**: 51 to upgrade');
+    expect(allText(upgrades)).not.toContain('/import-village');
     patches = [];
     const defenses = await command('defenses');
     expect(allText(defenses)).toContain('Current Defenses & Next Upgrades');
@@ -199,16 +231,31 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(patches[0])).toContain('Hero Maxing Overview');
   });
 
-  it('/upgrades lists every running timer, including two of the same trap', async () => {
+  it('a queued /upgrades menu pick redraws the message inside the task', async () => {
+    await importFile();
+    patches = [];
+    const { runCommandTask } = await import('../src/api/discord/router');
+    await runCommandTask({
+      type: 3,
+      token: 'tok',
+      application_id: 'app',
+      user: { id: '42', username: 'tester' },
+      data: { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['lab'] },
+    });
+    expect(patches).toHaveLength(1);
+    expect(patches[0].embeds[0].title).toContain('Upgrades: Lab');
+  });
+
+  it('/upgrades lists every running timer, with two of the same trap on one line', async () => {
     // A copy of the export taken a minute ago, so its timers are still running
     const recent = { ...clone(exportFixture), timestamp: Math.floor(Date.now() / 1000) - 60 };
     vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(recent) }) as any);
     await importFile();
     patches = [];
     const reply = await command('upgrades');
-    // The real export has two Spring Traps upgrading to level 6
-    const timers = allText(reply).match(/Spring Trap\*\*: Upgrading/g) ?? [];
-    expect(timers).toHaveLength(2);
+    // The real export has two Spring Traps upgrading to level 6, finishing minutes apart
+    expect(allText(reply)).toContain('2x **Spring Trap** → Lv 6');
+    expect(allText(reply)).toContain('⏳ Upgrading (7)');
   });
 
   it('/spells, /troops and /accounts reply for the linked account', async () => {

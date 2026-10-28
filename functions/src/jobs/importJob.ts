@@ -15,7 +15,9 @@ import {
   withoutImportedTimers,
 } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
+import { importListButton } from '../api/discord/components/importList';
 import { log } from '../utils/log';
+import { discordTime } from '../utils/discordTime';
 
 // Room for the import summary in one message (Discord's limit is 6,000 characters across all embeds),
 // and what each account's embed needs besides its fields (title, description, footer)
@@ -131,29 +133,32 @@ export async function runImportTask(
       account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
-      // What changed, what's running, and what's left: maxed items and lab/hero levels are in /upgrades
+      // What's running and what changed, then what's left as one line per village; the "Full list"
+      // button lists every item, and /upgrades has heroes and the lab
       const sections: Array<{ title: string; lines: string[] }> = [];
       const activeInProg = village.inProgressUpgrades.filter((u) => u.finishesAtMs > Date.now());
       if (activeInProg.length > 0) {
         sections.push({
-          title: `⏳ In Progress (${activeInProg.length})`,
+          title: `⏳ Upgrading (${activeInProg.length})`,
           lines: VillageImportService.formatInProgressUpgrades(activeInProg).split('\n'),
         });
       }
       if (events.length > 0) {
         sections.push({
           title: `🎉 Since Your Last Import (${events.length})`,
-          lines: events.map(describeEvent),
+          lines: events.map((e) => describeEvent(e)),
         });
       }
       const weapon = VillageImportService.weaponFor(village);
-      if (weapon && weapon.level < weapon.maxLevel) {
-        sections.push({
-          title: '🔥 Town Hall Weapon',
-          lines: [`• **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`],
-        });
-      }
-      sections.push(...VillageImportService.importSections(village));
+      sections.push({
+        title: '📋 Left to Upgrade',
+        lines: [
+          ...VillageImportService.importSummary(village),
+          ...(weapon && weapon.level < weapon.maxLevel
+            ? [`🔥 **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`]
+            : []),
+        ],
+      });
       pending.push({ account, village, fileName, sections });
     }
 
@@ -162,22 +167,15 @@ export async function runImportTask(
     for (const { account, village, fileName, sections } of pending) {
       const fitted = VillageImportService.fitSections(sections, perAccountBudget);
       const fields = fitted.flatMap((sec) => VillageImportService.linesToFields(sec.title, sec.lines)).slice(0, 25);
-      const exportSec = Math.floor(village.exportTimestamp / 1000);
       const staleWarning = VillageImportService.isStale(village)
         ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
         : '';
       embedsToSend.push({
         title: `🛡️ [${account.name}] Imported Village`,
-        description:
-          `Town Hall **${village.townHallLevel}**${village.builderHallLevel ? ` and Builder Hall **${village.builderHallLevel}**` : ''}. ` +
-          `Showing what's left to upgrade; \`/upgrades\` has everything, including heroes and the lab.\n` +
-          `📄 *Export taken <t:${exportSec}:f> (<t:${exportSec}:R>)*${staleWarning}`,
+        description: `📄 *Export taken ${discordTime(village.exportTimestamp)}*${staleWarning}`,
         color: COLORS.GOLD,
         thumbnail: { url: CocAssetService.getTownHallUrl(village.townHallLevel) },
-        fields:
-          fields.length > 0
-            ? fields
-            : [{ name: '✨ All maxed', value: 'Nothing left to upgrade in this export.', inline: false }],
+        fields,
         footer: { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` },
         timestamp: new Date().toISOString(),
       });
@@ -193,7 +191,17 @@ export async function runImportTask(
       notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
     }
 
-    const components = [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])];
+    // A "Full list" button per account, then "Open CoC", five to a row (Discord allows five rows)
+    const buttons = [
+      ...pending.map(({ account }) =>
+        importListButton(account.playerTag, pending.length > 1 ? `Full list: ${account.name}` : 'Full list')
+      ),
+      DiscordService.openGameLinkButton('Open CoC'),
+    ];
+    const components: any[] = [];
+    for (let i = 0; i < buttons.length && components.length < 5; i += 5) {
+      components.push(DiscordService.createActionRow(buttons.slice(i, i + 5)));
+    }
     const ok = await reply.edit({
       content: notices.join('\n').slice(0, 1900) || undefined,
       embeds: embedsToSend.slice(0, 10),

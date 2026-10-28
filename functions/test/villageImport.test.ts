@@ -80,6 +80,16 @@ describe('parseExport (one file, both villages)', () => {
     expect(sections.map((s) => s.title).join(' ')).not.toMatch(/Heroes|Laboratory|Pets|Troops/);
     // One line per item: the 7 Cannons appear once, even though they're at different levels
     expect(text.match(/\*\*Cannon\*\*/g)?.length ?? 0).toBeLessThanOrEqual(1);
+    // A crafted defense's three modules share a line
+    expect(text).toContain('• **Inferno Candle** (3 modules): Lv 1 → 2');
+    expect(text).not.toContain('Attack Module');
+  });
+
+  it('sums up what is left in one line per village', () => {
+    expect(VillageImportService.importSummary(data)).toEqual([
+      '🏰 **Home (TH12)**: 32 defenses · 10 traps · 19 buildings · 9 modules · 4 helpers',
+      '🔨 **Builder Base (BH9)**: 24 defenses · 20 traps · 18 buildings · 180 walls',
+    ]);
   });
 
   it('has hero caps for TH12 / BH9', () => {
@@ -117,6 +127,27 @@ describe('parseExport (one file, both villages)', () => {
   it('warns when an export is over a day old', () => {
     expect(VillageImportService.isStale(data, data.exportTimestamp + 25 * 3600 * 1000)).toBe(true);
     expect(VillageImportService.isStale(data, data.exportTimestamp + 3600 * 1000)).toBe(false);
+  });
+
+  it('shows each timer on one short line, soonest first, as a countdown with its date', () => {
+    const lines = VillageImportService.formatInProgressUpgrades(data.inProgressUpgrades, data.exportTimestamp).split(
+      '\n'
+    );
+    const xBow = data.inProgressUpgrades.find((u) => u.name === 'X-Bow')!;
+    const sec = Math.floor(xBow.finishesAtMs / 1000);
+    expect(lines.at(-1)).toBe(`• **X-Bow** → Lv 6 · <t:${sec}:R> (<t:${sec}:s>)`);
+    // Builder Base items say so, and the two Spring Traps finishing minutes apart share a line
+    expect(lines[0]).toMatch(/^• \*\*Star Laboratory \(BB\)\*\* → Lv 9 · /);
+    expect(lines[1]).toMatch(/^• 2x \*\*Spring Trap\*\* → Lv 6 · /);
+    expect(lines).toHaveLength(6);
+  });
+
+  it('keeps the same upgrade on separate lines when the timers are hours apart', () => {
+    const trap = data.inProgressUpgrades.find((u) => u.name === 'Spring Trap')!;
+    const later = { ...trap, finishesAtMs: trap.finishesAtMs + 2 * 3600 * 1000 };
+    const text = VillageImportService.formatInProgressUpgrades([trap, later], data.exportTimestamp);
+    expect(text.split('\n')).toHaveLength(2);
+    expect(text).not.toContain('2x');
   });
 });
 

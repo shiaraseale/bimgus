@@ -43,29 +43,28 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const heroSummary = PlayerTrackingService.calculateHeroesProgress(freshPlayer);
 
     const fields: any[] = [];
+    // One line per hero: "• **Archer Queen** 60/65 `[█████████░] 92%`"
+    const heroLine = (h: any) =>
+      `• **${h.name}** ${h.level}/${h.maxLevel} ${h.levelsRemaining === 0 ? '🏆' : `\`${formatProgressBar(h.percentage, 10)}\``}`;
 
     if (villageFilter === 'home' || villageFilter === 'both') {
-      const homeList = heroSummary.homeHeroes.map((h: any) => {
-        const status = h.levelsRemaining === 0 ? '🏆 **MAXED**' : `*${h.levelsRemaining} levels left*`;
-        return `• **${h.name}**: Level **${h.level}** / ${h.maxLevel} — ${status}\n  \`${formatProgressBar(h.percentage, 10)}\``;
-      });
-
       fields.push({
         name: `🏰 Home Village Heroes (TH${freshPlayer.townHallLevel}) — ${heroSummary.overallHomePercentage}% Maxed`,
-        value: homeList.length > 0 ? homeList.join('\n\n') : 'No Home Village heroes unlocked yet.',
+        value:
+          heroSummary.homeHeroes.length > 0
+            ? heroSummary.homeHeroes.map(heroLine).join('\n')
+            : 'No Home Village heroes unlocked yet.',
         inline: false,
       });
     }
 
     if (villageFilter === 'builder' || villageFilter === 'both') {
-      const builderList = heroSummary.builderHeroes.map((h: any) => {
-        const status = h.levelsRemaining === 0 ? '🏆 **MAXED**' : `*${h.levelsRemaining} levels left*`;
-        return `• **${h.name}**: Level **${h.level}** / ${h.maxLevel} — ${status}\n  \`${formatProgressBar(h.percentage, 10)}\``;
-      });
-
       fields.push({
         name: `🔨 Builder Base Heroes (BH${freshPlayer.builderHallLevel || 'N/A'}) — ${heroSummary.overallBuilderPercentage}% Maxed`,
-        value: builderList.length > 0 ? builderList.join('\n\n') : 'No Builder Base heroes unlocked yet.',
+        value:
+          heroSummary.builderHeroes.length > 0
+            ? heroSummary.builderHeroes.map(heroLine).join('\n')
+            : 'No Builder Base heroes unlocked yet.',
         inline: false,
       });
     }
@@ -79,10 +78,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       title: `${EMOJIS.CROWN} [${account.name}] Hero Maxing Overview`,
       description: [
         isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-        `Tracking hero levels against maximum limits for **Town Hall ${freshPlayer.townHallLevel}** and **Builder Hall ${freshPlayer.builderHallLevel || 'N/A'}**:`,
-        '',
-        `⚡ **Total Home Hero Levels Remaining**: **${heroSummary.totalHomeLevelsRemaining}**`,
-        `⚡ **Total Builder Hero Levels Remaining**: **${heroSummary.totalBuilderLevelsRemaining}**`,
+        `⚡ **${heroSummary.totalHomeLevelsRemaining}** home and **${heroSummary.totalBuilderLevelsRemaining}** Builder Base hero levels left`,
       ]
         .filter(Boolean)
         .join('\n'),

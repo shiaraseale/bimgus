@@ -3,6 +3,7 @@ import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordEmbed } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
+import { discordTime } from '../utils/discordTime';
 import type { WarAudit } from '../types/api';
 
 interface FlatAttack extends WarAttack {
@@ -188,25 +189,22 @@ export function formatCoCTime(cocTime: string): string {
  * Builds a clean War Matchup / Preparation embed with schedule and war format.
  */
 function buildWarMatchupEmbed(currentWar: CurrentWarResponse): DiscordEmbed {
-  const startUnix = currentWar.startTime
-    ? Math.floor(new Date(formatCoCTime(currentWar.startTime)).getTime() / 1000)
-    : null;
-  const endUnix = currentWar.endTime ? Math.floor(new Date(formatCoCTime(currentWar.endTime)).getTime() / 1000) : null;
+  const startMs = currentWar.startTime ? new Date(formatCoCTime(currentWar.startTime)).getTime() : null;
+  const endMs = currentWar.endTime ? new Date(formatCoCTime(currentWar.endTime)).getTime() : null;
 
   const isPrep = currentWar.state === 'preparation';
-  const stateLabel = isPrep ? '⏳ Preparation Day' : '🔥 Battle Day Active';
 
+  // The title says whether it's preparation or battle day
   const descLines: string[] = [
-    `🎯 **Opponent Clan**: **${currentWar.opponent.name}** (${currentWar.opponent.tag}) • Lvl ${currentWar.opponent.clanLevel}`,
-    `👥 **War Format**: **${currentWar.teamSize} vs ${currentWar.teamSize}** (2 attacks per member • ${currentWar.teamSize * 2} attacks total)`,
-    `⏳ **Current State**: **${stateLabel}**`,
+    `🎯 **Opponent**: **${currentWar.opponent.name}** (${currentWar.opponent.tag}) • clan level ${currentWar.opponent.clanLevel}`,
+    `👥 **${currentWar.teamSize}v${currentWar.teamSize}** · 2 attacks each (${currentWar.teamSize * 2} total)`,
   ];
 
-  if (isPrep && startUnix) {
-    descLines.push(`⏰ **Battle Day Begins**: <t:${startUnix}:R> (<t:${startUnix}:f>)`);
+  if (isPrep && startMs) {
+    descLines.push(`⏰ **Battle Day Begins**: ${discordTime(startMs)}`);
   }
-  if (endUnix) {
-    descLines.push(`🏁 **War Concludes**: <t:${endUnix}:R> (<t:${endUnix}:f>)`);
+  if (endMs) {
+    descLines.push(`🏁 **War Concludes**: ${discordTime(endMs)}`);
   }
 
   const badgeUrl =

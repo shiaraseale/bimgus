@@ -3,6 +3,7 @@ import { GameCategory } from '../../services/gameDataService';
 import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../services/villageImportService';
 import { withoutImportedTimers } from '../../services/upgradeNotifier';
 import { LinkedAccount } from '../../types/user';
+import { discordTime } from '../../utils/discordTime';
 
 // Which stored import categories each list shows
 export const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];
@@ -20,15 +21,14 @@ export function formatProgressBar(percent: number, length: number = 10): string 
   return `[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${percent}%`;
 }
 
-/** "Based on the export taken on …", with a warning when the export is over a day old. */
+/** "Based on the export taken 2 days ago (…)", with a warning when the export is over a day old. */
 export function getVillageJsonTimestampNotice(
   village: VillageDataV2 | null,
   prefix: string = 'Based on the export taken'
 ): string | null {
   if (!village) return null;
-  const sec = Math.floor(village.exportTimestamp / 1000);
   const stale = VillageImportService.isStale(village) ? ' ⚠️ *over a day old, so timers may be out of date*' : '';
-  return `📄 *${prefix} on <t:${sec}:f> (<t:${sec}:R>)*${stale}`;
+  return `📄 *${prefix} ${discordTime(village.exportTimestamp)}*${stale}`;
 }
 
 /**
@@ -72,38 +72,4 @@ export function numberedFields(title: string, count: number, lines: string[], li
   }
   flush();
   return fields;
-}
-
-// Discord's limits per embed: 6,000 characters across its text, and 25 fields
-const EMBED_CHAR_BUDGET = 5800;
-const MAX_FIELDS = 25;
-
-/**
- * Splits an embed that's over Discord's limits into several, to send as separate messages (Discord
- * rejects the whole message otherwise, which left /upgrades on "thinking…"). Fields stay in order; the
- * first part keeps the description and thumbnail, the others are titled "(cont.)".
- */
-export function splitEmbed(embed: any, budget: number = EMBED_CHAR_BUDGET): any[] {
-  const { fields = [], ...rest } = embed;
-  if (VillageImportService.embedSize(embed) <= budget && fields.length <= MAX_FIELDS) return [embed];
-
-  const continuation = () => ({
-    title: `${embed.title} (cont.)`,
-    color: embed.color,
-    ...(embed.footer ? { footer: embed.footer } : {}),
-    ...(embed.timestamp ? { timestamp: embed.timestamp } : {}),
-  });
-  const parts: any[] = [{ ...rest, fields: [] }];
-  for (const field of fields) {
-    const current = parts[parts.length - 1];
-    if (
-      current.fields.length > 0 &&
-      (current.fields.length >= MAX_FIELDS ||
-        VillageImportService.embedSize(current) + field.name.length + field.value.length > budget)
-    ) {
-      parts.push({ ...continuation(), fields: [] });
-    }
-    parts[parts.length - 1].fields.push(field);
-  }
-  return parts;
 }

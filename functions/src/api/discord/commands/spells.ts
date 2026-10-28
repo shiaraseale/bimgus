@@ -65,11 +65,9 @@ export async function execute(ctx: CommandContext): Promise<any> {
       title: `🧪 [${account.name}] Spell Laboratory Upgrades`,
       description: [
         isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-        `Research remaining to max all Spells for **Town Hall ${freshPlayer.townHallLevel}**:`,
-        '',
         totalSpellLevels === 0
-          ? '🎉 **All spells are currently maxed for your Town Hall level!**'
-          : `⚡ **Total Outstanding Spell Levels**: **${totalSpellLevels}**`,
+          ? `🎉 **All spells are maxed for TH${freshPlayer.townHallLevel}!**`
+          : `⚡ **${totalSpellLevels}** spell levels left for TH${freshPlayer.townHallLevel}`,
       ]
         .filter(Boolean)
         .join('\n'),

@@ -157,16 +157,6 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     }
   };
 
-  // One account's embeds as consecutive messages (one each, so each gets Discord's full size limit),
-  // with the buttons on the last
-  const sendAccountEmbeds = async (index: number, embeds: any[], components: any[]) => {
-    for (const [i, embed] of embeds.entries()) {
-      const message = { embeds: [embed], ...(i === embeds.length - 1 ? { components } : {}) };
-      if (i === 0) await sendAccountMessage(index, message);
-      else await sendFollowup(message);
-    }
-  };
-
   // All linked accounts, or the one requested with the `account` option (all accounts are equal)
   async function getTargetAccounts(accountTagOption?: string): Promise<{
     userDoc: any;
@@ -220,7 +210,6 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     editDeferredReply,
     sendFollowup,
     sendAccountMessage,
-    sendAccountEmbeds,
     getTargetAccounts,
     getPlayerWithFallback: (account: LinkedAccount) => getPlayerWithFallback(cocService, account),
   };

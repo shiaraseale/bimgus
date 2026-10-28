@@ -35,8 +35,6 @@ export const MUTED_CATEGORIES = new Set(['equipment']);
 // request, 2026-10-26: there are hundreds of segments and the updates serve no purpose.
 const IGNORED_CATEGORIES = new Set(['wall']);
 export const DM_BLOCK_PAUSE_MS = 7 * 24 * 60 * 60 * 1000;
-// Above this many events in one cycle, send a single summary instead of one DM each
-const MAX_SEPARATE_MESSAGES = 3;
 
 const KIND_TITLES: Record<UpgradeKind, string> = {
   upgraded: 'Upgrade Completed!',
@@ -56,19 +54,22 @@ function hallTag(account: LinkedAccount, village: Village): string {
   return village === 'builder' ? `BH${account.builderHallLevel || '?'}` : `TH${account.townHallLevel || '?'}`;
 }
 
-/** One line describing an event, used in both single and summary messages. */
-export function describeEvent(e: UpgradeEvent): string {
+/**
+ * One line describing an event, used in DMs and import replies, e.g. "🎉 2x **Cannon** reached Lv 14/17"
+ * (with "for TH12" when `hall` is given).
+ */
+export function describeEvent(e: UpgradeEvent, hall?: string): string {
   const countPrefix = e.count > 1 ? `${e.count}x ` : '';
-  const levels = `Lv ${e.newLevel}/${e.maxLevel}`;
+  const levels = `Lv ${e.newLevel}/${e.maxLevel}${hall ? ` for ${hall}` : ''}`;
   switch (e.kind) {
     case 'unlocked':
-      return `🔓 **${e.name}** unlocked! (${levels})`;
+      return `🔓 **${e.name}** unlocked (${levels})`;
     case 'built':
       return `🏗️ ${countPrefix}**${e.name}** built (${levels})`;
     case 'expected':
-      return `🏗️ Your ${countPrefix}**${e.name}** should now be level ${e.newLevel} (${levels})`;
+      return `🏗️ ${countPrefix}**${e.name}** should now be ${levels}`;
     default:
-      return `🎉 ${countPrefix}**${e.name}** reached **level ${e.newLevel}** (${levels})`;
+      return `🎉 ${countPrefix}**${e.name}** reached ${levels}`;
   }
 }
 
@@ -237,50 +238,46 @@ export async function notifyUpgrades(
   if (!VillageImportService.read(account.villageData)) return 0;
   if (fresh.length === 0) return 0;
 
-  const footer = { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` };
+  // One DM per check: a single event with its picture, or a list. Timer events are estimates, which the
+  // footer says (a gem or boost used since the export may have finished it sooner).
+  const estimated = fresh.some((e) => e.kind === 'expected') ? "Estimated from your import's timer • " : '';
+  const footer = { text: `${estimated}Account: ${account.name} (${account.playerTag})` };
   const components = [
     DiscordService.createActionRow([DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)]),
   ];
-  const messages =
-    fresh.length > MAX_SEPARATE_MESSAGES
-      ? [
-          {
-            title: `🎉 [${account.name}] ${fresh.length} Upgrades`,
-            description: fresh.map(describeEvent).join('\n').slice(0, 4000),
-            color: COLORS.GOLD,
-            footer,
-            timestamp: new Date(now).toISOString(),
-          },
-        ]
-      : fresh.map((e) => ({
-          title: `${e.kind === 'unlocked' ? '🔓' : e.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[e.kind]}`,
-          description: [
-            describeEvent(e),
-            '',
-            `📊 **Level ${e.newLevel}/${e.maxLevel}** for ${hallTag(account, e.village)}`,
-            e.kind === 'expected'
-              ? "*Estimated from your import's timer (boosts active then are counted); gems or a boost used since may have finished it sooner.*"
-              : '',
-          ]
-            .filter(Boolean)
-            .join('\n'),
+  const [only] = fresh;
+  const embed =
+    fresh.length === 1
+      ? {
+          title: `${only.kind === 'unlocked' ? '🔓' : only.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[only.kind]}`,
+          description: describeEvent(only, hallTag(account, only.village)),
           color: COLORS.GOLD,
           thumbnail: {
-            url: CocAssetService.getThumbnail(e.assetName, thumbnailCategory(e.category), e.newLevel, e.village),
+            url: CocAssetService.getThumbnail(
+              only.assetName,
+              thumbnailCategory(only.category),
+              only.newLevel,
+              only.village
+            ),
           },
           footer,
           timestamp: new Date(now).toISOString(),
-        }));
+        }
+      : {
+          title: `🎉 [${account.name}] ${fresh.length} Upgrades`,
+          description: fresh
+            .map((e) => describeEvent(e))
+            .join('\n')
+            .slice(0, 4000),
+          color: COLORS.GOLD,
+          footer,
+          timestamp: new Date(now).toISOString(),
+        };
 
-  let sent = 0;
-  for (const embed of messages) {
-    const result = await DiscordService.sendDmResult(user.discordUserId, { embeds: [embed], components });
-    if (result === 'blocked') {
-      user.dmsBlockedAt = new Date(now).toISOString();
-      user.dmsBlockedNoticeShown = false;
-      break;
-    }
-    if (result === 'sent') sent++;
+  const result = await DiscordService.sendDmResult(user.discordUserId, { embeds: [embed], components });
+  if (result === 'blocked') {
+    user.dmsBlockedAt = new Date(now).toISOString();
+    user.dmsBlockedNoticeShown = false;
   }
-  return sent;
+  return result === 'sent' ? 1 : 0;
 }

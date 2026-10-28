@@ -6,6 +6,7 @@ import { CurrentWarResponse } from '../types/coc';
 import { findActiveCwlWar } from '../diff/cwlWars';
 import { getWarId } from '../diff/warDiff';
 import { isExpectedApiMiss, log } from '../utils/log';
+import { discordTime } from '../utils/discordTime';
 
 export async function runWarPingJob(clanTagOverride?: string): Promise<{ success: boolean; message: string }> {
   const targetTag = clanTagOverride || config.coc.clanTag;
@@ -91,7 +92,7 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
               {
                 title: `⏳ Only ~${Math.round(hoursRemaining)}h Left in CWL Round ${roundNum}!`,
                 description: [
-                  `War vs **${enemyClan.name}** ends <t:${Math.floor(warEndTimeMs / 1000)}:R>!`,
+                  `War vs **${enemyClan.name}** ends ${discordTime(warEndTimeMs)}!`,
                   '',
                   `The following members still need to make their 1 attack:`,
                   membersWithUnusedAttacks.join('\n'),

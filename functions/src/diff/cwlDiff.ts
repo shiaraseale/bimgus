@@ -5,6 +5,7 @@ import { DiscordEmbed } from '../types/discord';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
 import { log } from '../utils/log';
+import { discordTime } from '../utils/discordTime';
 
 interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -497,21 +498,16 @@ export async function processCwlDiff(
             !announcedMatchups.has(roundIndex) &&
             (war.state === 'preparation' || war.state === 'inWar')
           ) {
-            const startTimestamp = war.startTime
-              ? Math.floor(new Date(formatCoCTime(war.startTime)).getTime() / 1000)
-              : null;
-            const endTimestamp = war.endTime ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000) : null;
+            const startMs = war.startTime ? new Date(formatCoCTime(war.startTime)).getTime() : null;
+            const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const matchupEmbed: DiscordEmbed = {
               title: `⚔️ CWL Round ${roundNum} Found!`,
               description: [
-                `**${ourClan.name}** vs **${enemyClan.name}**`,
-                `👥 **Format**: ${war.teamSize}v${war.teamSize} (1 Attack Each)`,
-                '',
-                `🛡️ **Opponent Level**: Level ${enemyClan.clanLevel}`,
-                `⏳ **State**: ${war.state === 'preparation' ? 'Preparation Day' : 'Battle Day Active'}`,
-                `🎯 **Battle Starts**: ${startTimestamp ? `<t:${startTimestamp}:R>` : 'Unknown'}`,
-                `⏰ **Round Ends**: ${endTimestamp ? `<t:${endTimestamp}:R>` : 'Unknown'}`,
+                `**${ourClan.name}** vs **${enemyClan.name}** (clan level ${enemyClan.clanLevel})`,
+                `👥 **${war.teamSize}v${war.teamSize}** · 1 attack each`,
+                `🎯 **Battle Starts**: ${startMs ? discordTime(startMs) : 'Unknown'}`,
+                `⏰ **Round Ends**: ${endMs ? discordTime(endMs) : 'Unknown'}`,
               ].join('\n'),
               color: COLORS.PURPLE,
               thumbnail: enemyClan.badgeUrls?.large ? { url: enemyClan.badgeUrls.large } : undefined,
@@ -528,17 +524,14 @@ export async function processCwlDiff(
 
           // B. Announce Battle Day Start
           if (webhookUrl && war.state === 'inWar' && !announcedBattleDays.has(roundIndex)) {
-            const endTimestamp = war.endTime ? Math.floor(new Date(formatCoCTime(war.endTime)).getTime() / 1000) : null;
+            const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const battleEmbed: DiscordEmbed = {
               title: `🔥 CWL Round ${roundNum} Battle Day Has Begun!`,
               description: [
-                `Round ${roundNum} against **${enemyClan.name}** is now LIVE!`,
-                '',
-                `⚔️ **Attacks**: Exactly 1 per member (${war.teamSize} attacks total)`,
-                `⏰ **Round Ends**: ${endTimestamp ? `<t:${endTimestamp}:R>` : 'in 24 hours'}`,
-                '',
-                '🎯 Coordinate your hits carefully and secure those 3-star victories!',
+                `Round ${roundNum} against **${enemyClan.name}** is live!`,
+                `⚔️ **Attacks**: 1 each (${war.teamSize} total)`,
+                `⏰ **Round Ends**: ${endMs ? discordTime(endMs) : 'in 24 hours'}`,
               ].join('\n'),
               color: COLORS.GOLD,
               thumbnail: ourClan.badgeUrls?.large ? { url: ourClan.badgeUrls.large } : undefined,

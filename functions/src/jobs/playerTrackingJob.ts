@@ -6,6 +6,7 @@ import { CocAssetService } from '../services/cocAssetService';
 import { config } from '../config';
 import { mapWithConcurrency } from '../utils/concurrency';
 import { changedIgnoringUpdatedAt } from '../utils/changes';
+import { discordTime } from '../utils/discordTime';
 import { getWarId } from '../diff/warDiff';
 import { InProgressUpgrade, VillageImportService } from '../services/villageImportService';
 import {
@@ -168,9 +169,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
                         `📍 **Map Position**: #${warMember.mapPosition}`,
                         `🏰 **Town Hall**: TH${warMember.townhallLevel}`,
                         `👥 **Team Size**: ${warData.teamSize}v${warData.teamSize}`,
-                        `⏳ **Battle Day Starts**: <t:${Math.floor(warStartTimeMs / 1000)}:R>`,
-                        '',
-                        `Make sure to set your war base layout and prepare your army!`,
+                        `⏳ **Battle Day Starts**: ${discordTime(warStartTimeMs)}`,
                       ].join('\n'),
                       color: COLORS.GOLD,
                       thumbnail: {

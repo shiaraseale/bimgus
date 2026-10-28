@@ -196,7 +196,7 @@ describe('notifyUpgrades', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it('sends one summary instead of many DMs when more than 3 things happened', async () => {
+  it('sends one DM listing everything when more than one thing happened', async () => {
     const { user, account } = newUser();
     const events = [1, 2, 3, 4, 5].map((n) => event({ code: 1000008 + n, name: `Building ${n}` }));
     const sent = await notifyUpgrades(user, account, events);
@@ -205,15 +205,28 @@ describe('notifyUpgrades', () => {
     expect((send.mock.calls[0][1] as any).embeds[0].description.split('\n')).toHaveLength(5);
   });
 
+  it('shows the level once in a single DM, with the hall it is the max for', async () => {
+    const { user, account } = newUser();
+    await notifyUpgrades(user, account, [event()]);
+    const embed = (send.mock.calls[0][1] as any).embeds[0];
+    expect(embed.title).toContain('Upgrade Completed!');
+    expect(embed.description).toBe('🎉 **Cannon** reached Lv 14/17 for TH12');
+    expect(embed.footer.text).not.toContain('Estimated');
+  });
+
   it('words timer events as estimates and unlocks as unlocks', async () => {
     const { user, account } = newUser();
     await notifyUpgrades(user, account, [
       event({ kind: 'expected' }),
       event({ kind: 'unlocked', category: 'troop', name: 'Druid', newLevel: 1, maxLevel: 5 }),
     ]);
-    const texts = send.mock.calls.map((c) => (c[1] as any).embeds[0].description as string);
-    expect(texts[0]).toContain('should now be level 14');
-    expect(texts[1]).toContain('🔓 **Druid** unlocked! (Lv 1/5)');
+    expect(send).toHaveBeenCalledTimes(1);
+    const embed = (send.mock.calls[0][1] as any).embeds[0];
+    expect(embed.description.split('\n')).toEqual([
+      '🏗️ **Cannon** should now be Lv 14/17',
+      '🔓 **Druid** unlocked (Lv 1/5)',
+    ]);
+    expect(embed.footer.text).toContain("Estimated from your import's timer");
   });
 
   it('pauses DMs for 7 days after Discord refuses one (50007)', async () => {
@@ -321,7 +334,7 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
     await notifyUpgrades(user, account, [fromPending]);
     await notifyUpgrades(user, account, [fromImport]);
     expect(send).toHaveBeenCalledTimes(1);
-    expect((send.mock.calls[0][1] as any).embeds[0].description).toContain('Archer Queen** should now be level 19');
+    expect((send.mock.calls[0][1] as any).embeds[0].description).toContain('Archer Queen** should now be Lv 19/');
   });
 
   it('drops an import timer the API has moved past, without a DM (level 12 after level 13)', async () => {

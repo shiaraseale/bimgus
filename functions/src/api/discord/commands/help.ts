@@ -62,7 +62,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
           {
             name: '🏰 `/upgrades [account]`',
             value:
-              'View live progression and all outstanding upgrades (sends a report for each linked account).\n\u200b',
+              "An overview of running timers and what is left, with a menu for each section's full list (one message per linked account).\n\u200b",
             inline: false,
           },
           {
