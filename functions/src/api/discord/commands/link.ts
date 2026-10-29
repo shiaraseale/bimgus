@@ -2,6 +2,7 @@ import { config } from '../../../config';
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { LinkedAccount } from '../../../types/user';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { log } from '../../../utils/log';
@@ -58,11 +59,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     const updatedUser = await FirestoreService.linkAccount(discordUserId, linkedAccount);
 
-    return respondPersonal({
-      embeds: [
-        {
+    return respondPersonal(
+      layoutMessage(
+        card({
+          accent: COLORS.GREEN,
           title: '✅ Account Successfully Linked!',
-          description: [
+          body: [
             `**${freshPlayer.name}** (${freshPlayer.tag}) is now linked to your Discord profile!`,
             '',
             `🏰 **Town Hall**: TH${freshPlayer.townHallLevel}`,
@@ -73,15 +75,11 @@ export async function execute(ctx: CommandContext): Promise<any> {
             `🔔 **Automated DMs**: ${dmsEnabled ? 'Enabled ✅ (War roster pings)' : 'Disabled 🔕 (No DMs will be sent)'}`,
             ...(dmsEnabled ? ['*Upgrade DMs start once you run `/import-village` for this account.*'] : []),
           ].join('\n'),
-          color: COLORS.GREEN,
-          thumbnail: {
-            url: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
-          },
-          footer: { text: `Account: ${linkedAccount.name} • Bimgus Tracker` },
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    });
+          thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
+          footer: `Account: ${linkedAccount.name}`,
+        })
+      )
+    );
   } catch (apiErr: any) {
     if (apiErr.response?.status !== 404) {
       log.warn(`[Link] Player lookup for ${formattedTag} failed: ${apiErr.message}`);

@@ -1,5 +1,6 @@
 import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { LinkedAccount } from '../../../types/user';
 import { CommandContext } from '../context';
 
@@ -31,11 +32,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
         return `${idx + 1}. **${a.name}** (\`${a.playerTag}\`)\n   • Town Hall ${a.townHallLevel} | Builder Hall ${a.builderHallLevel || 'N/A'} | ${dmBadge}`;
       });
 
-      await editDeferredReply({
-        embeds: [
-          {
+      await editDeferredReply(
+        layoutMessage(
+          card({
+            accent: COLORS.DISCORD_BLURPLE,
             title: '📋 Your Linked Clash of Clans Accounts',
-            description: [
+            body: [
               `You have **${accounts.length}** account${accounts.length === 1 ? '' : 's'} linked (all equal status):`,
               '',
               accountList.join('\n\n'),
@@ -44,15 +46,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
               '',
               '*To turn DMs on or off, run `/dms on` or `/dms off` (add `account:` for just one).*',
             ].join('\n'),
-            color: COLORS.DISCORD_BLURPLE,
-            thumbnail: {
-              url: CocAssetService.getTownHallUrl(accounts[0].townHallLevel),
-            },
-            footer: { text: 'Bimgus Multi-Account Manager' },
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
+            thumbnail: CocAssetService.getTownHallUrl(accounts[0].townHallLevel),
+          })
+        )
+      );
     } catch (accErr: any) {
       await editDeferredReply({ content: `❌ Error loading accounts: ${accErr.message}` });
     }

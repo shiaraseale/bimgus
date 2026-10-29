@@ -2,6 +2,7 @@ import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { EMOJIS } from '../../../constants/emojis';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { formatProgressBar } from '../ui';
 
@@ -42,58 +43,46 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
     const heroSummary = PlayerTrackingService.calculateHeroesProgress(freshPlayer);
 
-    const fields: any[] = [];
+    const blocks: string[] = [];
     // One line per hero: "• **Archer Queen** 60/65 `[█████████░] 92%`"
     const heroLine = (h: any) =>
       `• **${h.name}** ${h.level}/${h.maxLevel} ${h.levelsRemaining === 0 ? '🏆' : `\`${formatProgressBar(h.percentage, 10)}\``}`;
 
     if (villageFilter === 'home' || villageFilter === 'both') {
-      fields.push({
-        name: `🏰 Home Village Heroes (TH${freshPlayer.townHallLevel}) — ${heroSummary.overallHomePercentage}% Maxed`,
-        value:
-          heroSummary.homeHeroes.length > 0
+      blocks.push(
+        `**🏰 Home Village Heroes (TH${freshPlayer.townHallLevel}) — ${heroSummary.overallHomePercentage}% Maxed**\n` +
+          (heroSummary.homeHeroes.length > 0
             ? heroSummary.homeHeroes.map(heroLine).join('\n')
-            : 'No Home Village heroes unlocked yet.',
-        inline: false,
-      });
+            : 'No Home Village heroes unlocked yet.')
+      );
     }
 
     if (villageFilter === 'builder' || villageFilter === 'both') {
-      fields.push({
-        name: `🔨 Builder Base Heroes (BH${freshPlayer.builderHallLevel || 'N/A'}) — ${heroSummary.overallBuilderPercentage}% Maxed`,
-        value:
-          heroSummary.builderHeroes.length > 0
+      blocks.push(
+        `**🔨 Builder Base Heroes (BH${freshPlayer.builderHallLevel || 'N/A'}) — ${heroSummary.overallBuilderPercentage}% Maxed**\n` +
+          (heroSummary.builderHeroes.length > 0
             ? heroSummary.builderHeroes.map(heroLine).join('\n')
-            : 'No Builder Base heroes unlocked yet.',
-        inline: false,
-      });
+            : 'No Builder Base heroes unlocked yet.')
+      );
     }
 
-    for (const f of fields) {
-      if (!f.value || !f.value.trim()) f.value = 'None';
-      if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
-    }
+    const message = layoutMessage(
+      card({
+        accent: heroSummary.homeMaxed ? COLORS.GOLD : COLORS.BLUE,
+        title: `${EMOJIS.CROWN} [${account.name}] Hero Maxing Overview`,
+        body: [
+          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
+          `⚡ **${heroSummary.totalHomeLevelsRemaining}** home and **${heroSummary.totalBuilderLevelsRemaining}** Builder Base hero levels left`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        thumbnail: CocAssetService.getHeroUrl('Archer Queen'),
+        blocks,
+        footer: `Account: ${account.name} (${account.playerTag})`,
+        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+      })
+    );
 
-    const embed = {
-      title: `${EMOJIS.CROWN} [${account.name}] Hero Maxing Overview`,
-      description: [
-        isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-        `⚡ **${heroSummary.totalHomeLevelsRemaining}** home and **${heroSummary.totalBuilderLevelsRemaining}** Builder Base hero levels left`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      fields,
-      color: heroSummary.homeMaxed ? COLORS.GOLD : COLORS.BLUE,
-      thumbnail: {
-        url: CocAssetService.getHeroUrl('Archer Queen'),
-      },
-      footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus` },
-      timestamp: new Date().toISOString(),
-    };
-
-    await sendAccountMessage(idx, {
-      embeds: [embed],
-      components: [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])],
-    });
+    await sendAccountMessage(idx, message);
   });
 }

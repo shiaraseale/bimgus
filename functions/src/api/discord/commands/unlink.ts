@@ -1,5 +1,6 @@
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -40,19 +41,17 @@ export async function execute(ctx: CommandContext): Promise<any> {
       ? `You have **${result.remainingAccounts}** linked account(s) remaining. Use \`/accounts\` to view them.`
       : `You have unlinked all accounts. Automatic upgrade tracking and war roster DMs have been turned off for your profile.`;
 
-  return respondPersonal({
-    embeds: [
-      {
+  return respondPersonal(
+    layoutMessage(
+      card({
+        accent: COLORS.RED,
         title: '🗑️ Account Unlinked Successfully',
-        description: [
+        body: [
           `**${result.removedName || result.removedTag}** (\`${result.removedTag}\`) has been unlinked from your Discord profile.`,
           '',
           remainingMsg,
         ].join('\n'),
-        color: COLORS.RED,
-        footer: { text: 'Bimgus Account Manager' },
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  });
+      })
+    )
+  );
 }

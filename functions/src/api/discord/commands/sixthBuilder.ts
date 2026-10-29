@@ -2,6 +2,8 @@ import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
+import { card, layoutMessage } from '../../../services/discordLayout';
+import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { formatProgressBar, getVillageJsonTimestampNotice } from '../ui';
@@ -50,45 +52,47 @@ export async function execute(ctx: CommandContext): Promise<any> {
         ? getVillageJsonTimestampNotice(village, 'Builder Base defenses based on the export taken')
         : null;
 
-    const embed = {
-      title: `🛠️ [${account.name}] 6th Builder (B.O.B) Tracker`,
-      description: [
-        isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-        statusBanner,
-        bbJsonNotice ? `${bbJsonNotice}\n` : '',
-        '',
-        `${gearUpEmoji} **1. Gear Up 3 Buildings** (${bob.tasks.gearUps.current}/${bob.tasks.gearUps.target})`,
-        `   ${bob.tasks.gearUps.description}`,
-        '',
-        `${troopEmoji} **2. Upgrade BB Troop to Level 18** (Lv ${bob.tasks.bbTroopLv18.current}/${bob.tasks.bbTroopLv18.target})`,
-        `   ${bob.tasks.bbTroopLv18.description}`,
-        '',
-        `${defEmoji} **3. Upgrade BB Defense to Level 9** (${bob.tasks.bbDefenseLv9.current}/${bob.tasks.bbDefenseLv9.target})`,
-        `   ${bob.tasks.bbDefenseLv9.description}`,
-        '',
-        `${heroEmoji} **4. Total BB Hero Level 45** (${bob.tasks.bbHeroesLv45.current}/${bob.tasks.bbHeroesLv45.target})`,
-        `   ${bob.tasks.bbHeroesLv45.description}`,
-      ].join('\n'),
-      color: bob.unlocked ? COLORS.GOLD : COLORS.BLUE,
-      thumbnail: {
-        url: CocAssetService.getBobUrl(
-          bob.unlocked ? 4 : Object.values(bob.tasks).filter((t: any) => t.completed).length
-        ),
-      },
-      footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` },
-      timestamp: new Date().toISOString(),
-    };
-
-    const bobButtons: any[] = [];
+    const bobButtons: DiscordButtonComponent[] = [];
     if ((freshPlayer.builderHallLevel || 0) >= 1) {
       const toggleBtn = bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed);
       bobButtons.push(toggleBtn);
     }
     bobButtons.push(DiscordService.openGameLinkButton('Open CoC'));
 
-    await sendAccountMessage(idx, {
-      embeds: [embed],
-      components: [DiscordService.createActionRow(bobButtons)],
-    });
+    const message = layoutMessage(
+      card({
+        accent: bob.unlocked ? COLORS.GOLD : COLORS.BLUE,
+        title: `🛠️ [${account.name}] 6th Builder (B.O.B) Tracker`,
+        body: [
+          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
+          statusBanner,
+          bbJsonNotice ?? '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        thumbnail: CocAssetService.getBobUrl(
+          bob.unlocked ? 4 : Object.values(bob.tasks).filter((t: any) => t.completed).length
+        ),
+        blocks: [
+          [
+            `${gearUpEmoji} **1. Gear Up 3 Buildings** (${bob.tasks.gearUps.current}/${bob.tasks.gearUps.target})`,
+            `   ${bob.tasks.gearUps.description}`,
+            '',
+            `${troopEmoji} **2. Upgrade BB Troop to Level 18** (Lv ${bob.tasks.bbTroopLv18.current}/${bob.tasks.bbTroopLv18.target})`,
+            `   ${bob.tasks.bbTroopLv18.description}`,
+            '',
+            `${defEmoji} **3. Upgrade BB Defense to Level 9** (${bob.tasks.bbDefenseLv9.current}/${bob.tasks.bbDefenseLv9.target})`,
+            `   ${bob.tasks.bbDefenseLv9.description}`,
+            '',
+            `${heroEmoji} **4. Total BB Hero Level 45** (${bob.tasks.bbHeroesLv45.current}/${bob.tasks.bbHeroesLv45.target})`,
+            `   ${bob.tasks.bbHeroesLv45.description}`,
+          ].join('\n'),
+        ],
+        footer: `Account: ${account.name} (${account.playerTag})`,
+        buttons: bobButtons,
+      })
+    );
+
+    await sendAccountMessage(idx, message);
   });
 }

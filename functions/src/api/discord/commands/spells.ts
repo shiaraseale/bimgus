@@ -1,6 +1,7 @@
 import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -42,45 +43,30 @@ export async function execute(ctx: CommandContext): Promise<any> {
         .join('\n');
     };
 
-    const fields: any[] = [
-      {
-        name: `💧 Elixir Spells (${elixirSpells.length} remaining)`,
-        value: formatSpellList(elixirSpells),
-        inline: false,
-      },
-      {
-        name: `⬛ Dark Elixir Spells (${darkSpells.length} remaining)`,
-        value: formatSpellList(darkSpells),
-        inline: false,
-      },
-    ];
-
-    for (const f of fields) {
-      if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
-    }
-
     const totalSpellLevels = spells.reduce((acc, s) => acc + s.levelsRemaining, 0);
 
-    const embed = {
-      title: `🧪 [${account.name}] Spell Laboratory Upgrades`,
-      description: [
-        isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-        totalSpellLevels === 0
-          ? `🎉 **All spells are maxed for TH${freshPlayer.townHallLevel}!**`
-          : `⚡ **${totalSpellLevels}** spell levels left for TH${freshPlayer.townHallLevel}`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      color: totalSpellLevels === 0 ? COLORS.GREEN : COLORS.PURPLE,
-      fields,
-      thumbnail: { url: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel) },
-      footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` },
-      timestamp: new Date().toISOString(),
-    };
+    const message = layoutMessage(
+      card({
+        accent: totalSpellLevels === 0 ? COLORS.GREEN : COLORS.PURPLE,
+        title: `🧪 [${account.name}] Spell Laboratory Upgrades`,
+        body: [
+          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
+          totalSpellLevels === 0
+            ? `🎉 **All spells are maxed for TH${freshPlayer.townHallLevel}!**`
+            : `⚡ **${totalSpellLevels}** spell levels left for TH${freshPlayer.townHallLevel}`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
+        blocks: [
+          `**💧 Elixir Spells (${elixirSpells.length} remaining)**\n${formatSpellList(elixirSpells)}`,
+          `**⬛ Dark Elixir Spells (${darkSpells.length} remaining)**\n${formatSpellList(darkSpells)}`,
+        ],
+        footer: `Account: ${account.name} (${account.playerTag})`,
+        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+      })
+    );
 
-    await sendAccountMessage(idx, {
-      embeds: [embed],
-      components: [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])],
-    });
+    await sendAccountMessage(idx, message);
   });
 }

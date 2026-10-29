@@ -1,7 +1,10 @@
 import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
+import { VillageImportService } from '../../../services/villageImportService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
+import { CardSection } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
 export const definition = {
@@ -33,6 +36,9 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+// Room for the troop lists (Discord allows 4,000 characters per message)
+const LISTS_BUDGET = 3500;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, sendAccountMessage, getPlayerWithFallback } = ctx;
   const villageFilter = optionsMap['village'] || 'both';
@@ -43,91 +49,56 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const homeTroops = outstanding.byCategory.home.troops;
     const builderTroops = outstanding.byCategory.builder.troops;
 
-    const fields: any[] = [];
+    const troopLine = (t: (typeof homeTroops)[number]) =>
+      `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${t.nextCost ? ` — ${t.nextCost}` : ''}`;
+    const sections: CardSection[] = [];
 
     if (villageFilter === 'home' || villageFilter === 'both') {
-      const formatHomeList = () => {
-        if (homeTroops.length === 0) return `🎉 All Home Village troops maxed for TH${freshPlayer.townHallLevel}!`;
-        const lines = homeTroops.map((t) => {
-          const costStr = t.nextCost ? ` — ${t.nextCost}` : '';
-          return `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${costStr}`;
-        });
-        const full = lines.join('\n');
-        if (full.length <= 1000) return full;
-        let truncated = '';
-        for (const l of lines) {
-          if ((truncated + l + '\n').length > 950) {
-            truncated += `... and ${lines.length - truncated.split('\n').filter(Boolean).length} more`;
-            break;
-          }
-          truncated += l + '\n';
-        }
-        return truncated.trim();
-      };
-
-      fields.push({
-        name: `🏰 Home Village Troops (TH${freshPlayer.townHallLevel}) — ${homeTroops.length} Upgrades Remaining`,
-        value: formatHomeList(),
-        inline: false,
+      sections.push({
+        title: `🏰 Home Village Troops (TH${freshPlayer.townHallLevel}) — ${homeTroops.length} Upgrades Remaining`,
+        lines:
+          homeTroops.length > 0
+            ? homeTroops.map(troopLine)
+            : [`🎉 All Home Village troops maxed for TH${freshPlayer.townHallLevel}!`],
       });
     }
 
     if ((villageFilter === 'builder' || villageFilter === 'both') && freshPlayer.builderHallLevel) {
-      const formatBuilderList = () => {
-        if (builderTroops.length === 0)
-          return `🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`;
-        const lines = builderTroops.map((t) => {
-          const costStr = t.nextCost ? ` — ${t.nextCost}` : '';
-          return `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${costStr}`;
-        });
-        const full = lines.join('\n');
-        if (full.length <= 1000) return full;
-        let truncated = '';
-        for (const l of lines) {
-          if ((truncated + l + '\n').length > 950) {
-            truncated += `... and ${lines.length - truncated.split('\n').filter(Boolean).length} more`;
-            break;
-          }
-          truncated += l + '\n';
-        }
-        return truncated.trim();
-      };
-
-      fields.push({
-        name: `🔨 Builder Base Troops (BH${freshPlayer.builderHallLevel}) — ${builderTroops.length} Upgrades Remaining`,
-        value: formatBuilderList(),
-        inline: false,
+      sections.push({
+        title: `🔨 Builder Base Troops (BH${freshPlayer.builderHallLevel}) — ${builderTroops.length} Upgrades Remaining`,
+        lines:
+          builderTroops.length > 0
+            ? builderTroops.map(troopLine)
+            : [`🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`],
       });
-    }
-
-    for (const f of fields) {
-      if (f.value.length > 1024) f.value = f.value.slice(0, 1020) + '...';
     }
 
     const totalTroopLevels =
       (villageFilter === 'builder' ? 0 : homeTroops.reduce((acc, t) => acc + t.levelsRemaining, 0)) +
       (villageFilter === 'home' ? 0 : builderTroops.reduce((acc, t) => acc + t.levelsRemaining, 0));
 
-    const embed = {
-      title: `⚔️ [${account.name}] Laboratory & Barracks Troop Research`,
-      description: [
-        isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-        totalTroopLevels === 0
-          ? '🎉 **All troops are maxed for your hall level!**'
-          : `⚡ **${totalTroopLevels}** troop levels left`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      color: totalTroopLevels === 0 ? COLORS.GREEN : COLORS.BLUE,
-      fields,
-      thumbnail: { url: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel) },
-      footer: { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` },
-      timestamp: new Date().toISOString(),
-    };
+    const message = layoutMessage(
+      card({
+        accent: totalTroopLevels === 0 ? COLORS.GREEN : COLORS.BLUE,
+        title: `⚔️ [${account.name}] Laboratory & Barracks Troop Research`,
+        body: [
+          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
+          totalTroopLevels === 0
+            ? '🎉 **All troops are maxed for your hall level!**'
+            : `⚡ **${totalTroopLevels}** troop levels left`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
+        // Long lists are trimmed to fit the message, ending "... and N more"
+        blocks: VillageImportService.fitSections(sections, LISTS_BUDGET, (hidden) => `... and ${hidden} more`).map(
+          (sec) => `**${sec.title}**\n${sec.lines.join('\n')}`
+        ),
+        footer: `Account: ${account.name} (${account.playerTag})`,
+        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+      })
+    );
 
-    await sendAccountMessage(idx, {
-      embeds: [embed],
-      components: [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])],
-    });
+    await sendAccountMessage(idx, message);
   });
 }

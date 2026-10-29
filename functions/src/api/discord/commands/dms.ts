@@ -1,5 +1,6 @@
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
+import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -44,11 +45,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
     });
   }
 
-  return respondPersonal({
-    embeds: [
-      {
+  return respondPersonal(
+    layoutMessage(
+      card({
+        accent: enabled ? COLORS.GREEN : COLORS.RED,
         title: enabled ? '🔔 DMs On' : '🔕 DMs Off',
-        description: [
+        body: [
           enabled
             ? 'Bimgus will DM you about finished upgrades and war rosters for:'
             : "Bimgus won't DM you about these accounts any more:",
@@ -56,9 +58,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
           '',
           `*Change it any time with \`/dms ${enabled ? 'off' : 'on'}\`.*`,
         ].join('\n'),
-        color: enabled ? COLORS.GREEN : COLORS.RED,
-        footer: { text: 'Bimgus Account Manager' },
-      },
-    ],
-  });
+      })
+    )
+  );
 }
