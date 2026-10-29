@@ -1,0 +1,12 @@
+#!/bin/sh
+# Blocks a commit message that contains a secret or a private value.
+set -e
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+dir=$(dirname "$0")
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "commit-msg: gitleaks isn't installed (brew install gitleaks), so the commit is blocked." >&2
+  exit 1
+fi
+gitleaks stdin --redact --no-banner --log-level warn --config "$dir/../../.gitleaks.toml" < "$1"
+node "$dir/private-values.mjs" "$1"

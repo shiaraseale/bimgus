@@ -1,0 +1,15 @@
+# gitleaks' default rules, plus the Discord credentials Bimgus uses that they don't cover
+[extend]
+useDefault = true
+
+[[rules]]
+id = "discord-webhook-url"
+description = "Discord webhook URL; anyone with it can post to the channel"
+regex = '''https://(?:ptb\.|canary\.)?discord(?:app)?\.com/api(?:/v\d+)?/webhooks/\d{17,20}/[\w-]{60,}'''
+keywords = ["/webhooks/"]
+
+[[rules]]
+id = "discord-bot-token"
+description = "Discord bot token"
+regex = '''\b[MNO][A-Za-z\d_-]{23,27}\.[A-Za-z\d_-]{6}\.[A-Za-z\d_-]{27,40}\b'''
+entropy = 3

@@ -106,7 +106,7 @@ const HOME_WORKSHOPS: Record<string, Workshop> = {
 };
 
 // Keys in the export's `boosts` (seconds left on each), and how many times faster each runs.
-// Names and rates follow the ClashOfNotifications parser; see docs/IMPLEMENTATION_PLAN.md (A3).
+// Names and rates follow the ClashOfNotifications parser.
 const BOOSTS: Record<string, { workshop: Workshop; rate: number }> = {
   builder_boost: { workshop: 'builder', rate: 10 }, // Builder Potion
   lab_boost: { workshop: 'lab', rate: 24 }, // Research Potion

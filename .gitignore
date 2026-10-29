@@ -23,8 +23,14 @@ firestore-debug.log
 *.secret.local
 !.env.example
 
+# Private values the commit hooks check for that aren't in an env file
+.private-values
+
 # Raw export files with sensitive player tags
 docs/Notes_*.txt
+
+# Internal plan with infrastructure details; stays local
+docs/IMPLEMENTATION_PLAN.md
 
 # IDE
 .DS_Store

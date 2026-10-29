@@ -1,0 +1,13 @@
+#!/bin/sh
+# Blocks a commit that adds a secret, a private value or a file that must stay local.
+# Turn on once per copy of the repo: git config core.hooksPath scripts/hooks
+set -e
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+dir=$(dirname "$0")
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks isn't installed (brew install gitleaks), so the commit is blocked." >&2
+  exit 1
+fi
+gitleaks git --pre-commit --staged --redact --no-banner --log-level warn --config "$dir/../../.gitleaks.toml"
+node "$dir/private-values.mjs" --staged
