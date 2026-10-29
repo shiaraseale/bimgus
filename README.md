@@ -295,3 +295,7 @@ git config core.hooksPath scripts/hooks
 Your private values are read from your git-ignored files (`.firebaserc`, `deploy.env`, `functions/.env*`). For anything else you want kept out, such as your personal email or a channel ID, add it on its own line to a `.private-values` file in the repo root, which is git-ignored too. To check every tracked file at once, run `node scripts/hooks/private-values.mjs --all`.
 
 The **Secret scan** GitHub Action runs gitleaks on every push and pull request.
+
+## License
+
+[MIT](LICENSE)
