@@ -30,6 +30,10 @@ export const config = {
     clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     coLeaderRoleId: process.env.DISCORD_COLEADER_ROLE_ID || '',
     leaderRoleId: process.env.DISCORD_LEADER_ROLE_ID || '',
+    /** An application emoji's ID from EMOJI_<KEY>_ID, or '' when it isn't set */
+    emojiId(key: string): string {
+      return (process.env[`EMOJI_${key}_ID`] || '').trim();
+    },
   },
   /** DRY_RUN_DISCORD=1 logs webhooks and DMs instead of sending them (staging, tests) */
   get dryRunDiscord(): boolean {

@@ -14,13 +14,8 @@ export const COLORS = {
 };
 
 export class DiscordService {
-  private static webhookToChannelMap: Record<string, string> = {
-    '123456789012345678': '123456789012345678', // 🤖-clan-log
-    '123456789012345678': '123456789012345678', // 🤖-war-room
-    '123456789012345678': '123456789012345678', // 🤖-cwl-hub
-    '123456789012345678': '123456789012345678', // 🤖-raid-weekend
-    '123456789012345678': '123456789012345678', // 🤖-clan-games
-  };
+  // Webhook ID -> channel ID, filled in as each webhook's channel is looked up
+  private static webhookToChannelMap: Record<string, string> = {};
 
   /**
    * Resolves a target string (channel ID or webhook URL) to a Discord channel ID.

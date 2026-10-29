@@ -1,19 +1,27 @@
+import { config } from '../config';
+
 /**
- * Custom server emojis for Bimgus Discord Bot.
- * Uploaded directly in the Discord server for authentic Clash of Clans aesthetics.
+ * Custom application emojis for Bimgus Discord Bot, for authentic Clash of Clans aesthetics.
+ * Each ID comes from EMOJI_<KEY>_ID in functions/.env, because the emojis belong to one bot's
+ * application; an empty one falls back to a Unicode emoji, so a fresh copy works without them.
  */
+function emoji(key: string, name: string, fallback: string): string {
+  const id = config.discord.emojiId(key);
+  return /^\d+$/.test(id) ? `<:${name}:${id}>` : fallback;
+}
+
 export const EMOJIS = {
-  CROWN: '<:crown:123456789012345678>',
-  ANVIL: '<:anvil:123456789012345678>',
-  STAR: '<:star:123456789012345678>',
-  GOLD: '<:gold:123456789012345678>',
-  ELIXIR: '<:elixir:123456789012345678>',
-  DARK_ELIXIR: '<:dark_elixir:123456789012345678>',
-  BUILDER_GOLD: '<:builder_gold:123456789012345678>',
-  BUILDER_ELIXIR: '<:builder_elixir:123456789012345678>',
-  SHINY_ORE: '<:shiny_ore:123456789012345678>',
-  GLOWY_ORE: '<:glowy_ore:123456789012345678>',
-  STARRY_ORE: '<:starry_ore:123456789012345678>',
-  CAPITAL_GOLD: '<:capital_gold:123456789012345678>',
-  RAID: '<:raid:123456789012345678>',
+  CROWN: emoji('CROWN', 'crown', '👑'),
+  ANVIL: emoji('ANVIL', 'anvil', '⚒️'),
+  STAR: emoji('STAR', 'star', '⭐'),
+  GOLD: emoji('GOLD', 'gold', '🟡'),
+  ELIXIR: emoji('ELIXIR', 'elixir', '🟣'),
+  DARK_ELIXIR: emoji('DARK_ELIXIR', 'dark_elixir', '⚫'),
+  BUILDER_GOLD: emoji('BUILDER_GOLD', 'builder_gold', '🟨'),
+  BUILDER_ELIXIR: emoji('BUILDER_ELIXIR', 'builder_elixir', '🟪'),
+  SHINY_ORE: emoji('SHINY_ORE', 'shiny_ore', '🔹'),
+  GLOWY_ORE: emoji('GLOWY_ORE', 'glowy_ore', '🔮'),
+  STARRY_ORE: emoji('STARRY_ORE', 'starry_ore', '🌟'),
+  CAPITAL_GOLD: emoji('CAPITAL_GOLD', 'capital_gold', '🪙'),
+  RAID: emoji('RAID', 'raid', '⚔️'),
 } as const;

@@ -74,4 +74,12 @@ describe('DiscordService.resolveChannelId', () => {
     expect(channel).toBe('777');
     expect(get.mock.calls[0][0]).toBe('https://discord.com/api/v10/webhooks/123456/abc-DEF_9');
   });
+
+  it("remembers a webhook's channel, so it's looked up once per container", async () => {
+    const get = vi.spyOn(axios, 'get').mockResolvedValue({ data: { channel_id: '888' } } as any);
+    const url = 'https://discord.com/api/webhooks/654321/cache-Token_1';
+    expect(await DiscordService.resolveChannelId(url)).toBe('888');
+    expect(await DiscordService.resolveChannelId(url)).toBe('888');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
 });
