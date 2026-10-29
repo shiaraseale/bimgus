@@ -1,12 +1,13 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
+import { layoutMessage, withFlags } from '../../../services/discordLayout';
 import { Village } from '../../../services/gameDataService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { getVillageJsonTimestampNotice, VillageCard, villageCards } from '../ui';
 
 const PREFIX = 'import_list:';
-// Room for the lists across both cards (Discord allows 6,000 characters per message)
-const LIST_BUDGET = 5300;
+// Room for the text across both cards (Discord allows 4,000 characters per message)
+const LIST_BUDGET = 3700;
 
 /** The "Full list" button on an import reply: every item still to upgrade in that account's import. */
 export function importListButton(playerTag: string, label: string = 'Full list') {
@@ -53,14 +54,13 @@ export async function handleImportListButton(customId: string, discordUserId: st
     };
   });
   cards[0].intro = getVillageJsonTimestampNotice(village) ?? undefined;
-  const embeds: any[] = villageCards(cards, LIST_BUDGET);
-  embeds[0].author = { name: `[${account.name}] Left to Upgrade` };
-  embeds[embeds.length - 1].footer = {
-    text: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /upgrades`,
-  };
+  const shownCards = villageCards(cards, LIST_BUDGET, {
+    author: `[${account.name}] Left to Upgrade`,
+    footer: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /upgrades`,
+  });
 
   return {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: { embeds, flags: 64 },
+    data: withFlags(layoutMessage(...shownCards), true),
   };
 }

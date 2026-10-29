@@ -3,6 +3,8 @@ import { GameCategory } from '../../services/gameDataService';
 import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../services/villageImportService';
 import { VILLAGE_HEADINGS, withoutImportedTimers } from '../../services/upgradeNotifier';
 import { COLORS } from '../../services/discordService';
+import { card } from '../../services/discordLayout';
+import { DiscordButtonComponent } from '../../types/discord';
 import { Village } from '../../services/gameDataService';
 import { LinkedAccount } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
@@ -52,33 +54,52 @@ export interface VillageCard {
   sections: CardSection[];
 }
 
-// Room for one card's lists: Discord allows 4,096 characters in an embed's description
-const CARD_LIMIT = 3900;
+export interface CardsOptions {
+  author?: string; // above the first card's heading, e.g. "[Tester] Upgrades: Lab"
+  thumbnail?: string; // beside the first card's heading
+  footer?: string; // under the last card, e.g. the account
+  buttons?: DiscordButtonComponent[]; // at the bottom of the last card
+  more?: (hidden: number) => string;
+}
 
 /**
- * One embed per village, headed "🏰 Home Village (TH13)" or "🔨 Builder Base (BH9)", each listing its
- * sections in full in the description ("**⏳ Upgrading (7)**" then the lines), so no list is split into
- * "(cont.)" fields. Lists are trimmed, longest first, to fit `budget` characters across all the cards
- * (Discord allows 6,000 per message) and 4,096 per card; a trimmed list ends "…and N more".
+ * One card per village, headed "🏰 Home Village (TH13)" or "🔨 Builder Base (BH9)", each listing its
+ * sections in full ("**⏳ Upgrading (7)**" then the lines), so no list is split. Lists are trimmed,
+ * longest first, so all the cards' text fits `budget` characters (Discord allows 4,000 per message);
+ * a trimmed list ends "…and N more".
  */
-export function villageCards(cards: VillageCard[], budget: number, more?: (hidden: number) => string) {
-  const fixed = cards.reduce((n, c) => n + 40 + (c.intro?.length ?? 0), 0);
+export function villageCards(cards: VillageCard[], budget: number, opts: CardsOptions = {}) {
+  // Everything but the lists: headings, intros, the author and footer, and each section's title markup
+  const fixed =
+    (opts.author?.length ?? 0) +
+    (opts.footer?.length ?? 0) +
+    cards.reduce(
+      (n, c) => n + villageHeading(c.village, c.hallLevel).length + 12 + (c.intro?.length ?? 0) + c.sections.length * 6,
+      0
+    );
   const all = VillageImportService.fitSections(
     cards.flatMap((c) => c.sections),
     budget - fixed,
-    more
+    opts.more
   );
   let next = 0;
-  return cards.map((c) => {
+  return cards.map((c, i) => {
     const own = all.slice(next, (next += c.sections.length));
-    const fitted = VillageImportService.fitSections(own, CARD_LIMIT - (c.intro?.length ?? 0), more);
-    return {
+    const lists = own.map((s) => `**${s.title}**\n${s.lines.join('\n')}`).join('\n\n');
+    const first = i === 0;
+    const last = i === cards.length - 1;
+    const thumb = first ? opts.thumbnail : undefined;
+    return card({
+      accent: VILLAGE_COLORS[c.village],
+      author: first ? opts.author : undefined,
       title: villageHeading(c.village, c.hallLevel),
-      color: VILLAGE_COLORS[c.village],
-      description: [c.intro, ...fitted.map((s) => `**${s.title}**\n${s.lines.join('\n')}`)]
-        .filter(Boolean)
-        .join('\n\n'),
-    };
+      // Only the intro sits beside a thumbnail, so long lists get the card's full width
+      body: thumb ? c.intro : [c.intro, lists].filter(Boolean).join('\n\n'),
+      blocks: thumb ? [lists] : undefined,
+      thumbnail: thumb,
+      footer: last ? opts.footer : undefined,
+      buttons: last ? opts.buttons : undefined,
+    });
   });
 }
 

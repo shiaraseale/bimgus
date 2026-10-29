@@ -129,10 +129,10 @@ function firstLine(payload: { components?: unknown[] }): string {
 
 /**
  * Cards spread over as few messages as Discord's limits allow, in order, with `trailing` (e.g. a row
- * of link buttons) at the end of each message.
+ * of link buttons) at the end of each message. A group of cards (an array) stays in one message.
  */
 export function packMessages(
-  blocks: DiscordTopLevelComponent[],
+  blocks: Array<DiscordTopLevelComponent | DiscordTopLevelComponent[]>,
   trailing: DiscordTopLevelComponent[] = []
 ): DiscordWebhookPayload[] {
   const fits = (components: DiscordTopLevelComponent[]) => {
@@ -142,11 +142,12 @@ export function packMessages(
   const messages: DiscordTopLevelComponent[][] = [];
   let current: DiscordTopLevelComponent[] = [];
   for (const block of blocks) {
-    if (current.length > 0 && !fits([...current, block, ...trailing])) {
+    const group = Array.isArray(block) ? block : [block];
+    if (current.length > 0 && !fits([...current, ...group, ...trailing])) {
       messages.push(current);
       current = [];
     }
-    current.push(block);
+    current.push(...group);
   }
   if (current.length > 0) messages.push(current);
   return messages.map((m) => layoutMessage(...m, ...trailing));

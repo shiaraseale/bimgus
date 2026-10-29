@@ -18,13 +18,14 @@ import { InteractionReply, interactionReply } from './interactionReply';
 import { importListButton } from '../api/discord/components/importList';
 import { CardSection, VillageCard, villageCards } from '../api/discord/ui';
 import { Village } from '../services/gameDataService';
+import { packMessages, text } from '../services/discordLayout';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
-// Room for the import summary in one message (Discord's limit is 6,000 characters across all embeds),
-// and what each account's embed needs besides its fields (title, description, footer)
-const MESSAGE_BUDGET = 5700;
-const EMBED_OVERHEAD = 450;
+// Room for the import summary's text in one message (Discord allows 4,000 characters per message),
+// of which the notices about skipped or unreadable files may use some
+const MESSAGE_BUDGET = 3600;
+const NOTICE_LIMIT = 800;
 
 export interface ImportTaskData {
   discordUserId: string;
@@ -117,8 +118,15 @@ export async function runImportTask(
       return;
     }
 
+    if (unmapped.length > 0) {
+      notices.push(`⚠️ These exports didn't match a linked account and were skipped: ${unmapped.join(', ')}`);
+    }
+    if (parseErrors.length > 0) {
+      notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
+    }
+    const noticeText = notices.join('\n').slice(0, NOTICE_LIMIT);
+
     // 5. Each export replaces that account's stored data
-    const embedsToSend: any[] = [];
     const pending: Array<{ account: any; village: VillageDataV2; fileName: string; cards: VillageCard[] }> = [];
     for (const { account, village, fileName } of byAccount.values()) {
       // Compare with what was stored *before* overwriting it
@@ -167,47 +175,30 @@ export async function runImportTask(
       pending.push({ account, village, fileName, cards });
     }
 
-    // One message for the whole import: Discord allows 10 embeds and 6,000 characters across them
-    const perAccountBudget = Math.floor(MESSAGE_BUDGET / Math.max(1, pending.length)) - EMBED_OVERHEAD;
-    for (const { account, village, fileName, cards } of pending) {
+    // The import's cards share one message's text, and spread over more messages if there are too
+    // many for one. Each account's last card has its "Full list" button
+    const perAccountBudget = Math.floor((MESSAGE_BUDGET - noticeText.length) / Math.max(1, pending.length));
+    const accountCards = pending.map(({ account, village, fileName, cards }) => {
       const staleWarning = VillageImportService.isStale(village)
         ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
         : '';
       cards[0].intro = `📄 *Export taken ${discordTime(village.exportTimestamp)}*${staleWarning}`;
-      const embeds: any[] = villageCards(cards, perAccountBudget);
-      embeds[0].author = { name: `[${account.name}] Imported Village` };
-      embeds[0].thumbnail = { url: CocAssetService.getTownHallUrl(village.townHallLevel) };
-      embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag}) • ${fileName}` };
-      embeds[embeds.length - 1].timestamp = new Date().toISOString();
-      embedsToSend.push(...embeds);
-    }
+      return villageCards(cards, perAccountBudget, {
+        author: `[${account.name}] Imported Village`,
+        thumbnail: CocAssetService.getTownHallUrl(village.townHallLevel),
+        footer: `Account: ${account.name} (${account.playerTag}) • ${fileName}`,
+        buttons: [importListButton(account.playerTag, pending.length > 1 ? `Full list: ${account.name}` : 'Full list')],
+      });
+    });
 
     // One save for the whole user (all accounts, notified keys and any DM pause)
     await FirestoreService.saveUser(user);
 
-    if (unmapped.length > 0) {
-      notices.push(`⚠️ These exports didn't match a linked account and were skipped: ${unmapped.join(', ')}`);
-    }
-    if (parseErrors.length > 0) {
-      notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
-    }
-
-    // A "Full list" button per account, then "Open CoC", five to a row (Discord allows five rows)
-    const buttons = [
-      ...pending.map(({ account }) =>
-        importListButton(account.playerTag, pending.length > 1 ? `Full list: ${account.name}` : 'Full list')
-      ),
-      DiscordService.openGameLinkButton('Open CoC'),
-    ];
-    const components: any[] = [];
-    for (let i = 0; i < buttons.length && components.length < 5; i += 5) {
-      components.push(DiscordService.createActionRow(buttons.slice(i, i + 5)));
-    }
-    const ok = await reply.edit({
-      content: notices.join('\n').slice(0, 1900) || undefined,
-      embeds: embedsToSend.slice(0, 10),
-      components,
-    });
+    const messages = packMessages(
+      [...(noticeText ? [text(noticeText)] : []), ...accountCards],
+      [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])]
+    );
+    const ok = await reply.edit(messages[0]);
     if (!ok) {
       await reply.edit({
         content:
@@ -215,6 +206,7 @@ export async function runImportTask(
       });
       return;
     }
+    for (const message of messages.slice(1)) await reply.followup(message);
   } catch (importErr: any) {
     log.error('Failed to execute /import-village:', importErr);
     await reply.edit({

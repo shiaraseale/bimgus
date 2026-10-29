@@ -12,6 +12,8 @@ import { interactionReply } from '../../../jobs/interactionReply';
 import { LinkedAccount, OutstandingUpgradeItem } from '../../../types/user';
 import type { PlayerLike } from '../../../types/coc';
 import { log } from '../../../utils/log';
+import { layoutMessage } from '../../../services/discordLayout';
+import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import {
@@ -79,8 +81,8 @@ const VIEWS: Array<{ value: UpgradesView; label: string; description: string; em
 const VIEW_MENU = 'upgrades_view:';
 // Walls get their own line: hundreds of segments would swamp the building counts
 const NON_WALL_BUILDINGS = BUILDING_CATEGORIES.filter((c) => c !== 'wall');
-// Room for one view's lists across its cards (Discord allows 6,000 characters per message)
-const VIEW_BUDGET = 5300;
+// Room for one view's text across its cards (Discord allows 4,000 characters per message)
+const VIEW_BUDGET = 3700;
 
 /** One category in a view, e.g. the home defenses: its lines and how much is left. */
 interface Section {
@@ -307,16 +309,15 @@ export function buildUpgradesMessage(
   if (bh > 0 && builder.length > 0) cards.push({ village: 'builder', hallLevel: bh, sections: builder });
   if (intro) cards[0].intro = intro;
 
-  const embeds: any[] = villageCards(cards, VIEW_BUDGET, (hidden) => `…and ${hidden} more`);
   const label = VIEWS.find((v) => v.value === view)!.label;
-  embeds[0].author = { name: `[${account.name}] Upgrades${view === 'overview' ? '' : `: ${label}`}` };
-  embeds[0].thumbnail = {
-    url: CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th),
-  };
-  embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag})` };
-  embeds[embeds.length - 1].timestamp = new Date().toISOString();
+  const shownCards = villageCards(cards, VIEW_BUDGET, {
+    author: `[${account.name}] Upgrades${view === 'overview' ? '' : `: ${label}`}`,
+    thumbnail: CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th),
+    footer: `Account: ${account.name} (${account.playerTag})`,
+    more: (hidden) => `…and ${hidden} more`,
+  });
 
-  const menu = {
+  const menu: DiscordStringSelectComponent = {
     type: 3,
     custom_id: `${VIEW_MENU}${account.playerTag}`,
     placeholder: 'Show a section',
@@ -328,11 +329,12 @@ export function buildUpgradesMessage(
       default: v.value === view,
     })),
   };
-  const buttons: any[] = [];
+  const buttons: DiscordButtonComponent[] = [];
   if (view === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
   buttons.push(DiscordService.openGameLinkButton('Open CoC'));
 
-  return { embeds, components: [{ type: 1, components: [menu] }, DiscordService.createActionRow(buttons)] };
+  // The menu and buttons are for the whole message, so they sit under the cards
+  return layoutMessage(...shownCards, { type: 1, components: [menu] }, DiscordService.createActionRow(buttons));
 }
 
 export async function execute(ctx: CommandContext): Promise<any> {
@@ -368,7 +370,11 @@ export async function showUpgradesView(interaction: any): Promise<void> {
       return;
     }
     const { player, isCached } = await getPlayerWithFallback(CocService.shared(), account);
-    await reply.edit(buildUpgradesMessage(account, player, isCached, view));
+    const message = buildUpgradesMessage(account, player, isCached, view);
+    // A message sent before the new layouts still has embeds, which Discord wants cleared to switch it
+    if (!(await reply.edit(message)) && !(await reply.edit({ ...message, content: null, embeds: [] }))) {
+      await reply.followup({ content: "⚠️ Couldn't redraw this message. Run `/upgrades` again.", flags: 64 });
+    }
   } catch (err: any) {
     log.error(`[Discord] Could not show the ${view} view of /upgrades for ${tag}:`, err);
     await reply.followup({ content: `❌ Couldn't load that section: ${err.message || 'API error'}`, flags: 64 });

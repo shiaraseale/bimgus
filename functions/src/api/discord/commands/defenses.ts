@@ -13,6 +13,8 @@ import {
 } from '../../../services/gameDataService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
+import { layoutMessage } from '../../../services/discordLayout';
+import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import {
@@ -46,8 +48,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
-// Room for the lists across both cards (Discord allows 6,000 characters per message)
-const CARDS_BUDGET = 5300;
+// Room for the text across both cards (Discord allows 4,000 characters per message)
+const CARDS_BUDGET = 3700;
 
 export async function execute(ctx: CommandContext): Promise<any> {
   const { sendAccountMessage, getPlayerWithFallback } = ctx;
@@ -181,25 +183,19 @@ export async function execute(ctx: CommandContext): Promise<any> {
       .filter(Boolean)
       .join('\n');
 
-    // A card per village, each list in full
-    const embeds: any[] = villageCards(cards, CARDS_BUDGET);
-    embeds[0].author = {
-      name: `[${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
-    };
-    embeds[0].thumbnail = { url: CocAssetService.getTownHallUrl(th) };
-    embeds[embeds.length - 1].footer = { text: `Account: ${account.name} (${account.playerTag}) • Bimgus Tracker` };
-    embeds[embeds.length - 1].timestamp = new Date().toISOString();
-
-    const defButtons: any[] = [];
+    const defButtons: DiscordButtonComponent[] = [];
     if (bh >= 1 && bob) {
       const toggleBtn = bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true);
       defButtons.push(toggleBtn);
     }
     defButtons.push(DiscordService.openGameLinkButton('Open CoC'));
 
-    await sendAccountMessage(idx, {
-      embeds,
-      components: [DiscordService.createActionRow(defButtons)],
+    // A card per village, each list in full
+    const shownCards = villageCards(cards, CARDS_BUDGET, {
+      author: `[${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
+      thumbnail: CocAssetService.getTownHallUrl(th),
+      footer: `Account: ${account.name} (${account.playerTag})`,
     });
+    await sendAccountMessage(idx, layoutMessage(...shownCards, DiscordService.createActionRow(defButtons)));
   });
 }
