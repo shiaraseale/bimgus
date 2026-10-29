@@ -6,6 +6,7 @@ import { CocService } from '../../services/cocService';
 import { FirestoreService } from '../../services/firestoreService';
 import { getPlayerWithFallback } from '../../services/playerFallback';
 import { isDmPaused } from '../../services/upgradeNotifier';
+import { prependNotice, withFlags } from '../../services/discordLayout';
 import { LinkedAccount, UserDoc } from '../../types/user';
 import { log } from '../../utils/log';
 
@@ -97,10 +98,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     if (fromTask) return editDeferredReply(messageData);
     return res.json({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        ...(isGuild ? { flags: 64 } : {}),
-        ...messageData,
-      },
+      data: withFlags(messageData, isGuild),
     });
   };
 
@@ -117,17 +115,10 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
   const sendFollowup = async (messageData: any) => {
     try {
       const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`;
-      await axios.post(
-        webhookUrl,
-        {
-          ...(isGuild ? { flags: 64 } : {}),
-          ...messageData,
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 15000,
-        }
-      );
+      await axios.post(webhookUrl, withFlags(messageData, isGuild), {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000,
+      });
     } catch (postErr: any) {
       log.error('[Discord] Failed to send follow-up reply:', postErr.response?.data || postErr.message);
     }
@@ -146,11 +137,11 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
         );
         const notice =
           "📭 *Bimgus couldn't DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*";
-        messageData = { ...messageData, content: [notice, messageData.content].filter(Boolean).join('\n') };
+        messageData = prependNotice(messageData, notice);
       }
       // If Discord refuses the message, say so rather than leaving "thinking…" up
       if (!(await editDeferredReply(messageData))) {
-        await editDeferredReply({ content: "❌ Bimgus couldn't display this. Please try again.", embeds: [] });
+        await editDeferredReply({ content: "❌ Bimgus couldn't display this. Please try again." });
       }
     } else {
       await sendFollowup(messageData);

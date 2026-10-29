@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { log } from '../utils/log';
+import { withFlags } from '../services/discordLayout';
 
 export interface InteractionReply {
   edit(messageData: any): Promise<boolean>;
@@ -37,7 +38,7 @@ export function interactionReply(task: {
     },
     async followup(messageData: any) {
       try {
-        await axios.post(base, { ...(task.isGuild ? { flags: 64 } : {}), ...messageData }, { headers, timeout: 15000 });
+        await axios.post(base, withFlags(messageData, Boolean(task.isGuild)), { headers, timeout: 15000 });
       } catch (err: any) {
         log.error('[Discord] Failed to send follow-up reply:', JSON.stringify(err.response?.data) || err.message);
       }

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { DiscordWebhookPayload } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
 import { log } from '../utils/log';
+import { overLimits } from './discordLayout';
 
 export const COLORS = {
   GOLD: 0xffd700,
@@ -56,6 +57,7 @@ export class DiscordService {
    */
   static async sendWebhook(target: string, payload: DiscordWebhookPayload, retries = 3): Promise<boolean> {
     if (!target) return false;
+    this.warnIfOverLimits(payload);
 
     if (config.dryRunDiscord) {
       const sanitizedTarget = target.replace(
@@ -76,21 +78,13 @@ export class DiscordService {
       const channelId = await this.resolveChannelId(target);
       if (channelId) {
         try {
-          await axios.post(
-            `https://discord.com/api/v10/channels/${channelId}/messages`,
-            {
-              content: payload.content,
-              embeds: payload.embeds,
-              components: payload.components,
+          await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, this.messageBody(payload), {
+            headers: {
+              Authorization: `Bot ${botToken}`,
+              'Content-Type': 'application/json',
             },
-            {
-              headers: {
-                Authorization: `Bot ${botToken}`,
-                'Content-Type': 'application/json',
-              },
-              timeout: 8000,
-            }
-          );
+            timeout: 8000,
+          });
           return true;
         } catch (botErr: any) {
           if (botErr.response?.status === 429 && retries > 0) {
@@ -131,6 +125,24 @@ export class DiscordService {
     }
 
     return false;
+  }
+
+  // The fields a bot message sends (a webhook payload also has a username and avatar)
+  private static messageBody(payload: DiscordWebhookPayload) {
+    const components = payload.components && payload.components.length > 0 ? payload.components : undefined;
+    return {
+      content: payload.content,
+      embeds: payload.embeds,
+      components,
+      flags: payload.flags,
+      allowed_mentions: payload.allowed_mentions,
+    };
+  }
+
+  // Discord refuses a layout over its limits, so say which message it was (staging's dry run too)
+  private static warnIfOverLimits(payload: DiscordWebhookPayload) {
+    const over = overLimits(payload);
+    if (over) log.warn(`[DiscordService] Message over Discord's limits: ${over}`);
   }
 
   /**
@@ -276,6 +288,7 @@ export class DiscordService {
     botTokenOverride?: string,
     retries = 2
   ): Promise<'sent' | 'blocked' | 'failed'> {
+    this.warnIfOverLimits(payload);
     if (config.dryRunDiscord) {
       log.info(`[Discord DM DRY_RUN] Would send DM to user "${discordUserId}":`, JSON.stringify(payload, null, 2));
       return 'sent';
@@ -301,19 +314,11 @@ export class DiscordService {
       );
       const dmChannelId = channelRes.data.id;
 
-      // 2. Attach components only if explicitly provided
-      const components = payload.components && payload.components.length > 0 ? payload.components : undefined;
-
-      // 3. Send message into DM channel
-      await axios.post(
-        `https://discord.com/api/v10/channels/${dmChannelId}/messages`,
-        {
-          content: payload.content,
-          embeds: payload.embeds,
-          components,
-        },
-        { headers, timeout: 8000 }
-      );
+      // 2. Send message into DM channel
+      await axios.post(`https://discord.com/api/v10/channels/${dmChannelId}/messages`, this.messageBody(payload), {
+        headers,
+        timeout: 8000,
+      });
 
       log.info(`[Discord DM] Successfully sent DM to user ${discordUserId}`);
       return 'sent';

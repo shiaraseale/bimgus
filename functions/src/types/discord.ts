@@ -52,17 +52,72 @@ export type DiscordButtonComponent =
       disabled?: boolean;
     };
 
+export interface DiscordSelectOption {
+  label: string;
+  value: string;
+  description?: string;
+  emoji?: DiscordButtonEmoji;
+  default?: boolean;
+}
+
+export interface DiscordStringSelectComponent {
+  type: 3; // String select
+  custom_id: string;
+  placeholder?: string;
+  options: DiscordSelectOption[];
+}
+
 export interface DiscordActionRowComponent {
   type: 1; // Action row
-  components: DiscordButtonComponent[];
+  components: DiscordButtonComponent[] | [DiscordStringSelectComponent];
 }
+
+// Components V2 layout pieces, used with the IS_COMPONENTS_V2 message flag
+export interface DiscordTextDisplayComponent {
+  type: 10; // Text display: markdown, like a message's content
+  content: string;
+}
+
+export interface DiscordThumbnailComponent {
+  type: 11; // Thumbnail, only as a section's accessory
+  media: { url: string };
+  description?: string;
+}
+
+export interface DiscordSectionComponent {
+  type: 9; // Section: 1-3 text displays beside an accessory
+  components: DiscordTextDisplayComponent[];
+  accessory: DiscordThumbnailComponent | DiscordButtonComponent;
+}
+
+export interface DiscordSeparatorComponent {
+  type: 14; // Separator
+  divider?: boolean;
+  spacing?: 1 | 2; // Small, large
+}
+
+export type DiscordContainerChild =
+  | DiscordTextDisplayComponent
+  | DiscordSectionComponent
+  | DiscordSeparatorComponent
+  | DiscordActionRowComponent;
+
+export interface DiscordContainerComponent {
+  type: 17; // Container: a card with an accent colour down its left edge
+  accent_color?: number;
+  components: DiscordContainerChild[];
+}
+
+export type DiscordTopLevelComponent = DiscordContainerChild | DiscordContainerComponent;
 
 export interface DiscordWebhookPayload {
   username?: string;
   avatar_url?: string;
   content?: string;
   embeds?: DiscordEmbed[];
-  components?: DiscordActionRowComponent[];
+  components?: DiscordTopLevelComponent[];
+  flags?: number;
+  allowed_mentions?: { parse?: ('users' | 'roles' | 'everyone')[]; users?: string[] };
 }
 
 export enum DiscordChannelCategory {
