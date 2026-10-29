@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The public hostname comes from apply-to-gce.sh (PROXY_HOSTNAME in deploy.env)
+PROXY_HOSTNAME="${1:-${PROXY_HOSTNAME:-}}"
+if ! [[ "$PROXY_HOSTNAME" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  echo "❌ Usage: setup.sh <proxy-hostname>  (got: '${PROXY_HOSTNAME}')"
+  exit 1
+fi
+
 echo "=========================================================="
 echo "🛡️  Configuring Hardened Clash Proxy & Caddy on GCE VM"
 echo "=========================================================="
@@ -87,12 +94,12 @@ systemctl restart clash-proxy
 
 # 8. Install Caddyfile and reload Caddy
 echo "🌐 Configuring Caddy HTTPS reverse proxy..."
-cp "$SCRIPT_DIR/Caddyfile" /etc/caddy/Caddyfile
+sed "s/__PROXY_HOSTNAME__/${PROXY_HOSTNAME}/g" "$SCRIPT_DIR/Caddyfile.template" > /etc/caddy/Caddyfile
 systemctl enable caddy
 systemctl restart caddy
 
 echo "=========================================================="
 echo "✅ Hardened Clash Proxy installation completed!"
 echo "   Proxy endpoint: http://127.0.0.1:8080 (internal)"
-echo "   Public HTTPS:   https://proxy.example.com"
+echo "   Public HTTPS:   https://${PROXY_HOSTNAME}"
 echo "=========================================================="
