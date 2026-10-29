@@ -10,6 +10,8 @@ import { Village, getById, getLevel } from './gameDataService';
 import { ImportChange, InProgressUpgrade, VillageDataV2, VillageImportService } from './villageImportService';
 import { snapshotKey } from './playerTrackingService';
 import { LinkedAccount, PendingUpgrade, PlayerSnapshot, UserDoc } from '../types/user';
+import { DiscordWebhookPayload } from '../types/discord';
+import { card, layoutMessage } from './discordLayout';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
 
@@ -233,6 +235,37 @@ export function isDmPaused(user: UserDoc, now: number = Date.now()): boolean {
 }
 
 /**
+ * One DM per check: a single event with its picture, or a list. Timer events are estimates, which the
+ * footer says (a gem or boost used since the export may have finished it sooner).
+ */
+export function buildUpgradeDm(account: LinkedAccount, events: UpgradeEvent[]): DiscordWebhookPayload {
+  const estimated = events.some((e) => e.kind === 'expected') ? "Estimated from your import's timer • " : '';
+  const [only] = events;
+  return layoutMessage(
+    card({
+      accent: COLORS.GOLD,
+      ...(events.length === 1
+        ? {
+            title: `${only.kind === 'unlocked' ? '🔓' : only.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[only.kind]}`,
+            body: describeEvent(only, hallTag(account, only.village)),
+            thumbnail: CocAssetService.getThumbnail(
+              only.assetName,
+              thumbnailCategory(only.category),
+              only.newLevel,
+              only.village
+            ),
+          }
+        : {
+            title: `🎉 [${account.name}] ${events.length} Upgrades`,
+            body: byVillage(events).slice(0, 3700),
+          }),
+      footer: `${estimated}Account: ${account.name} (${account.playerTag})`,
+      buttons: [DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)],
+    })
+  );
+}
+
+/**
  * Sends the account's events as DMs. Mutates `account.notifiedKeys` and `user.dmsBlockedAt`, so the
  * caller must save the user afterwards. Returns how many DMs were sent.
  */
@@ -259,40 +292,7 @@ export async function notifyUpgrades(
   if (!VillageImportService.read(account.villageData)) return 0;
   if (fresh.length === 0) return 0;
 
-  // One DM per check: a single event with its picture, or a list. Timer events are estimates, which the
-  // footer says (a gem or boost used since the export may have finished it sooner).
-  const estimated = fresh.some((e) => e.kind === 'expected') ? "Estimated from your import's timer • " : '';
-  const footer = { text: `${estimated}Account: ${account.name} (${account.playerTag})` };
-  const components = [
-    DiscordService.createActionRow([DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)]),
-  ];
-  const [only] = fresh;
-  const embed =
-    fresh.length === 1
-      ? {
-          title: `${only.kind === 'unlocked' ? '🔓' : only.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[only.kind]}`,
-          description: describeEvent(only, hallTag(account, only.village)),
-          color: COLORS.GOLD,
-          thumbnail: {
-            url: CocAssetService.getThumbnail(
-              only.assetName,
-              thumbnailCategory(only.category),
-              only.newLevel,
-              only.village
-            ),
-          },
-          footer,
-          timestamp: new Date(now).toISOString(),
-        }
-      : {
-          title: `🎉 [${account.name}] ${fresh.length} Upgrades`,
-          description: byVillage(fresh).slice(0, 4000),
-          color: COLORS.GOLD,
-          footer,
-          timestamp: new Date(now).toISOString(),
-        };
-
-  const result = await DiscordService.sendDmResult(user.discordUserId, { embeds: [embed], components });
+  const result = await DiscordService.sendDmResult(user.discordUserId, buildUpgradeDm(account, fresh));
   if (result === 'blocked') {
     user.dmsBlockedAt = new Date(now).toISOString();
     user.dmsBlockedNoticeShown = false;

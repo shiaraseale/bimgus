@@ -20,9 +20,39 @@ import {
 } from '../services/upgradeNotifier';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { log } from '../utils/log';
+import { card, layoutMessage } from '../services/discordLayout';
+import { DiscordWebhookPayload } from '../types/discord';
+import { LinkedAccount } from '../types/user';
 
 const USER_CONCURRENCY = 3;
 const SNAPSHOT_REFRESH_MS = 10 * 60 * 1000;
+
+/** The DM to each account in a newly declared war: where it is on the map and when battle day starts. */
+export function buildRosterDm(
+  account: LinkedAccount,
+  warMember: { mapPosition: number; townhallLevel: number },
+  opponentName: string,
+  teamSize: number,
+  warStartTimeMs: number
+): DiscordWebhookPayload {
+  return layoutMessage(
+    card({
+      accent: COLORS.GOLD,
+      title: `⚔️ [${account.name}] You're In! War Declared!`,
+      body: [
+        `A new war has been declared against **${opponentName}**!`,
+        '',
+        `📍 **Map Position**: #${warMember.mapPosition}`,
+        `🏰 **Town Hall**: TH${warMember.townhallLevel}`,
+        `👥 **Team Size**: ${teamSize}v${teamSize}`,
+        `⏳ **Battle Day Starts**: ${discordTime(warStartTimeMs)}`,
+      ].join('\n'),
+      thumbnail: CocAssetService.getTownHallUrl(warMember.townhallLevel),
+      footer: `War vs ${opponentName}`,
+      buttons: [dmToggleButton(account.playerTag)],
+    })
+  );
+}
 
 export async function runPlayerTrackingJob(): Promise<{ success: boolean; checkedAccounts: number; dmsSent: number }> {
   const users = await FirestoreService.getAllUsers();
@@ -159,28 +189,10 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
               const warMember = ourClan.members.find((m) => m.tag.toUpperCase() === account.playerTag.toUpperCase());
 
               if (warMember) {
-                await DiscordService.sendDm(user.discordUserId, {
-                  embeds: [
-                    {
-                      title: `⚔️ [${account.name}] You're In! War Declared!`,
-                      description: [
-                        `A new war has been declared against **${opponent.name}**!`,
-                        '',
-                        `📍 **Map Position**: #${warMember.mapPosition}`,
-                        `🏰 **Town Hall**: TH${warMember.townhallLevel}`,
-                        `👥 **Team Size**: ${warData.teamSize}v${warData.teamSize}`,
-                        `⏳ **Battle Day Starts**: ${discordTime(warStartTimeMs)}`,
-                      ].join('\n'),
-                      color: COLORS.GOLD,
-                      thumbnail: {
-                        url: CocAssetService.getTownHallUrl(warMember.townhallLevel),
-                      },
-                      footer: { text: `War vs ${opponent.name} • Bimgus Tracker` },
-                      timestamp: new Date().toISOString(),
-                    },
-                  ],
-                  components: [DiscordService.createActionRow([dmToggleButton(account.playerTag)])],
-                });
+                await DiscordService.sendDm(
+                  user.discordUserId,
+                  buildRosterDm(account, warMember, opponent.name, warData.teamSize, warStartTimeMs)
+                );
                 dmsSent++;
               }
             }

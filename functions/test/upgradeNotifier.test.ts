@@ -17,6 +17,17 @@ import {
   withoutImportedTimers,
 } from '../src/services/upgradeNotifier';
 import { LinkedAccount, UserDoc } from '../src/types/user';
+import { expectLayout, texts } from './layoutHelpers';
+
+/** The first DM's heading, footer and the lines between them. */
+const dmText = (send: any) => {
+  const lines = texts(send.mock.calls[0][1]).split('\n');
+  return {
+    title: lines.find((l) => l.startsWith('### ')) ?? '',
+    footer: lines.find((l) => l.startsWith('-# ')) ?? '',
+    body: lines.filter((l) => !/^(###|-#) /.test(l)),
+  };
+};
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
@@ -202,7 +213,7 @@ describe('notifyUpgrades', () => {
     const sent = await notifyUpgrades(user, account, events);
     expect(sent).toBe(1);
     expect(send).toHaveBeenCalledTimes(1);
-    expect((send.mock.calls[0][1] as any).embeds[0].description.split('\n')).toHaveLength(5);
+    expect(dmText(send).body).toHaveLength(5);
   });
 
   it('lists each village under its own heading when both had upgrades', async () => {
@@ -211,7 +222,7 @@ describe('notifyUpgrades', () => {
       event(),
       event({ code: 1000032, name: 'Cannon (BB)', village: 'builder', newLevel: 5, maxLevel: 9 }),
     ]);
-    expect((send.mock.calls[0][1] as any).embeds[0].description.split('\n')).toEqual([
+    expect(dmText(send).body).toEqual([
       '**🏰 Home Village**',
       '🎉 **Cannon** reached Lv 14/17',
       '',
@@ -223,10 +234,11 @@ describe('notifyUpgrades', () => {
   it('shows the level once in a single DM, with the hall it is the max for', async () => {
     const { user, account } = newUser();
     await notifyUpgrades(user, account, [event()]);
-    const embed = (send.mock.calls[0][1] as any).embeds[0];
-    expect(embed.title).toContain('Upgrade Completed!');
-    expect(embed.description).toBe('🎉 **Cannon** reached Lv 14/17 for TH12');
-    expect(embed.footer.text).not.toContain('Estimated');
+    const dm = dmText(send);
+    expect(dm.title).toContain('Upgrade Completed!');
+    expect(dm.body).toEqual(['🎉 **Cannon** reached Lv 14/17 for TH12']);
+    expect(dm.footer).not.toContain('Estimated');
+    expectLayout(send.mock.calls[0][1]);
   });
 
   it('words timer events as estimates and unlocks as unlocks', async () => {
@@ -236,12 +248,9 @@ describe('notifyUpgrades', () => {
       event({ kind: 'unlocked', category: 'troop', name: 'Druid', newLevel: 1, maxLevel: 5 }),
     ]);
     expect(send).toHaveBeenCalledTimes(1);
-    const embed = (send.mock.calls[0][1] as any).embeds[0];
-    expect(embed.description.split('\n')).toEqual([
-      '🏗️ **Cannon** should now be Lv 14/17',
-      '🔓 **Druid** unlocked (Lv 1/5)',
-    ]);
-    expect(embed.footer.text).toContain("Estimated from your import's timer");
+    const dm = dmText(send);
+    expect(dm.body).toEqual(['🏗️ **Cannon** should now be Lv 14/17', '🔓 **Druid** unlocked (Lv 1/5)']);
+    expect(dm.footer).toContain("Estimated from your import's timer");
   });
 
   it('pauses DMs for 7 days after Discord refuses one (50007)', async () => {
@@ -349,7 +358,7 @@ describe('hero upgrades: the API shows the new level when the upgrade starts', (
     await notifyUpgrades(user, account, [fromPending]);
     await notifyUpgrades(user, account, [fromImport]);
     expect(send).toHaveBeenCalledTimes(1);
-    expect((send.mock.calls[0][1] as any).embeds[0].description).toContain('Archer Queen** should now be Lv 19/');
+    expect(dmText(send).body.join('\n')).toContain('Archer Queen** should now be Lv 19/');
   });
 
   it('drops an import timer the API has moved past, without a DM (level 12 after level 13)', async () => {
