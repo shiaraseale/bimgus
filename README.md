@@ -6,7 +6,7 @@ Bimgus is a Clash of Clans companion for one clan. It has three parts:
 - **Slash commands**: members link their accounts, import their village export and check upgrades, heroes, defenses, troops and spells. Bimgus DMs them when an upgrade finishes.
 - **Web dashboard**: a public page for war status, roster audit, capital raids and Clan Games, plus a settings page that only leaders can use.
 
-This guide sets up your own copy, for your own clan and Discord server. Allow about an hour.
+This guide sets up your own copy, for your own clan and Discord server. Allow about an hour. What's changed in each release is in the [changelog](CHANGELOG.md).
 
 > This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: <https://www.supercell.com/fan-content-policy>.
 
@@ -247,7 +247,7 @@ npm --prefix functions ci && npm --prefix frontend ci
 firebase deploy
 ```
 
-If anything in `proxy/` changed, run `./proxy/apply-to-gce.sh` as well. It restarts the proxy, which pauses polling for a few seconds. If command definitions changed, run `npm --prefix functions run register-commands` again.
+If anything in `proxy/` changed, run `./proxy/apply-to-gce.sh` as well. It restarts the proxy, which pauses polling for a few seconds. If command definitions changed, run `npm --prefix functions run register-commands` again. The [changelog](CHANGELOG.md) says when a release needs either.
 
 ## Optional: a staging project
 
@@ -259,6 +259,8 @@ A second Firebase project lets you test changes without posting to your real cha
 4. Deploy with `firebase deploy --project staging`.
 
 Staging can share the proxy VM. The VM's 20 requests a second are then shared too.
+
+To see every kind of message without waiting for a war or a raid weekend, put a private test channel's webhook in `functions/.env` as `DISCORD_TEST_CHANNEL_WEBHOOK` and run `npm --prefix functions run preview-layouts`. It posts an example of each, built from made-up data, to that channel only.
 
 ## Troubleshooting
 
