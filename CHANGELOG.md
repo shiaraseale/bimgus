@@ -2,6 +2,28 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## v2026.10.30.3 (30 October 2026)
+
+### For clan members
+
+**Hero timers are fixed.** Bimgus took a hero reaching a new level as the start of an upgrade, so `/status` could show a finished hero as still upgrading for another day or more.
+
+- A hero's new level now means that upgrade is done, and you get one DM for it.
+- A running hero upgrade shows the right level: a hero at 39 says "→ Lv 40", not "→ Lv 39".
+- `/status` only lists hero upgrades from your latest `/import-village`, because the game doesn't share when one starts. Import after starting an upgrade to see its timer.
+
+**Costs match the game.**
+
+- Hero, hero equipment, troop and spell costs were showing the price of the following upgrade. They now show the next one.
+- If you have the Gold Pass, set your **Builder Boost** and **Research Boost** with the new buttons on the Home Village card in `/status`. Each press moves a boost through Off, 10%, 15% and 20%, and the costs in `/status`, `/defenses`, `/troops` and `/spells` drop to match. Bimgus can't see your Gold Pass, so you set them for each account, and they go back to Off each month. Timers don't need them: they already include your boosts.
+- Pets and the Builder Base stay at list price for now.
+
+### If you run your own copy
+
+- Deploy the functions: `firebase deploy --only functions`. The slash commands and dashboard haven't changed, so there's nothing to re-register.
+- Stored data updates itself. Imports that put upgrading heroes a level too low are corrected when read, and old hero timers from the API are removed the next time an account is saved.
+- `npm --prefix functions run preview-layouts -- status` now also shows a running hero timer, and the Heroes and Lab views at 20%.
+
 ## v2026.10.30.2 (30 October 2026)
 
 ### For clan members
