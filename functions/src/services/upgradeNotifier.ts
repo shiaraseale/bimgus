@@ -31,7 +31,7 @@ export interface UpgradeEvent {
 }
 
 const NOTIFIED_KEYS_LIMIT = 200;
-// Categories that never send DMs (still tracked for /upgrades). Hero equipment muted on request, 2026-10-24.
+// Categories that never send DMs (still tracked for /status). Hero equipment muted on request, 2026-10-24.
 export const MUTED_CATEGORIES = new Set(['equipment']);
 // Categories that never become events at all, so they're also left out of import summaries. Walls on
 // request, 2026-10-26: there are hundreds of segments and the updates serve no purpose.

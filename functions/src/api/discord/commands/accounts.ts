@@ -42,7 +42,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
               '',
               accountList.join('\n\n'),
               '',
-              '💡 *All linked accounts are of equal status! Commands like `/heroes`, `/sixth-builder`, and `/upgrades` automatically send an individual message for each of your linked accounts.*',
+              '💡 *All linked accounts are of equal status! `/status` has a menu to switch between them, and commands like `/heroes` and `/sixth-builder` send a message for each.*',
               '',
               '*To turn DMs on or off, run `/dms on` or `/dms off` (add `account:` for just one).*',
             ].join('\n'),

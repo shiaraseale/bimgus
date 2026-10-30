@@ -7,7 +7,7 @@ import { queueTask } from './tasks';
 import { handleBobDefenseButton, isBobDefenseButton } from './components/bobDefense';
 import { handleDmToggleButton, isDmToggleButton } from './components/dmToggle';
 import { handleImportListButton, isImportListButton } from './components/importList';
-import { isUpgradesViewSelect, showUpgradesView } from './commands/upgrades';
+import { isStatusMenu, showStatusView } from './commands/status';
 import { log } from '../../utils/log';
 
 export const discordInteractionsRouter = Router();
@@ -90,16 +90,16 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
     if (isImportListButton(customId)) {
       return res.json(await handleImportListButton(customId, discordUserId));
     }
-    if (isUpgradesViewSelect(customId)) {
-      // Redrawing /upgrades reads the CoC API, so like the command it runs as a Cloud Task (3.7), or
+    if (isStatusMenu(customId)) {
+      // Redrawing /status reads the CoC API, so like the command it runs as a Cloud Task (3.7), or
       // here after the reply if queueing fails; until then the message keeps its old content
       if (fromTask) {
-        await showUpgradesView(req.body);
+        await showStatusView(req.body);
         return res.json({});
       }
       const queued = await queueTask('commandTask', { interaction: req.body });
       res.json({ type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE });
-      if (!queued) await showUpgradesView(req.body);
+      if (!queued) await showStatusView(req.body);
       return;
     }
     return res.status(400).send('Unknown component interaction');

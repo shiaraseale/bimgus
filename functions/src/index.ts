@@ -93,7 +93,7 @@ export const importTask = onTaskDispatched<ImportTaskData>(
 );
 
 /**
- * Cloud Task (2nd Gen): replays a slow slash command (/upgrades, /defenses, /heroes, …) queued by the
+ * Cloud Task (2nd Gen): replays a slow slash command (/status, /defenses, /heroes, …) queued by the
  * interaction handler, so its work runs with full CPU (3.7).
  */
 export const commandTask = onTaskDispatched<{ interaction: any }>(

@@ -5,7 +5,7 @@ import * as accounts from './accounts';
 import * as dms from './dms';
 import * as sixthBuilder from './sixthBuilder';
 import * as heroes from './heroes';
-import * as upgrades from './upgrades';
+import * as status from './status';
 import * as defenses from './defenses';
 import * as spells from './spells';
 import * as troops from './troops';
@@ -21,7 +21,7 @@ export const COMMANDS = [
   dms,
   sixthBuilder,
   heroes,
-  upgrades,
+  status,
   defenses,
   spells,
   troops,
@@ -29,4 +29,10 @@ export const COMMANDS = [
   importVillage,
 ];
 
-export const COMMANDS_BY_NAME = new Map(COMMANDS.map((c) => [c.definition.name, c]));
+// Old names still answered, for Discord clients that haven't picked up the re-registered list yet
+const RENAMED: Record<string, (typeof COMMANDS)[number]> = { upgrades: status };
+
+export const COMMANDS_BY_NAME = new Map([
+  ...COMMANDS.map((c) => [c.definition.name, c] as const),
+  ...Object.entries(RENAMED),
+]);

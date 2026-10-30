@@ -86,12 +86,12 @@ describe('slow commands are queued as Cloud Tasks', () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it('/upgrades queues commandTask with the whole interaction and replies "thinking"', async () => {
-    const res = await send({ data: { name: 'upgrades', options: [] } });
+  it('/status queues commandTask with the whole interaction and replies "thinking"', async () => {
+    const res = await send({ data: { name: 'status', options: [] } });
     expect(await res.json()).toEqual({ type: 5, data: { flags: 64 } });
     expect(taskQueue).toHaveBeenCalledWith('commandTask');
     expect(enqueue).toHaveBeenCalledWith({
-      interaction: expect.objectContaining({ token: 'tok', data: { name: 'upgrades', options: [] } }),
+      interaction: expect.objectContaining({ token: 'tok', data: { name: 'status', options: [] } }),
     });
   });
 

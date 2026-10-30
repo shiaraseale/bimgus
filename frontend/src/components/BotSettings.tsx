@@ -582,7 +582,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
                 <code>/heroes [account] [village]</code> — Track hero maxing progress for current Town/Builder Hall.
               </div>
               <div>
-                <code>/upgrades [account]</code> — View in-progress & outstanding upgrades by resource.
+                <code>/status [account]</code> — Running timers and outstanding upgrades, by account, village and area.
               </div>
             </div>
           </div>

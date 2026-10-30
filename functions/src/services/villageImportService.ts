@@ -487,7 +487,7 @@ export class VillageImportService {
   /**
    * One short line per item that still has upgrades left, e.g. "3x **Cannon**: Lv 12–13 → 17" (no count
    * for a single item), with a crafted defense's modules together: "**Inferno Candle** (3 modules): Lv 1 → 2".
-   * Maxed items are left out; `/upgrades` and `/defenses` show everything, with costs. `count` is how
+   * Maxed items are left out; `/status` and `/defenses` show everything, with costs. `count` is how
    * many items the lines cover.
    */
   static outstanding(
@@ -530,7 +530,7 @@ export class VillageImportService {
 
   /**
    * What's left to upgrade in one village of an import, by category, e.g. "🛡️ Defenses (32)". Heroes,
-   * troops, spells and pets aren't listed, because `/upgrades` reads those live from the game.
+   * troops, spells and pets aren't listed, because `/status` reads those live from the game.
    */
   static importSections(data: VillageDataV2, village: Village): ImportSection[] {
     const sections: ImportSection[] = IMPORT_SECTIONS[village].map(([title, categories, noun]) => {
@@ -564,7 +564,7 @@ export class VillageImportService {
   static fitSections(
     sections: Array<{ title: string; lines: string[] }>,
     budget: number,
-    more: (hidden: number) => string = (hidden) => `…and ${hidden} more (see \`/upgrades\`)`
+    more: (hidden: number) => string = (hidden) => `…and ${hidden} more (see \`/status\`)`
   ) {
     const out = sections.map((s) => ({ title: s.title, lines: [...s.lines], hidden: 0 }));
     const MORE_LINE = 45; // room for the "…and N more" line

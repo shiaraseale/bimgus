@@ -229,7 +229,7 @@ Polling starts by itself: every 2 minutes Bimgus checks the clan and posts what 
 | `/link`, `/unlink` | Link or unlink a Clash of Clans account to your Discord account |
 | `/accounts` | View and manage your linked accounts |
 | `/import-village` | Import your village JSON export (one file covers both villages) |
-| `/upgrades` | Your progress and every outstanding upgrade, read live from Clash of Clans |
+| `/status` | Running timers and every outstanding upgrade, with menus for the account, village and area |
 | `/heroes` | Hero progress for your Town Hall or Builder Hall |
 | `/defenses` | Defense caps, gear-ups and Hall upgrade status |
 | `/troops`, `/spells` | Troop and spell progress |
@@ -271,7 +271,7 @@ Staging can share the proxy VM. The VM's 20 requests a second are then shared to
 | Caddy can't get a certificate | `PROXY_HOSTNAME` doesn't point at the VM, or ports 80 and 443 are blocked |
 | Commands don't appear | Run `register-commands` again; without `DISCORD_GUILD_ID`, they can take up to an hour |
 | Custom emojis show as `:crown:` | An `EMOJI_*_ID` setting holds an ID from a different application |
-| `/roast`, `/import-village` or `/upgrades` never finish | Check `firebase functions:log`. A `PERMISSION_DENIED` when queueing a task means the functions' service account needs the **Cloud Tasks Enqueuer** role. |
+| `/roast`, `/import-village` or `/status` never finish | Check `firebase functions:log`. A `PERMISSION_DENIED` when queueing a task means the functions' service account needs the **Cloud Tasks Enqueuer** role. |
 
 ## Keep your copy private
 

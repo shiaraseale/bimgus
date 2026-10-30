@@ -56,7 +56,7 @@ export async function handleImportListButton(customId: string, discordUserId: st
   cards[0].intro = getVillageJsonTimestampNotice(village) ?? undefined;
   const shownCards = villageCards(cards, LIST_BUDGET, {
     author: `[${account.name}] Left to Upgrade`,
-    footer: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /upgrades`,
+    footer: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /status`,
   });
 
   return {

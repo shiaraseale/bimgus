@@ -139,7 +139,7 @@ export async function runImportTask(
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
       // A card per village: what's running and what changed, then what's left in a line. The "Full list"
-      // button lists every item, and /upgrades has heroes and the lab
+      // button lists every item, and /status has heroes and the lab
       const weapon = VillageImportService.weaponFor(village);
       const villages: Village[] = village.builderHallLevel > 0 ? ['home', 'builder'] : ['home'];
       const cards = villages.map((v): VillageCard => {
@@ -201,8 +201,7 @@ export async function runImportTask(
     const ok = await reply.edit(messages[0]);
     if (!ok) {
       await reply.edit({
-        content:
-          "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/upgrades` or `/defenses`.",
+        content: "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/status` or `/defenses`.",
       });
       return;
     }

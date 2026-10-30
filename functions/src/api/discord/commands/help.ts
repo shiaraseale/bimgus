@@ -26,8 +26,8 @@ const GROUPS: Array<Array<[string, string]>> = [
   ],
   [
     [
-      '🏰 `/upgrades [account]`',
-      "An overview of running timers and what is left, with a menu for each section's full list (one message per linked account).",
+      '🏰 `/status [account]`',
+      'Running timers and what is left to upgrade, in one message with menus to pick the account, village and area.',
     ],
     [
       '🛡️ `/defenses [account]`',

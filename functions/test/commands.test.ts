@@ -167,7 +167,27 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(reply)).toContain('Since Your Last Import (1)');
   });
 
-  it('/upgrades is one message, and each section picked from its menu redraws it within Discord limits', async () => {
+  /** A /status message: one village's card, within Discord's limits, with no list split into parts. */
+  const expectStatusCard = (msg: any, heading: string, label = '') => {
+    expect(headings(msg), label).toEqual([heading]);
+    expectLayout(msg, label);
+    expect(allText(msg)).not.toMatch(/cont\./i);
+  };
+  const HOME = '🏰 Home Village (TH12)';
+  const BUILDER = '🔨 Builder Base (BH9)';
+
+  /** Picks `value` in a menu and returns the message it redraws. */
+  const pick = async (customId: string, value: string) => {
+    patches = [];
+    const ack = await interact(3, { custom_id: customId, component_type: 3, values: [value] });
+    expect(ack.type).toBe(6); // "deferred update": the message is edited in place
+    await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
+    return patches[0];
+  };
+  const picked = (msg: any, menu: string) =>
+    findComponent(msg, `status:${menu}:`).options.find((o: any) => o.default).value;
+
+  it('/status is one message, and every area of both villages redraws it within Discord limits', async () => {
     // Every home building one level lower, so nearly everything is still to upgrade
     const lowered = clone(exportFixture) as any;
     for (const b of lowered.buildings) if (b.lvl > 1) b.lvl -= 1;
@@ -175,47 +195,76 @@ describe('slash commands end to end (mocked services)', () => {
     await importFile();
     patches = [];
     followups = [];
-    const overview = await command('upgrades');
+    const overview = await command('status');
     expect(followups).toHaveLength(0);
-    expectCards(overview);
-    expect(texts(cards(overview)[1])).toContain('🧱 **Walls**: 180 to upgrade');
-    const menu = findComponent(overview, 'upgrades_view:');
-    expect(menu.custom_id).toBe('upgrades_view:#ANON12345');
+    expectStatusCard(overview, HOME);
+    // One linked account: no account menu
+    expect(findComponent(overview, 'status:account:')).toBeUndefined();
+    expect(findComponent(overview, 'status:village:').custom_id).toBe('status:village:#ANON12345:home:overview');
 
-    for (const view of menu.options.map((o: any) => o.value)) {
-      patches = [];
-      const ack = await interact(3, { custom_id: menu.custom_id, component_type: 3, values: [view] });
-      expect(ack.type).toBe(6); // "deferred update": the message is edited in place
-      await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
-      const msg = patches[0];
-      if (view === 'bob') expect(headings(msg)).toEqual(['🔨 Builder Base (BH9)']);
-      else expectCards(msg, view);
-      expect(findComponent(msg, 'upgrades_view:').options.find((o: any) => o.default).value).toBe(view);
+    for (const [village, heading] of [
+      ['home', HOME],
+      ['builder', BUILDER],
+    ]) {
+      const first = await pick('status:village:#ANON12345:home:overview', village);
+      expectStatusCard(first, heading, village);
+      const areas = findComponent(first, 'status:area:').options.map((o: any) => o.value);
+      // B.O.B is only on the Builder Base
+      expect(areas.includes('bob'), village).toBe(village === 'builder');
+      for (const area of areas) {
+        const msg = await pick(findComponent(first, 'status:area:').custom_id, area);
+        expectStatusCard(msg, heading, `${village} ${area}`);
+        expect(picked(msg, 'village')).toBe(village);
+        expect(picked(msg, 'area')).toBe(area);
+      }
     }
     expect(followups).toHaveLength(0);
   });
 
-  it('the /upgrades Defenses section lists the imported defenses with costs', async () => {
+  it('the /status Defenses area lists the imported defenses with costs, for each village', async () => {
     await importFile();
-    patches = [];
-    await interact(3, { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['defenses'] });
-    await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
-    const [home, builder] = cards(patches[0]).map(texts);
-    expect(home).toContain('-# [Tester] Upgrades: Defenses');
-    // The whole list is in one piece under one heading per village
+    const home = texts(await pick('status:area:#ANON12345:home:overview', 'defenses'));
+    expect(home).toContain('-# [Tester] Status: Defenses');
+    // The whole list is in one piece under one heading
     expect(home).toMatch(/\*\*🛡️ Defenses \(51\)\*\*\n• /);
     expect(home).toMatch(/\*\*Cannon\*\*: Lv 13\/17 — /);
-    expect(builder).toMatch(/\*\*🛡️ Defenses \(44\)\*\*\n• /);
-    expect(builder).toContain('Cannon (BB)');
     expect(home).not.toContain('(BB)');
+    // Switching village keeps the area
+    const builder = await pick('status:village:#ANON12345:home:defenses', 'builder');
+    expect(headings(builder)).toEqual([BUILDER]);
+    expect(texts(builder)).toMatch(/\*\*🛡️ Defenses \(44\)\*\*\n• /);
+    expect(texts(builder)).toContain('Cannon (BB)');
   });
 
-  it('/upgrades and /defenses use the stored import', async () => {
+  it('with several accounts, /status has an account menu, and switching keeps the village and area', async () => {
+    user.accounts.push({ playerTag: '#ANON67890', name: 'Second', townHallLevel: 12, builderHallLevel: 9 } as any);
+    const overview = await command('status');
+    expect(texts(overview)).toContain('-# [Tester] Status');
+    expect(findComponent(overview, 'status:account:').options.map((o: any) => o.label)).toEqual(['Tester', 'Second']);
+
+    const second = await pick('status:account:#ANON12345:builder:lab', '#ANON67890');
+    expect(headings(second)).toEqual([BUILDER]);
+    expect(texts(second)).toContain('-# [Second] Status: Lab');
+    expect(picked(second, 'account')).toBe('#ANON67890');
+    expect(findComponent(second, 'status:area:').custom_id).toBe('status:area:#ANON67890:builder:lab');
+
+    patches = [];
+    const opened = await command('status', [{ name: 'account', value: 'anon67890' }]);
+    expect(texts(opened)).toContain('-# [Second] Status');
+  });
+
+  it('/upgrades still answers, as /status, until the commands are re-registered', async () => {
+    const reply = await command('upgrades');
+    expectStatusCard(reply, HOME);
+    expect(findComponent(reply, 'status:area:')).toBeDefined();
+  });
+
+  it('/status and /defenses use the stored import', async () => {
     await importFile();
     patches = [];
-    const upgrades = await command('upgrades');
-    expect(allText(upgrades)).toContain('🛡️ **Defenses**: 51 to upgrade');
-    expect(allText(upgrades)).not.toContain('/import-village');
+    const status = await command('status');
+    expect(allText(status)).toContain('🛡️ **Defenses**: 51 to upgrade');
+    expect(allText(status)).not.toContain('/import-village');
     patches = [];
     const defenses = await command('defenses');
     expect(allText(defenses)).toContain('Current Defenses & Next Upgrades');
@@ -243,7 +292,7 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(patches[0])).toContain('Hero Maxing Overview');
   });
 
-  it('a queued /upgrades menu pick redraws the message inside the task', async () => {
+  it('a queued /status menu pick redraws the message inside the task', async () => {
     await importFile();
     patches = [];
     const { runCommandTask } = await import('../src/api/discord/router');
@@ -252,13 +301,13 @@ describe('slash commands end to end (mocked services)', () => {
       token: 'tok',
       application_id: 'app',
       user: { id: '42', username: 'tester' },
-      data: { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['lab'] },
+      data: { custom_id: 'status:area:#ANON12345:home:overview', component_type: 3, values: ['lab'] },
     });
     expect(patches).toHaveLength(1);
-    expect(texts(patches[0])).toContain('-# [Tester] Upgrades: Lab');
+    expect(texts(patches[0])).toContain('-# [Tester] Status: Lab');
   });
 
-  it('the /upgrades menu on a message from before the new layouts clears its embeds to redraw it', async () => {
+  it('the menu on an old /upgrades message from before the new layouts clears its embeds to redraw it', async () => {
     await importFile();
     patches = [];
     let calls = 0;
@@ -271,21 +320,23 @@ describe('slash commands end to end (mocked services)', () => {
     await interact(3, { custom_id: 'upgrades_view:#ANON12345', component_type: 3, values: ['lab'] });
     await vi.waitFor(() => expect(patches).toHaveLength(2), { timeout: 5000 });
     expect(patches[1]).toMatchObject({ content: null, embeds: [], flags: 1 << 15 });
+    // It becomes a /status message on the Home Village
+    expect(headings(patches[1])).toEqual([HOME]);
+    expect(texts(patches[1])).toContain('-# [Tester] Status: Lab');
     expect(followups).toHaveLength(0);
   });
 
-  it('/upgrades lists every running timer, with two of the same trap on one line', async () => {
+  it('/status lists every running timer, each village on its own card, two of the same trap on one line', async () => {
     // A copy of the export taken a minute ago, so its timers are still running
     const recent = { ...clone(exportFixture), timestamp: Math.floor(Date.now() / 1000) - 60 };
     vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(recent) }) as any);
     await importFile();
     patches = [];
-    const reply = await command('upgrades');
+    const home = texts(await command('status'));
     // The real export has two Spring Traps upgrading to level 6, finishing minutes apart
-    // Each village's timers are on its own card
-    const [home, builder] = cards(reply).map(texts);
     expect(home).toContain('**⏳ Upgrading (6)**\n');
     expect(home).toContain('2x **Spring Trap** → Lv 6');
+    const builder = texts(await pick('status:village:#ANON12345:home:overview', 'builder'));
     expect(builder).toContain('**⏳ Upgrading (1)**\n• **Star Laboratory** → Lv 9');
   });
 

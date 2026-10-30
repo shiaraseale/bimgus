@@ -79,7 +79,7 @@ describe('parseExport (one file, both villages)', () => {
     expect(text).toContain('• 180x **Wall (BB)**: Lv 4–5 → 9');
     expect(text).toContain('• **Mega Tesla**: Lv 3 → 9'); // a single item has no count
     expect(text).not.toContain('**Wall**:'); // the home walls are maxed for TH12
-    // Heroes, the lab and pets are left to /upgrades, which reads them live
+    // Heroes, the lab and pets are left to /status, which reads them live
     expect(sections.map((s) => s.title).join(' ')).not.toMatch(/Heroes|Laboratory|Pets|Troops/);
     // One line per item: the 7 Cannons appear once, even though they're at different levels
     expect(text.match(/\*\*Cannon\*\*/g)?.length ?? 0).toBeLessThanOrEqual(1);

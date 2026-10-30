@@ -87,7 +87,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
           userModified = true;
         }
 
-        // Keep the stored snapshot fresh for /heroes, /sixth-builder, /upgrades and /roast, but only
+        // Keep the stored snapshot fresh for /heroes, /sixth-builder, /status and /roast, but only
         // write it when it changed or is getting old (/roast treats one over 15 minutes old as stale)
         const nextSnapshot = PlayerTrackingService.createSnapshot(freshPlayer);
         const prevAge = account.lastSnapshot

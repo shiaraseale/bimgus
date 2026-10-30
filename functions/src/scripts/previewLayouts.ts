@@ -9,6 +9,10 @@ import { processRaidDiff } from '../diff/raidDiff';
 import { buildAttackReminder } from '../jobs/warPingJob';
 import { buildRosterDm } from '../jobs/playerTrackingJob';
 import { buildUpgradeDm, UpgradeEvent } from '../services/upgradeNotifier';
+import { VillageImportService } from '../services/villageImportService';
+import { buildStatusMessage } from '../api/discord/commands/status';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { BotConfigDoc, CwlPlayerSummary, CwlSeasonSummary } from '../types/db';
 import { LinkedAccount } from '../types/user';
 import { CapitalRaidWeekend, CurrentWarResponse, CwlGroupResponse, WarAttack, WarClan } from '../types/coc';
@@ -22,10 +26,11 @@ import { log } from '../utils/log';
  *   npm run preview-layouts              posts to DISCORD_TEST_CHANNEL_WEBHOOK (functions/.env)
  *   npm run preview-layouts -- --print   prints each message's text instead
  *   npm run preview-layouts -- war cwl   only those sections (clan, clan-games, war, cwl, raids,
- *                                        reminders, dms)
+ *                                        reminders, dms, status)
  *
  * Every message goes to the test channel, whatever webhook the code asks for. Slash command replies
- * need an interaction, so try those with the test bot instead.
+ * need an interaction, so try those with the test bot; only /status is drawn here (from the anonymised
+ * test export), and its menus only work once the bot answering them has /status.
  */
 
 const CLAN = '#PREVIEW';
@@ -351,6 +356,27 @@ async function previewDms(send: (payload: DiscordWebhookPayload) => Promise<bool
   await send(buildRosterDm(account, { mapPosition: 3, townhallLevel: 13 }, 'Rival Clan', 15, Date.now() + 20 * HOUR));
 }
 
+async function previewStatus(send: (payload: DiscordWebhookPayload) => Promise<boolean>) {
+  // The anonymised export and API player the tests use, from functions/test/fixtures
+  const fixture = (name: string) => JSON.parse(readFileSync(join(__dirname, '../../test/fixtures', name), 'utf8'));
+  const player = fixture('api-player-th12.json');
+  // Taken a minute ago, so its timers are still running
+  const exported = { ...fixture('export-th12-bh9.json'), timestamp: Math.floor(NOW / 1000) - 60 };
+  const account: LinkedAccount = {
+    playerTag: player.tag,
+    name: 'Avery',
+    townHallLevel: player.townHallLevel,
+    builderHallLevel: player.builderHallLevel,
+    isPrimary: true,
+    villageData: VillageImportService.parseExport(exported, NOW) as any,
+  };
+  const second: LinkedAccount = { ...account, playerTag: '#P1', name: 'Blake' };
+  const accounts = [account, second];
+  await send(buildStatusMessage(accounts, account, player, false));
+  await send(buildStatusMessage(accounts, account, player, false, { village: 'home', area: 'defenses' }));
+  await send(buildStatusMessage(accounts, account, player, false, { village: 'builder', area: 'overview' }));
+}
+
 // The message's text and buttons, for --print
 function describe(payload: DiscordWebhookPayload): string {
   const out: string[] = [];
@@ -358,6 +384,7 @@ function describe(payload: DiscordWebhookPayload): string {
     if (!node || typeof node !== 'object') return;
     if (node.type === 10) out.push(node.content);
     if (node.type === 2) out.push(`[${node.label}]`);
+    if (node.type === 3) out.push(`[▾ ${node.options?.find((o: any) => o.default)?.label ?? node.placeholder}]`);
     if (node.type === 14) out.push('───');
     (node.components ?? []).forEach(walk);
     walk(node.accessory);
@@ -404,6 +431,7 @@ async function main() {
     ['raids', previewRaids],
     ['reminders', () => previewReminders(post)],
     ['dms', () => previewDms(post)],
+    ['status', () => previewStatus(post)],
   ];
   const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   for (const [name, run] of sections) {
