@@ -2,6 +2,19 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## v2026.10.30.4 (30 October 2026)
+
+### For clan members
+
+**No more upgrade DMs straight after an import.** `/import-village` already lists what finished since your last import, so the DMs repeating that list are gone.
+
+- Upgrades Bimgus finds through an import now only show in that import's reply, under "Since Your Last Import".
+- You still get a DM when a timer from your import runs out, and for hero, troop and spell upgrades.
+
+### If you run your own copy
+
+- Deploy the functions: `firebase deploy --only functions`. The slash commands and dashboard haven't changed, so there's nothing to re-register.
+
 ## v2026.10.30.3 (30 October 2026)
 
 ### For clan members
