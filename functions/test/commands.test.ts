@@ -154,7 +154,7 @@ describe('slash commands end to end (mocked services)', () => {
     expect(texts(cards(list.data)[1])).toContain('**🛡️ Defenses (24)**');
   });
 
-  it('/import-village again with one more upgraded cannon sends one DM and lists the change', async () => {
+  it('/import-village again with one more upgraded cannon lists the change and sends no DM', async () => {
     await importFile();
     patches = [];
     const next = clone(exportFixture) as any;
@@ -163,7 +163,7 @@ describe('slash commands end to end (mocked services)', () => {
     next.buildings.push({ data: 1000008, lvl: 14 });
     vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(next) }) as any);
     const reply = await importFile();
-    expect(DiscordService.sendDmResult).toHaveBeenCalledTimes(1);
+    expect(DiscordService.sendDmResult).not.toHaveBeenCalled();
     expect(allText(reply)).toContain('Since Your Last Import (1)');
   });
 
@@ -438,17 +438,5 @@ describe('slash commands end to end (mocked services)', () => {
 
     await interact(3, { custom_id: undo.custom_id, component_type: 2 });
     expect(user.accounts[0].dmsEnabled).toBe(true);
-  });
-
-  it('upgrade DMs carry the turn-off button', async () => {
-    await importFile();
-    const changed = clone(exportFixture) as any;
-    changed.buildings.find((b: any) => b.data === 1000008 && b.cnt === 5).cnt = 4;
-    changed.buildings.push({ data: 1000008, lvl: 14 });
-    vi.spyOn(axios, 'get').mockImplementation(async () => ({ data: JSON.stringify(changed) }) as any);
-    patches = [];
-    await importFile();
-    const dm = (DiscordService.sendDmResult as any).mock.calls[0][1];
-    expect(JSON.stringify(dm.components)).toContain('dms_off:#ANON12345');
   });
 });

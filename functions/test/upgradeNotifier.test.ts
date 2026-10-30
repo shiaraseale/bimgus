@@ -243,6 +243,12 @@ describe('notifyUpgrades', () => {
     expectLayout(send.mock.calls[0][1]);
   });
 
+  it('carries the turn-off button', async () => {
+    const { user, account } = newUser();
+    await notifyUpgrades(user, account, [event()]);
+    expect(JSON.stringify(send.mock.calls[0][1].components)).toContain('dms_off:#ANON12345');
+  });
+
   it('words timer events as estimates and unlocks as unlocks', async () => {
     const { user, account } = newUser();
     await notifyUpgrades(user, account, [

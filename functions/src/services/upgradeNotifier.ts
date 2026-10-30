@@ -1,7 +1,7 @@
 /**
- * Every upgrade-related DM goes through here: completions found by the live API, by comparing
- * imports, and by import timers. Wording depends on how sure we are (2.4 step 5), walls are skipped,
- * repeats are suppressed, and users who block DMs are paused (2.4 step 10).
+ * Every upgrade-related DM goes through here: completions found by the live API and by import timers.
+ * What comparing two imports finds goes in the import's reply only. Wording depends on how sure we are
+ * (2.4 step 5), walls are skipped, repeats are suppressed, and users who block DMs are paused (2.4 step 10).
  */
 import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
@@ -102,7 +102,7 @@ export const API_COVERED_CATEGORIES = new Set([
 
 const BUILT_CATEGORIES = new Set(['defense', 'resource', 'army', 'other', 'trap', 'guardian']);
 
-/** Events for what changed between two imports (2.4). */
+/** Events for what changed between two imports, listed in the import's reply (2.4). */
 export function eventsFromImportChanges(changes: ImportChange[]): UpgradeEvent[] {
   return changes
     .filter((c) => !IGNORED_CATEGORIES.has(c.category))

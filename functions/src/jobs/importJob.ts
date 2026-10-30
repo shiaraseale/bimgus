@@ -8,7 +8,7 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
-import { describeEvent, eventsFromImportChanges, notifyUpgrades } from '../services/upgradeNotifier';
+import { describeEvent, eventsFromImportChanges } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
 import { importListButton } from '../api/discord/components/importList';
 import { CardSection, VillageCard, villageCards } from '../api/discord/ui';
@@ -124,13 +124,13 @@ export async function runImportTask(
     // 5. Each export replaces that account's stored data
     const pending: Array<{ account: any; village: VillageDataV2; fileName: string; cards: VillageCard[] }> = [];
     for (const { account, village, fileName } of byAccount.values()) {
-      // Compare with what was stored *before* overwriting it
+      // Compare with what was stored *before* overwriting it. What changed goes in this reply and not
+      // in a DM, which would only repeat it (removed on request, 2026-10-30)
       const previous = VillageImportService.read(account.villageData);
       const changes = VillageImportService.detectImportChanges(previous, village);
       const events = eventsFromImportChanges(changes);
 
       account.villageData = village;
-      if (events.length > 0) await notifyUpgrades(user, account, events);
 
       // A card per village: what's running and what changed, then what's left in a line. The "Full list"
       // button lists every item, and /status has heroes and the lab
@@ -185,7 +185,7 @@ export async function runImportTask(
       });
     });
 
-    // One save for the whole user (all accounts, notified keys and any DM pause)
+    // One save for the whole user (all accounts)
     await FirestoreService.saveUser(user);
 
     const messages = packMessages(
