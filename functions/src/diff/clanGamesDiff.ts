@@ -111,21 +111,23 @@ export async function processClanGamesDiff(
     }
   }
 
-  // 3. Check for Tier completions
+  // 3. Check for Tier completions: one card for the highest, when a poll passes several
   if (webhookUrl && config.notificationsEnabled.clanGamesTiers) {
-    for (const { tier, points } of CLAN_GAMES_TIERS) {
-      if (totalClanPoints >= points && !unlockedTiers.has(tier)) {
-        unlockedTiers.add(tier);
+    const reached = CLAN_GAMES_TIERS.filter(
+      ({ tier, points }) => totalClanPoints >= points && !unlockedTiers.has(tier)
+    );
+    reached.forEach(({ tier }) => unlockedTiers.add(tier));
+    const tier = reached.at(-1)?.tier;
 
-        const tierCard = card({
-          title: `🎉 Clan Games tier ${tier} unlocked`,
-          body: `**${totalClanPoints.toLocaleString()}** points · ${tier < 6 ? `tier ${tier + 1} at ${CLAN_GAMES_TIERS[tier].points.toLocaleString()}` : 'every tier unlocked 🏆'}`,
-          accent: COLORS.GREEN,
-          buttons: DiscordService.clanGamesActionRow(clanTag).components,
-        });
+    if (tier) {
+      const tierCard = card({
+        title: `🎉 Clan Games tier ${tier} unlocked`,
+        body: `**${totalClanPoints.toLocaleString()}** points · ${tier < 6 ? `tier ${tier + 1} at ${CLAN_GAMES_TIERS[tier].points.toLocaleString()}` : 'every tier unlocked 🏆'}`,
+        accent: COLORS.GREEN,
+        buttons: DiscordService.clanGamesActionRow(clanTag).components,
+      });
 
-        await DiscordService.sendWebhook(webhookUrl, layoutMessage(tierCard));
-      }
+      await DiscordService.sendWebhook(webhookUrl, layoutMessage(tierCard));
     }
   }
 

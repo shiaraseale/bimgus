@@ -46,10 +46,11 @@ function buildCapitalCard(
   let districts = raid.districts.map((d) => districtLine(d, true));
   if (districts.join('\n').length > DISTRICTS_BUDGET) districts = raid.districts.map((d) => districtLine(d, false));
 
+  const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   const totals = [
-    `${weekendTotals.districtsDestroyed} districts`,
+    count(weekendTotals.districtsDestroyed, 'district'),
     `${weekendTotals.capitalTotalLoot.toLocaleString()} capital gold`,
-    weekendTotals.raidsCompleted ? `${weekendTotals.raidsCompleted} capitals` : '',
+    weekendTotals.raidsCompleted ? count(weekendTotals.raidsCompleted, 'capital') : '',
   ].filter(Boolean);
 
   return card({

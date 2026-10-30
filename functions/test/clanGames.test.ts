@@ -78,6 +78,18 @@ describe('processClanGamesDiff start announcement', () => {
     expect(texts(maxedMsg)).not.toContain('Role');
   });
 
+  it('announces only the highest tier when a poll passes several', async () => {
+    const start = await processClanGamesDiff(members, null, config, coc, '#CLAN', utc('2026-11-22T08:00:00'));
+    const maxed = {
+      getPlayer: vi.fn(async () => ({ achievements: [{ name: 'Games Champion', value: 11000 }] })),
+    } as unknown as CocService;
+    sendWebhook.mockClear();
+    const after = await processClanGamesDiff(members, start, config, maxed, '#CLAN', utc('2026-11-23T08:00:00'));
+    const tierCards = sendWebhook.mock.calls.flatMap(([, p]: any[]) => headings(p)).filter((h) => h.includes('tier'));
+    expect(tierCards).toEqual(['🎉 Clan Games tier 2 unlocked']);
+    expect(after.unlockedTiers).toEqual([1, 2]);
+  });
+
   it('announces after a pre-08:00 poll on the same day', async () => {
     const early = await processClanGamesDiff(members, null, config, coc, '#CLAN', utc('2026-11-22T07:58:00'));
     await processClanGamesDiff(members, early, config, coc, '#CLAN', utc('2026-11-22T08:00:30'));

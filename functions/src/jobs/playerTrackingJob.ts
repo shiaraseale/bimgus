@@ -38,17 +38,13 @@ export function buildRosterDm(
   return layoutMessage(
     card({
       accent: COLORS.GOLD,
-      title: `⚔️ [${account.name}] You're In! War Declared!`,
+      title: `⚔️ [${account.name}] You're in the war vs ${opponentName}`,
       body: [
-        `A new war has been declared against **${opponentName}**!`,
-        '',
-        `📍 **Map Position**: #${warMember.mapPosition}`,
-        `🏰 **Town Hall**: TH${warMember.townhallLevel}`,
-        `👥 **Team Size**: ${teamSize}v${teamSize}`,
-        `⏳ **Battle Day Starts**: ${discordTime(warStartTimeMs)}`,
+        `#${warMember.mapPosition} on the map · TH${warMember.townhallLevel} · ${teamSize}v${teamSize}`,
+        `Battle day ${discordTime(warStartTimeMs)}`,
       ].join('\n'),
       thumbnail: CocAssetService.getTownHallUrl(warMember.townhallLevel),
-      footer: `War vs ${opponentName}`,
+      footer: `Account: ${account.name} (${account.playerTag})`,
       buttons: [dmToggleButton(account.playerTag)],
     })
   );
