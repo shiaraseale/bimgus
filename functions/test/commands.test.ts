@@ -191,6 +191,14 @@ describe('slash commands end to end (mocked services)', () => {
   };
   const picked = (msg: any, menu: string) =>
     findComponent(msg, `status:${menu}:`).options.find((o: any) => o.default).value;
+  /** Presses a /status button and returns the message it redraws. */
+  const press = async (customId: string) => {
+    patches = [];
+    const ack = await interact(3, { custom_id: customId, component_type: 2 });
+    expect(ack.type).toBe(6);
+    await vi.waitFor(() => expect(patches.length).toBeGreaterThan(0), { timeout: 5000 });
+    return patches[0];
+  };
 
   it('/status is one message, and every area of both villages redraws it within Discord limits', async () => {
     // Every home building one level lower, so nearly everything is still to upgrade
@@ -224,6 +232,28 @@ describe('slash commands end to end (mocked services)', () => {
       }
     }
     expect(followups).toHaveLength(0);
+  });
+
+  it('the Gold Pass buttons step a boost, keep the view and lower the costs, on the Home Village only', async () => {
+    await importFile();
+    let msg = await pick('status:area:#ANON12345:home:overview', 'heroes');
+    expect(findComponent(msg, 'status:builder:').label).toBe('Builder Boost: Off');
+    expect(findComponent(msg, 'status:research:').label).toBe('Research Boost: Off');
+    expect(texts(msg)).toContain('Barbarian King**: Lv 36/65 — 49K');
+
+    for (const label of ['10%', '15%', '20%']) {
+      msg = await press(findComponent(msg, 'status:builder:').custom_id);
+      expect(findComponent(msg, 'status:builder:').label).toBe(`Builder Boost: ${label}`);
+      expect(picked(msg, 'area')).toBe('heroes');
+    }
+    expect(texts(msg)).toContain('Barbarian King**: Lv 36/65 — 39K');
+    expect(findComponent(msg, 'status:research:').label).toBe('Research Boost: Off');
+    expect(user.accounts[0].goldPass).toMatchObject({ builder: 20, research: 0 });
+
+    const lab = await pick(findComponent(msg, 'status:area:').custom_id, 'lab');
+    expect(findComponent(lab, 'status:builder:').label).toBe('Builder Boost: 20%');
+    const builderBase = await pick(findComponent(msg, 'status:village:').custom_id, 'builder');
+    expect(findComponent(builderBase, 'status:builder:')).toBeUndefined();
   });
 
   it('the /status Defenses area lists the imported defenses with costs, for each village', async () => {

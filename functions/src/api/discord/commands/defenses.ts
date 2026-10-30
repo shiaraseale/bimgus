@@ -13,6 +13,7 @@ import {
 } from '../../../services/gameDataService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
+import { goldPassBoosts } from '../../../services/goldPass';
 import { layoutMessage } from '../../../services/discordLayout';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
@@ -59,6 +60,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const bh = freshPlayer.builderHallLevel || 0;
     const village = VillageImportService.read(account.villageData);
     const halls = { townHall: th, builderHall: bh };
+    const boosts = goldPassBoosts(account);
     // Without an import, list every defense the hall allows with its cap and the cost of its last level
     const hallCapLines = (village: 'home' | 'builder', hallLevel: number) =>
       itemsIn(village, ['defense'])
@@ -84,7 +86,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     // Town Hall Status
     const townHall = getById(1000001);
-    const thUpgradeCost = townHall ? formatNextCost(townHall, th) : '';
+    const thUpgradeCost = townHall ? formatNextCost(townHall, th, boosts) : '';
     const thUpgradeStr =
       th >= MAX_TOWN_HALL
         ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
@@ -99,11 +101,13 @@ export async function execute(ctx: CommandContext): Promise<any> {
         : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
 
     // Defense lines: use imported village data if available, otherwise show target caps
-    const importedHome = village ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls) : [];
+    const importedHome = village
+      ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls, boosts)
+      : [];
     const homeCapLines =
       importedHome.length > 0 ? importedHome.map(VillageImportService.formatGroupLine) : hallCapLines('home', th);
     const importedBuildings = village
-      ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls)
+      ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls, boosts)
       : [];
 
     const cards: VillageCard[] = [

@@ -11,7 +11,9 @@ import {
   API_CATEGORIES,
   GameItem,
   MAX_BUILDER_HALL,
+  CostBoosts,
   MAX_TOWN_HALL,
+  NO_BOOSTS,
   Resource,
   apiVillage,
   capFor,
@@ -232,7 +234,8 @@ export class PlayerTrackingService {
   static calculateOutstandingUpgrades(
     player: PlayerLike,
     bobDefenseCompleted: boolean = false,
-    villageData: VillageDataV2 | null = null
+    villageData: VillageDataV2 | null = null,
+    boosts: CostBoosts = NO_BOOSTS
   ): OutstandingUpgradesSummary {
     const byResource: OutstandingUpgradesSummary['byResource'] = {
       darkElixir: [],
@@ -277,7 +280,7 @@ export class PlayerTrackingService {
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? h.name,
           code: data?.id,
-          nextCost: data ? formatNextCost(data, h.level) : undefined,
+          nextCost: data ? formatNextCost(data, h.level, boosts) : undefined,
           currentLevel: h.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -305,7 +308,7 @@ export class PlayerTrackingService {
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? eq.name,
           code: data?.id,
-          nextCost: data ? formatNextCost(data, eq.level) : undefined,
+          nextCost: data ? formatNextCost(data, eq.level, boosts) : undefined,
           currentLevel: eq.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -336,7 +339,7 @@ export class PlayerTrackingService {
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? tr.name,
           code: data?.id,
-          nextCost: data ? formatNextCost(data, tr.level) : undefined,
+          nextCost: data ? formatNextCost(data, tr.level, boosts) : undefined,
           currentLevel: tr.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -367,7 +370,7 @@ export class PlayerTrackingService {
         const item: OutstandingUpgradeItem = {
           name: data?.displayName ?? sp.name,
           code: data?.id,
-          nextCost: data ? formatNextCost(data, sp.level) : undefined,
+          nextCost: data ? formatNextCost(data, sp.level, boosts) : undefined,
           currentLevel: sp.level,
           maxLevel: maxLvl,
           levelsRemaining: remaining,
@@ -388,7 +391,7 @@ export class PlayerTrackingService {
       const item: OutstandingUpgradeItem = {
         name: nameForCode(1000001),
         code: 1000001,
-        nextCost: townHall ? formatNextCost(townHall, player.townHallLevel) : undefined,
+        nextCost: townHall ? formatNextCost(townHall, player.townHallLevel, boosts) : undefined,
         currentLevel: 0,
         maxLevel: 1,
         levelsRemaining: 1,

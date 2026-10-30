@@ -7,7 +7,8 @@ import { EMOJIS } from '../../../constants/emojis';
 import { config } from '../../../config';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { ParsedDefenseGroup, VillageDataV2, VillageImportService } from '../../../services/villageImportService';
-import { GameCategory, Village } from '../../../services/gameDataService';
+import { CostBoosts, GameCategory, Village } from '../../../services/gameDataService';
+import { goldPassBoosts, nextBoostStep } from '../../../services/goldPass';
 import { interactionReply } from '../../../jobs/interactionReply';
 import { LinkedAccount, OutstandingUpgradeItem } from '../../../types/user';
 import type { PlayerLike } from '../../../types/coc';
@@ -108,6 +109,8 @@ const AREAS: Array<{
 // Each menu's custom_id carries the message's whole state: "status:<menu>:<tag>:<village>:<area>"
 const MENU = 'status:';
 type StatusMenu = 'account' | 'village' | 'area';
+// The Gold Pass buttons: their custom_ids carry the same state, "status:<boost>:<tag>:<village>:<area>"
+const BOOST_LABELS: Record<keyof CostBoosts, string> = { builder: 'Builder Boost', research: 'Research Boost' };
 // The single menu on /upgrades messages from before /status: "upgrades_view:<tag>"
 const OLD_MENU = 'upgrades_view:';
 // Walls get their own line: hundreds of segments would swamp the building counts
@@ -163,10 +166,12 @@ function importSection(
 
 /** Everything /status shows for one account, worked out once for whichever view is drawn. */
 function upgradeData(account: LinkedAccount, player: PlayerLike, village: VillageDataV2 | null) {
+  const boosts = goldPassBoosts(account);
   const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(
     player,
     account.bobDefenseCompleted || false,
-    village
+    village,
+    boosts
   );
   const home = outstanding.byCategory.home;
   const bb = outstanding.byCategory.builder;
@@ -179,7 +184,7 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
       ['Town Hall', 'Builder Hall'].includes(i.name) ? { ...i, currentLevel: hall, maxLevel: hall + 1 } : i
     );
   const unmaxed = (v: Village, categories: readonly GameCategory[]) =>
-    village ? VillageImportService.groupsFor(village, v, categories, halls).filter((g) => !g.isMaxed) : null;
+    village ? VillageImportService.groupsFor(village, v, categories, halls, boosts).filter((g) => !g.isMaxed) : null;
 
   // Builder Base sections drop the "BB" from their names: they're on the Builder Base card
   const sections = {
@@ -263,8 +268,19 @@ function fitView(view: StatusView, builderHall: number): StatusView {
   return { village, area };
 }
 
-const menuId = (menu: StatusMenu, tag: string, view: StatusView) =>
+const menuId = (menu: StatusMenu | keyof CostBoosts, tag: string, view: StatusView) =>
   `${MENU}${menu}:${tag}:${view.village}:${view.area}`;
+
+/** Steps one Gold Pass boost for this account, and says where it's at ("Builder Boost: 20%"). */
+function boostButton(account: LinkedAccount, view: StatusView, boost: keyof CostBoosts): DiscordButtonComponent {
+  const percent = goldPassBoosts(account)[boost];
+  return {
+    type: 2,
+    style: 2,
+    label: `${BOOST_LABELS[boost]}: ${percent ? `${percent}%` : 'Off'}`,
+    custom_id: menuId(boost, account.playerTag, view),
+  };
+}
 
 /**
  * The menus at the bottom of a /status card: the account (with more than one linked), the village (once
@@ -393,6 +409,8 @@ export function buildStatusMessage(
 
   const buttons: DiscordButtonComponent[] = [];
   if (view.area === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
+  // The boosts only change Home Village costs
+  if (isHome) buttons.push(boostButton(account, view, 'builder'), boostButton(account, view, 'research'));
   buttons.push(DiscordService.openGameLinkButton('Open CoC'));
 
   const label = AREAS.find((a) => a.value === view.area)!.label;
@@ -475,8 +493,14 @@ export async function execute(ctx: CommandContext): Promise<any> {
   });
 }
 
-/** The account and view a menu pick asks for: the picked value in place of that menu's part of the state. */
-export function readStatusPick(customId: string, picked: string | undefined): { tag: string; view: StatusView } {
+/**
+ * The account and view a menu pick asks for: the picked value in place of that menu's part of the state.
+ * A Gold Pass button keeps the view and names the boost to step.
+ */
+export function readStatusPick(
+  customId: string,
+  picked: string | undefined
+): { tag: string; view: StatusView; boost?: keyof CostBoosts } {
   if (customId.startsWith(OLD_MENU)) {
     // Old /upgrades messages showed both villages; they open on the Home Village
     return {
@@ -488,6 +512,7 @@ export function readStatusPick(customId: string, picked: string | undefined): { 
   const view = { village: village as Village, area: area as StatusArea };
   if (menu === 'account') return { tag: picked || tag, view };
   if (menu === 'village') return { tag, view: { ...view, village: picked as Village } };
+  if (menu === 'builder' || menu === 'research') return { tag, view, boost: menu };
   return { tag, view: { ...view, area: picked as StatusArea } };
 }
 
@@ -504,7 +529,7 @@ export async function showStatusView(interaction: any): Promise<void> {
     applicationId: interaction.application_id || config.discord.clientId,
     interactionToken: interaction.token,
   });
-  const { tag, view } = readStatusPick(String(interaction.data.custom_id), interaction.data.values?.[0]);
+  const { tag, view, boost } = readStatusPick(String(interaction.data.custom_id), interaction.data.values?.[0]);
   try {
     const discordUserId = (interaction.user || interaction.member?.user)?.id;
     const user = discordUserId ? await FirestoreService.getUser(discordUserId) : null;
@@ -512,6 +537,10 @@ export async function showStatusView(interaction: any): Promise<void> {
     if (!user || !account) {
       await reply.followup({ content: `⚠️ \`${tag}\` isn't linked to your profile any more.`, flags: 64 });
       return;
+    }
+    if (boost) {
+      account.goldPass = nextBoostStep(account, boost);
+      await FirestoreService.saveUser(user);
     }
     const message = await loadStatusMessage(user.accounts, account, view, (a) =>
       getPlayerWithFallback(CocService.shared(), a)

@@ -1,13 +1,15 @@
 import {
+  CostBoosts,
   GameCategory,
   GameItem,
+  NO_BOOSTS,
   Village,
   capFor,
   formatNextCost,
   getById,
-  getLevel,
   getWeapon,
   nameForCode,
+  nextUpgradeRow,
 } from './gameDataService';
 import type { InProgressUpgrade, VillageDataV2, VillageItem } from '../types/village';
 import { log } from '../utils/log';
@@ -430,7 +432,8 @@ export class VillageImportService {
     data: VillageDataV2,
     village: Village,
     categories: readonly GameCategory[],
-    hallOverride?: { townHall?: number; builderHall?: number }
+    hallOverride?: { townHall?: number; builderHall?: number },
+    boosts: CostBoosts = NO_BOOSTS
   ): ParsedDefenseGroup[] {
     const hall = hallFor(data, village, hallOverride);
     const merged = new Map<string, ParsedDefenseGroup>();
@@ -446,14 +449,14 @@ export class VillageImportService {
       }
       const maxLevel = capFor(item, hall, vi.level);
       const isMaxed = vi.level >= maxLevel;
-      const next = isMaxed ? undefined : getLevel(item, vi.level + 1);
+      const next = isMaxed ? undefined : nextUpgradeRow(item, vi.level);
       merged.set(key, {
         code: vi.code,
         name: item.displayName,
         count: vi.count,
         currentLevel: vi.level,
         maxLevel,
-        nextCost: next ? formatNextCost(item, vi.level) : '',
+        nextCost: next ? formatNextCost(item, vi.level, boosts) : '',
         nextCostNumber: next ? next.cost : 0,
         isMaxed,
         village,

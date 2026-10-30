@@ -362,6 +362,8 @@ async function previewStatus(send: (payload: DiscordWebhookPayload) => Promise<b
   const player = fixture('api-player-th12.json');
   // Taken a minute ago, so its timers are still running
   const exported = { ...fixture('export-th12-bh9.json'), timestamp: Math.floor(NOW / 1000) - 60 };
+  // A hero upgrading too: the Barbarian King is listed at 36, so it's going to 37
+  exported.heroes.find((h: any) => h.data === 28000000).timer = 2 * 3600;
   const account: LinkedAccount = {
     playerTag: player.tag,
     name: 'Avery',
@@ -374,6 +376,12 @@ async function previewStatus(send: (payload: DiscordWebhookPayload) => Promise<b
   const accounts = [account, second];
   // One message, as /status sends; its menus redraw it once the bot answering them has /status
   await send(buildStatusMessage(accounts, account, player, false));
+  // The same account with both Gold Pass boosts at 20%, on the views that show their costs
+  const goldPass = { builder: 20, research: 20, month: new Date(NOW).toISOString().slice(0, 7) };
+  const boosted = { ...account, goldPass };
+  for (const area of ['heroes', 'lab'] as const) {
+    await send(buildStatusMessage([boosted, second], boosted, player, false, { village: 'home', area }));
+  }
 }
 
 // The message's text and buttons, for --print

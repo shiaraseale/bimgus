@@ -1,6 +1,7 @@
 import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
+import { goldPassBoosts } from '../../../services/goldPass';
 import { VillageImportService } from '../../../services/villageImportService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -44,7 +45,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
   const villageFilter = optionsMap['village'] || 'both';
   return forEachLinkedAccount(ctx, 'troop data', async (account, idx) => {
     const { player: freshPlayer, isCached } = await getPlayerWithFallback(account);
-    const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(freshPlayer);
+    const outstanding = PlayerTrackingService.calculateOutstandingUpgrades(
+      freshPlayer,
+      false,
+      null,
+      goldPassBoosts(account)
+    );
 
     const homeTroops = outstanding.byCategory.home.troops;
     const builderTroops = outstanding.byCategory.builder.troops;

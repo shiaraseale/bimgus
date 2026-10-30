@@ -35,6 +35,12 @@ export interface PlayerSnapshot {
   updatedAt: string;
 }
 
+export interface GoldPassSetting {
+  builder: number; // percent off
+  research: number; // percent off
+  month: string; // the month they apply to, e.g. "2026-10"
+}
+
 export interface LinkedAccount {
   playerTag: string;
   name: string;
@@ -48,6 +54,8 @@ export interface LinkedAccount {
   villageData?: VillageDataV2 | { version?: undefined; [key: string]: unknown };
   // Recent notifications already sent (timer and API keys), so a retry never sends one twice
   notifiedKeys?: string[];
+  // The Gold Pass boosts set on /status (see services/goldPass.ts)
+  goldPass?: GoldPassSetting;
 }
 
 export interface UserDoc {

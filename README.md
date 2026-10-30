@@ -229,7 +229,7 @@ Polling starts by itself: every 2 minutes Bimgus checks the clan and posts what 
 | `/link`, `/unlink` | Link or unlink a Clash of Clans account to your Discord account |
 | `/accounts` | View and manage your linked accounts |
 | `/import-village` | Import your village JSON export (one file covers both villages) |
-| `/status` | Running timers and every outstanding upgrade, with menus for the account, village and area |
+| `/status` | Running timers and every outstanding upgrade, with menus for the account, village and area, and buttons to set your Gold Pass boosts so Home Village costs match the game |
 | `/heroes` | Hero progress for your Town Hall or Builder Hall |
 | `/defenses` | Defense caps, gear-ups and Hall upgrade status |
 | `/troops`, `/spells` | Troop and spell progress |

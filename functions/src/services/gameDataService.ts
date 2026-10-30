@@ -204,10 +204,62 @@ export function formatLevelCost(item: GameItem | GameWeapon, level: GameLevel): 
   return formatAmount(level.cost, item.resource);
 }
 
-/** Cost of the next level after `currentLevel`, or '' if there isn't one in the data. */
-export function formatNextCost(item: GameItem, currentLevel: number): string {
+// These categories' rows hold the upgrade *from* that level (the top row costs nothing); every other
+// category's hold the upgrade *to* it. Checked against in-game prices, 2026-10-30.
+const FROM_LEVEL_ROWS: readonly GameCategory[] = [
+  'hero',
+  'troop',
+  'superTroop',
+  'siege',
+  'spell',
+  'pet',
+  'equipment',
+  'helper',
+  'guardian',
+];
+
+/** The row with the cost of upgrading from `currentLevel`, or undefined at the top level. */
+export function nextUpgradeRow(item: GameItem, currentLevel: number): GameLevel | undefined {
   const next = getLevel(item, currentLevel + 1);
-  return next ? formatLevelCost(item, next) : '';
+  return next && FROM_LEVEL_ROWS.includes(item.category) ? getLevel(item, currentLevel) : next;
+}
+
+/** Percent off upgrade costs from the Gold Pass (see goldPass.ts). */
+export interface CostBoosts {
+  builder: number;
+  research: number;
+}
+
+export const NO_BOOSTS: CostBoosts = { builder: 0, research: 0 };
+
+// What each boost covers. In-game prices show the Builder Boost on heroes, walls, resource buildings and
+// crafted modules, and the Research Boost on troops; the rest follow from those. Pets and the Builder
+// Base haven't been checked, so they stay at list price.
+const BUILDER_BOOSTED: readonly GameCategory[] = [
+  'defense',
+  'resource',
+  'army',
+  'other',
+  'trap',
+  'wall',
+  'townHall',
+  'craftedModule',
+  'hero',
+];
+const RESEARCH_BOOSTED: readonly GameCategory[] = ['troop', 'siege', 'spell'];
+
+function boostOn(item: GameItem, boosts: CostBoosts): number {
+  if (item.village !== 'home') return 0;
+  if (BUILDER_BOOSTED.includes(item.category)) return boosts.builder;
+  return RESEARCH_BOOSTED.includes(item.category) ? boosts.research : 0;
+}
+
+/** Cost of upgrading from `currentLevel` after any boosts, or '' if there's no next level in the data. */
+export function formatNextCost(item: GameItem, currentLevel: number, boosts: CostBoosts = NO_BOOSTS): string {
+  const next = nextUpgradeRow(item, currentLevel);
+  if (!next) return '';
+  const cost = Math.round((next.cost * (100 - boostOn(item, boosts))) / 100);
+  return formatLevelCost(item, { ...next, cost });
 }
 
 export const GAME_DATA_COMMIT = DATA.meta.commit;

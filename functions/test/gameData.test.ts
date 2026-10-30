@@ -12,6 +12,7 @@ import {
   getWeapon,
   itemsIn,
   nameForCode,
+  nextUpgradeRow,
 } from '../src/services/gameDataService';
 import { PlayerTrackingService, apiCap } from '../src/services/playerTrackingService';
 
@@ -149,6 +150,57 @@ describe('game data', () => {
   it('formats real next-level costs', () => {
     expect(formatNextCost(getById(1000001)!, 12)).toMatch(/^9M /);
     expect(formatNextCost(getById(90000013)!, 1)).toContain('shiny_ore');
+  });
+});
+
+describe('next upgrade costs', () => {
+  const byName = (name: string) =>
+    itemsIn('home', ['hero', 'resource', 'craftedModule', 'spell', 'troop', 'wall']).find((i) => i.name === name)!;
+  const boost = { builder: 20, research: 0 };
+
+  it('reads each category from the right row: units from their level, buildings to the next', () => {
+    expect(formatNextCost(byName('Grand Warden'), 16)).toMatch(/^4\.8M /); // row 16, not 5.1M from row 17
+    expect(formatNextCost(byName('Barbarian King'), 39)).toMatch(/^55K /);
+    expect(formatNextCost(byName('Elixir Collector'), 13)).toMatch(/^800K /); // row 14
+    expect(formatNextCost(byName('Grand Warden'), byName('Grand Warden').levels.at(-1)!.level)).toBe('');
+  });
+
+  it('matches the prices shown in game with 20% boosts (2026-10-30)', () => {
+    const prices: Array<[string, number, number]> = [
+      ['Grand Warden', 16, 3_840_000],
+      ['Dark Elixir Drill', 7, 1_920_000],
+      ['Elixir Collector', 13, 640_000],
+      ['Inferno Candle Effect Module', 1, 24_000],
+      ['Headhunter Tower HP Module', 1, 32_000],
+      ['Wall', 13, 1_600_000],
+      ['Barbarian', 8, 2_000_000],
+      ['Giant', 8, 2_720_000],
+      ['Wall Breaker', 7, 3_040_000],
+      ['Wizard', 7, 2_480_000],
+      ['Baby Dragon', 5, 3_840_000],
+      ['Archer', 8, 2_400_000],
+      ['Goblin', 7, 2_960_000],
+      ['Healer', 4, 3_200_000],
+      ['P.E.K.K.A', 5, 2_000_000],
+      ['Miner', 4, 3_200_000],
+    ];
+    for (const [name, level, price] of prices) {
+      expect((nextUpgradeRow(byName(name), level)!.cost * 80) / 100, name).toBe(price);
+    }
+    expect(formatNextCost(byName('Grand Warden'), 16, boost)).toMatch(/^3\.8M /);
+    expect(formatNextCost(byName('Wall'), 13, boost)).toMatch(/^1\.6M /);
+    expect(formatNextCost(byName('Barbarian'), 8, { builder: 0, research: 20 })).toMatch(/^2M /);
+  });
+
+  it('keeps each boost to what it covers', () => {
+    const rage = byName('Rage Spell');
+    expect(formatNextCost(rage, 5, boost)).toBe(formatNextCost(rage, 5));
+    expect(formatNextCost(rage, 5, { builder: 0, research: 20 })).not.toBe(formatNextCost(rage, 5));
+    const both = { builder: 20, research: 20 };
+    const pet = itemsIn('home', ['pet'])[0];
+    expect(formatNextCost(pet, 1, both)).toBe(formatNextCost(pet, 1));
+    const cannon = itemsIn('builder', ['defense'])[0];
+    expect(formatNextCost(cannon, 1, both)).toBe(formatNextCost(cannon, 1));
   });
 });
 
