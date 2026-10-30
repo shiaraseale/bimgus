@@ -476,7 +476,7 @@ export async function processCwlDiff(
               title: `${outcome} CWL round ${roundNum}: ${result} vs ${enemyClan.name}`,
               body: [
                 scoreLine(ourClan, enemyClan),
-                `🗡️ ${ourClan.attacks}–${enemyClan.attacks} of ${war.teamSize} attacks used`,
+                `🗡️ Attacks used: ${ourClan.attacks}/${war.teamSize} vs ${enemyClan.attacks}/${war.teamSize}`,
               ].join('\n'),
               blocks: [fitLines(auditLines, 3500).join('\n')],
               accent: won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED,

@@ -153,6 +153,7 @@ describe('war cards', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     expect(headings(sent[0])).toEqual(['💀 War lost vs Them']);
+    expect(texts(sent[0])).toContain('🗡️ Attacks used: 2/100 vs 90/100');
     expect(texts(sent[0])).toContain('🚨 **No attacks**: #2 Member 2, #3 Member 3');
     expect(texts(sent[0])).toContain('**Hit a base already at 3');
   });
@@ -190,6 +191,7 @@ describe('CWL cards', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     expect(headings(sent[0])).toEqual(['🏆 CWL round 1: won vs Them']);
+    expect(texts(sent[0])).toContain('🗡️ Attacks used: 1/2 vs 2/2');
     expect(texts(sent[0])).toContain('🚨 **No attack**: #2 Member 2');
     expect(texts(sent[0])).toContain('⭐ **3 stars**: #1 Member 1');
   });

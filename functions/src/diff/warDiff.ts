@@ -411,7 +411,7 @@ export function buildWarEndSummary(currentWar: CurrentWarResponse): WarEndSummar
     title: `${outcome} vs ${currentWar.opponent.name}`,
     body: [
       scoreLine(currentWar.clan, currentWar.opponent),
-      `🗡️ ${currentWar.clan.attacks}–${currentWar.opponent.attacks} of ${currentWar.teamSize * attacksPerMember} attacks used`,
+      `🗡️ Attacks used: ${currentWar.clan.attacks}/${currentWar.teamSize * attacksPerMember} vs ${currentWar.opponent.attacks}/${currentWar.teamSize * attacksPerMember}`,
     ].join('\n'),
     // A big war's lists are trimmed to fit the message
     blocks: [fitLines(auditLines, AUDIT_BUDGET).join('\n')],
