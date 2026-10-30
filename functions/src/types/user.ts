@@ -1,4 +1,4 @@
-import type { InProgressUpgrade, VillageDataV2 } from './village';
+import type { VillageDataV2 } from './village';
 
 export interface SnapshotEntry {
   name?: string;
@@ -35,9 +35,6 @@ export interface PlayerSnapshot {
   updatedAt: string;
 }
 
-/** A hero upgrade the API showed starting, with its estimated finish; same shape as an import timer. */
-export type PendingUpgrade = InProgressUpgrade;
-
 export interface LinkedAccount {
   playerTag: string;
   name: string;
@@ -51,8 +48,6 @@ export interface LinkedAccount {
   villageData?: VillageDataV2 | { version?: undefined; [key: string]: unknown };
   // Recent notifications already sent (timer and API keys), so a retry never sends one twice
   notifiedKeys?: string[];
-  // Hero upgrades the API reported when they started, with an estimated finish (see upgradeNotifier)
-  pendingUpgrades?: PendingUpgrade[];
 }
 
 export interface UserDoc {

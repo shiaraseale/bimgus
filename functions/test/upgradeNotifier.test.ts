@@ -3,7 +3,7 @@ import apiFixture from './fixtures/api-player-th12.json';
 import exportFixture from './fixtures/export-th12-bh9.json';
 import { DiscordService } from '../src/services/discordService';
 import { PlayerTrackingService } from '../src/services/playerTrackingService';
-import { VillageImportService } from '../src/services/villageImportService';
+import { InProgressUpgrade, VillageImportService } from '../src/services/villageImportService';
 import { CocService } from '../src/services/cocService';
 import { FirestoreService } from '../src/services/firestoreService';
 import { runPlayerTrackingJob } from '../src/jobs/playerTrackingJob';
@@ -11,11 +11,10 @@ import {
   UpgradeEvent,
   eventFromTimer,
   eventsFromImportChanges,
-  heroUpgradeStarts,
+  finishedHeroTimer,
   notifyUpgrades,
-  supersededHeroTimer,
-  withoutImportedTimers,
 } from '../src/services/upgradeNotifier';
+import { activeInProgress } from '../src/api/discord/ui';
 import { LinkedAccount, UserDoc } from '../src/types/user';
 import { expectLayout, texts } from './layoutHelpers';
 
@@ -301,138 +300,98 @@ describe('notifyUpgrades', () => {
   });
 });
 
-describe('hero upgrades: the API shows the new level when the upgrade starts', () => {
-  const now = Date.parse('2026-10-24T15:45:00Z');
-  const aqStart = event({
-    kind: 'upgraded',
-    code: 28000001,
-    name: 'Archer Queen',
-    assetName: 'Archer Queen',
+describe('hero upgrades: the API shows the new level once the upgrade has finished', () => {
+  // What an import knows about the Warden going from 11 to 12
+  const wardenTimer = (finishesAtMs: number): InProgressUpgrade => ({
+    code: 28000002,
+    name: 'Grand Warden',
     category: 'hero',
-    oldLevel: 18,
-    newLevel: 19,
-    maxLevel: 30,
-    key: 'hero:home:Archer Queen:19',
+    village: 'home',
+    currentLevel: 11,
+    targetLevel: 12,
+    maxLevel: 40,
+    timerSeconds: 1,
+    finishesAtMs,
   });
-  const importWithAqTimer = (finishesAtMs: number) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const data = VillageImportService.parseExport(clone(exportFixture));
-    data.inProgressUpgrades.push({
-      code: 28000001,
-      name: 'Archer Queen',
-      category: 'hero',
-      village: 'home',
-      currentLevel: 18,
-      targetLevel: 19,
-      maxLevel: 30,
-      timerSeconds: 1,
-      finishesAtMs,
-    });
-    return data;
+  const playerWithWarden = (level: number) => {
+    const player = clone(apiFixture) as any;
+    player.heroes.find((h: any) => h.name === 'Grand Warden').level = level;
+    return player;
   };
 
-  it('does not DM at the start when the import has a timer for it (the timer will)', () => {
-    const result = heroUpgradeStarts([aqStart], importWithAqTimer(now + 19 * 3600_000), now);
-    expect(result.events).toEqual([]);
-    expect(result.pending).toEqual([]);
-  });
-
-  it('without an import, waits for the game data upgrade time (24 h for Archer Queen 19)', () => {
-    const result = heroUpgradeStarts([aqStart], null, now);
-    expect(result.events).toEqual([]);
-    expect(result.pending).toEqual([
-      expect.objectContaining({ code: 28000001, targetLevel: 19, finishesAtMs: now + 24 * 3600_000 }),
-    ]);
-  });
-
-  it('leaves non-hero events alone', () => {
-    const cannon = event();
-    expect(heroUpgradeStarts([cannon], null, now).events).toEqual([cannon]);
-  });
-
-  it('sends "should now be level 19" when the timer runs out, once, whichever timer fires', async () => {
-    const send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
-    const { user, account } = newUser();
-    const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
-    const fromPending = eventFromTimer(pending as any)!;
-    const fromImport = eventFromTimer(importWithAqTimer(now).inProgressUpgrades.at(-1)!)!;
-    expect(fromPending.kind).toBe('expected');
-    expect(fromPending.key).toBe(fromImport.key);
-    await notifyUpgrades(user, account, [fromPending]);
-    await notifyUpgrades(user, account, [fromImport]);
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(dmText(send).body.join('\n')).toContain('Archer Queen** should now be Lv 19/');
-  });
-
-  it('drops an import timer the API has moved past, without a DM (level 12 after level 13)', async () => {
+  /** One poll of an account last seen with the Warden at 11, which the API now shows at `level`. */
+  const poll = async (level: number, timers: InProgressUpgrade[]) => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(FirestoreService, 'saveUser').mockResolvedValue(undefined as any);
     const send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
-    // The import's Warden 11 → 12 timer hasn't run out, but the API shows 13: 12 finished early and
-    // 13 has started
-    const player = clone(apiFixture) as any;
-    const warden = player.heroes.find((h: any) => h.name === 'Grand Warden');
-    warden.level = 13;
     const village = VillageImportService.parseExport(clone(exportFixture));
-    village.inProgressUpgrades = [
-      {
-        code: 28000002,
-        name: 'Grand Warden',
-        category: 'hero',
-        village: 'home',
-        currentLevel: 11,
-        targetLevel: 12,
-        maxLevel: 40,
-        timerSeconds: 1,
-        finishesAtMs: Date.now() + 3600_000,
-      },
-    ];
+    village.inProgressUpgrades = timers;
     const { user, account } = newUser();
     account.villageData = village;
-    account.lastSnapshot = PlayerTrackingService.createSnapshot(player);
+    account.lastSnapshot = PlayerTrackingService.createSnapshot(playerWithWarden(11));
     vi.spyOn(CocService, 'shared').mockReturnValue({
-      getPlayer: vi.fn(async () => player),
+      getPlayer: vi.fn(async () => playerWithWarden(level)),
       getCurrentWar: vi.fn(async () => ({ state: 'notInWar' })),
     } as any);
     vi.spyOn(FirestoreService, 'getAllUsers').mockResolvedValue([user]);
-
     await runPlayerTrackingJob();
-    const stored = VillageImportService.read(account.villageData)!;
-    expect(stored.inProgressUpgrades.some((u) => u.code === 28000002)).toBe(false);
+    return { send, stored: VillageImportService.read(account.villageData)! };
+  };
+
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('reports a level-up as done, and starts no timer for it (Warden "in 20 hours" when finished)', async () => {
+    const { send, stored } = await poll(12, []);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(dmText(send).body.join('\n')).toContain('Grand Warden** reached Lv 12/');
+    expect(activeInProgress(stored)).toEqual([]);
+  });
+
+  it('drops a timer the API has reached, with one DM for the level', async () => {
+    const { send, stored } = await poll(12, [wardenTimer(Date.now() + 3600_000)]);
+    expect(stored.inProgressUpgrades).toEqual([]);
     expect(stored.items.find((i) => i.code === 28000002)?.level).toBe(12);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(dmText(send).body.join('\n')).toContain('Grand Warden** reached Lv 12/');
+  });
+
+  it('keeps the timer while the API still shows the current level', async () => {
+    const finishesAtMs = Date.now() + 3600_000;
+    const { send, stored } = await poll(11, [wardenTimer(finishesAtMs)]);
+    expect(activeInProgress(stored)).toEqual([wardenTimer(finishesAtMs)]);
     expect(send).not.toHaveBeenCalled();
   });
 
-  it('keeps a hero timer whose level the API shows (that upgrade is the one running)', () => {
-    const player = clone(apiFixture) as any;
-    player.heroes.find((h: any) => h.name === 'Grand Warden').level = 12;
-    const snap = PlayerTrackingService.createSnapshot(player);
+  it('sends one DM for a level, whether the timer or the API gets there first', async () => {
+    const send = vi.spyOn(DiscordService, 'sendDmResult').mockResolvedValue('sent');
+    const { user, account } = newUser();
+    const fromTimer = eventFromTimer(wardenTimer(1))!;
+    const fromApi = PlayerTrackingService.detectApiUpgrades(
+      PlayerTrackingService.createSnapshot(playerWithWarden(11)),
+      playerWithWarden(12)
+    ).find((e) => e.category === 'hero')!;
+    expect(fromTimer.kind).toBe('expected');
+    expect(fromTimer.key).toBe(fromApi.key);
+    await notifyUpgrades(user, account, [fromTimer]);
+    await notifyUpgrades(user, account, [fromApi]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(dmText(send).body.join('\n')).toContain('Grand Warden** should now be Lv 12/');
+  });
+
+  it('counts a hero timer as finished from the level it was going to', () => {
+    const snap = PlayerTrackingService.createSnapshot(playerWithWarden(12));
     const timer = { code: 28000002, name: 'Grand Warden', category: 'hero', village: 'home' as const };
-    expect(supersededHeroTimer({ ...timer, targetLevel: 12 }, snap)).toBe(false);
-    expect(supersededHeroTimer({ ...timer, targetLevel: 11 }, snap)).toBe(true);
-    expect(supersededHeroTimer({ ...timer, category: 'defense', targetLevel: 11 }, snap)).toBe(false);
-    expect(supersededHeroTimer({ ...timer, targetLevel: 11 }, undefined)).toBe(false);
-  });
-
-  it('drops a pending timer once an import covers the same upgrade', () => {
-    const [pending] = heroUpgradeStarts([aqStart], null, now).pending;
-    expect(withoutImportedTimers([pending], importWithAqTimer(now + 1000))).toEqual([]);
-    expect(withoutImportedTimers([pending], null)).toEqual([pending]);
-  });
-
-  it("drops a pending hero timer the import has on a later upgrade, but not one that's ahead of it", () => {
-    const [pending] = heroUpgradeStarts([aqStart], null, now).pending; // Archer Queen → 19
-    const later = importWithAqTimer(now + 1000);
-    later.inProgressUpgrades.at(-1)!.targetLevel = 20;
-    expect(withoutImportedTimers([pending], later)).toEqual([]);
-    const earlier = importWithAqTimer(now + 1000);
-    earlier.inProgressUpgrades.at(-1)!.targetLevel = 18;
-    expect(withoutImportedTimers([pending], earlier)).toEqual([pending]);
+    expect(finishedHeroTimer({ ...timer, targetLevel: 11 }, snap)).toBe(true);
+    expect(finishedHeroTimer({ ...timer, targetLevel: 12 }, snap)).toBe(true);
+    expect(finishedHeroTimer({ ...timer, targetLevel: 13 }, snap)).toBe(false);
+    expect(finishedHeroTimer({ ...timer, category: 'defense', targetLevel: 12 }, snap)).toBe(false);
+    expect(finishedHeroTimer({ ...timer, targetLevel: 12 }, undefined)).toBe(false);
   });
 });
 
 describe('the 2-minute poll: API upgrades only DM accounts that have been imported', () => {
-  // Every kind of level-up the live API reports, in one poll, plus a hero timer from an earlier poll
+  // Every kind of level-up the live API reports, in one poll
   const levelledUp = () => {
     const p = clone(apiFixture) as any;
     p.townHallLevel += 1;
@@ -440,7 +399,7 @@ describe('the 2-minute poll: API upgrades only DM accounts that have been import
     p.troops.find((t: any) => t.name === 'Barbarian').level += 1;
     p.troops.find((t: any) => t.name === 'Wall Wrecker').level += 1; // siege
     p.spells.find((t: any) => t.name === 'Rage Spell').level += 1;
-    p.heroes.find((t: any) => t.name === 'Grand Warden').level += 1; // starts a hero timer
+    p.heroes.find((t: any) => t.name === 'Grand Warden').level += 1;
     return p;
   };
   const linkedOnly = (): UserDoc => ({
@@ -454,19 +413,6 @@ describe('the 2-minute poll: API upgrades only DM accounts that have been import
         townHallLevel: 12,
         isPrimary: true,
         lastSnapshot: PlayerTrackingService.createSnapshot(apiFixture),
-        pendingUpgrades: [
-          {
-            code: 28000000,
-            name: 'Barbarian King',
-            category: 'hero',
-            village: 'home',
-            currentLevel: 36,
-            targetLevel: 37,
-            maxLevel: 65,
-            timerSeconds: 60,
-            finishesAtMs: Date.now() - 1000,
-          },
-        ],
       },
     ],
   });
@@ -497,7 +443,7 @@ describe('the 2-minute poll: API upgrades only DM accounts that have been import
     vi.spyOn(FirestoreService, 'getAllUsers').mockResolvedValue([user]);
     await runPlayerTrackingJob();
     const text = JSON.stringify(send.mock.calls);
-    for (const name of ['Town Hall', 'Builder Hall', 'Barbarian', 'Wall Wrecker', 'Rage Spell', 'Barbarian King']) {
+    for (const name of ['Town Hall', 'Builder Hall', 'Barbarian', 'Wall Wrecker', 'Rage Spell', 'Grand Warden']) {
       expect(text, name).toContain(name);
     }
   });

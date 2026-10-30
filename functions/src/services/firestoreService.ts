@@ -237,6 +237,7 @@ export class FirestoreService {
       const rest = { ...a };
       delete rest.activeUpgrades;
       delete rest.apprenticeTimer;
+      delete rest.pendingUpgrades;
       if (rest.villageData && rest.villageData.version !== 2) delete rest.villageData; // pre-2.3 imports
       return rest;
     });

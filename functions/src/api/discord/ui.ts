@@ -1,12 +1,11 @@
 /** Display helpers shared by the slash commands. */
 import { GameCategory } from '../../services/gameDataService';
 import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../services/villageImportService';
-import { VILLAGE_HEADINGS, withoutImportedTimers } from '../../services/upgradeNotifier';
+import { VILLAGE_HEADINGS } from '../../services/upgradeNotifier';
 import { COLORS } from '../../services/discordService';
 import { card } from '../../services/discordLayout';
 import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../types/discord';
 import { Village } from '../../services/gameDataService';
-import { LinkedAccount } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
 
 // Which stored import categories each list shows
@@ -106,16 +105,11 @@ export function villageCards(cards: VillageCard[], budget: number, opts: CardsOp
 }
 
 /**
- * Upgrades still running, soonest first: the import's timers plus hero upgrades seen starting in the
- * API that the import doesn't cover. Each timer is its own upgrade (two traps can both be going to 6).
+ * Upgrades still running, soonest first, from the import's timers: nothing else says when an upgrade
+ * started. Each timer is its own upgrade (two traps can both be going to 6).
  */
-export function activeInProgress(
-  account: LinkedAccount,
-  village: VillageDataV2 | null,
-  now: number = Date.now()
-): InProgressUpgrade[] {
-  const heroTimers = withoutImportedTimers(account.pendingUpgrades, village) as InProgressUpgrade[];
-  return [...(village?.inProgressUpgrades || []), ...heroTimers]
+export function activeInProgress(village: VillageDataV2 | null, now: number = Date.now()): InProgressUpgrade[] {
+  return (village?.inProgressUpgrades || [])
     .filter((u) => u.finishesAtMs > now)
     .sort((a, b) => a.finishesAtMs - b.finishesAtMs);
 }

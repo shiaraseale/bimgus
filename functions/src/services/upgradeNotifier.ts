@@ -6,10 +6,10 @@
 import { DiscordService, COLORS } from './discordService';
 import { CocAssetService } from './cocAssetService';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
-import { Village, getById, getLevel } from './gameDataService';
-import { ImportChange, InProgressUpgrade, VillageDataV2, VillageImportService } from './villageImportService';
+import { Village, getById } from './gameDataService';
+import { ImportChange, InProgressUpgrade, VillageImportService } from './villageImportService';
 import { snapshotKey } from './playerTrackingService';
-import { LinkedAccount, PendingUpgrade, PlayerSnapshot, UserDoc } from '../types/user';
+import { LinkedAccount, PlayerSnapshot, UserDoc } from '../types/user';
 import { DiscordWebhookPayload } from '../types/discord';
 import { card, layoutMessage } from './discordLayout';
 
@@ -87,8 +87,8 @@ function byVillage(events: UpgradeEvent[]): string {
 }
 
 // The live API reports these when they finish, so their import timers only update stored levels (no DM).
-// Heroes aren't here: the API shows a hero's new level as soon as its upgrade *starts* (seen in
-// production on 2026-10-24), so hero completions come from timers (see heroUpgradeStarts).
+// Heroes aren't here: the API reports them the same way, but their timers DM as well, and the two share
+// a key so only the first is sent.
 export const API_COVERED_CATEGORIES = new Set([
   'troop',
   'superTroop',
@@ -141,93 +141,26 @@ export function eventFromTimer(up: InProgressUpgrade): UpgradeEvent | null {
     newLevel: up.targetLevel,
     maxLevel: up.maxLevel,
     count: 1,
-    // A hero reaches each level once, so one key covers both its import timer and its API-start timer
+    // A hero reaches each level once, so this key is the API's own for that level-up (only one DM)
     key:
       up.category === 'hero'
-        ? `upgrade:${up.code ?? up.name}:${up.village}:${up.targetLevel}`
+        ? `hero:${up.village}:${item?.name ?? up.name}:${up.targetLevel}`
         : `timer:${up.code ?? up.name}:${up.village}:${up.targetLevel}:${up.finishesAtMs}`,
   };
 }
 
-function sameUpgrade(
-  a: { code?: number; village: string; targetLevel: number },
-  b: { code?: number; village: string; targetLevel: number }
-): boolean {
-  return a.code !== undefined && a.code === b.code && a.village === b.village && a.targetLevel === b.targetLevel;
-}
-
 /**
- * The API shows a hero's new level as soon as its upgrade starts, so a hero level-up from the API is
- * a start, not a completion. Each one becomes a pending timer instead of a DM: dropped when the import
- * already has a timer for it (that timer DMs, and includes boosts), otherwise finishing after the
- * game data's upgrade time. Returns the remaining events and the new pending timers.
+ * A hero timer the live API has reached. The API shows a hero's new level once the upgrade has finished
+ * (like the lab's), so it's done, and sooner than the timer said if that's before it ran out: a potion,
+ * gems or a Book after the export. The API's level-up has already sent the DM.
  */
-export function heroUpgradeStarts(
-  events: UpgradeEvent[],
-  village: VillageDataV2 | null,
-  now: number = Date.now()
-): { events: UpgradeEvent[]; pending: PendingUpgrade[] } {
-  const remaining: UpgradeEvent[] = [];
-  const pending: PendingUpgrade[] = [];
-  for (const e of events) {
-    if (e.category !== 'hero' || e.kind !== 'upgraded') {
-      remaining.push(e);
-      continue;
-    }
-    const target = { code: e.code, village: e.village, targetLevel: e.newLevel };
-    if (village?.inProgressUpgrades.some((u) => u.finishesAtMs > now && sameUpgrade(u, target))) continue;
-    const seconds = e.code ? getLevel(getById(e.code)!, e.newLevel)?.upgradeSeconds : undefined;
-    if (!seconds) {
-      remaining.push(e);
-      continue;
-    }
-    pending.push({
-      code: e.code,
-      name: e.name,
-      category: 'hero',
-      village: e.village,
-      currentLevel: e.oldLevel,
-      targetLevel: e.newLevel,
-      maxLevel: e.maxLevel,
-      timerSeconds: seconds,
-      finishesAtMs: now + seconds * 1000,
-    });
-  }
-  return { events: remaining, pending };
-}
-
-/**
- * A hero timer the live API has moved past. The API shows a hero's new level when its upgrade starts,
- * so a level above the timer's target means that upgrade finished early (gems, a Book, a boost after
- * the export) and the next one has started. It's done, and its DM would arrive after the newer
- * upgrade's ("should now be level 12" after "level 13", seen 2026-10-27).
- */
-export function supersededHeroTimer(
+export function finishedHeroTimer(
   up: { category: string; code?: number; name: string; village: Village; targetLevel: number },
   snapshot: PlayerSnapshot | undefined
 ): boolean {
   if (up.category !== 'hero' || !snapshot) return false;
   const live = snapshot.heroes[snapshotKey(up.village, (up.code && getById(up.code)?.name) || up.name)];
-  return Boolean(live && live.level > up.targetLevel);
-}
-
-/**
- * Pending API-start timers that an import now covers (the import's own timer is more accurate), or
- * whose hero the import has on a later upgrade (so that one's done; a hero upgrades one level at a time).
- */
-export function withoutImportedTimers(
-  pending: PendingUpgrade[] | undefined,
-  village: VillageDataV2 | null
-): PendingUpgrade[] {
-  if (!pending || !village) return pending ?? [];
-  const covered = (p: PendingUpgrade, u: InProgressUpgrade) =>
-    sameUpgrade(u, p) ||
-    (p.category === 'hero' &&
-      u.code !== undefined &&
-      u.code === p.code &&
-      u.village === p.village &&
-      u.targetLevel > p.targetLevel);
-  return pending.filter((p) => !village.inProgressUpgrades.some((u) => covered(p, u)));
+  return Boolean(live && live.level >= up.targetLevel);
 }
 
 export function isDmPaused(user: UserDoc, now: number = Date.now()): boolean {

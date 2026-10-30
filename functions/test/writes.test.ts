@@ -74,6 +74,7 @@ describe('saveUser removes fields nothing reads any more (4.1)', () => {
           isPrimary: true,
           activeUpgrades: [],
           apprenticeTimer: {},
+          pendingUpgrades: [],
           villageData: { homeDefenses: [] },
         },
         { playerTag: '#B', name: 'B', townHallLevel: 9, isPrimary: false, villageData: { version: 2, items: [] } },

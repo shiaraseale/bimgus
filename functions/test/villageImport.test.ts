@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import exportFixture from './fixtures/export-th12-bh9.json';
 import { VillageDataV2, VillageImportService, boostedSeconds } from '../src/services/villageImportService';
-import { getByName } from '../src/services/gameDataService';
+import { getById, getByName, getLevel } from '../src/services/gameDataService';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const total = (data: VillageDataV2, code: number, village: 'home' | 'builder' = 'home') =>
@@ -150,37 +150,44 @@ describe('parseExport (one file, both villages)', () => {
     expect(lines).toHaveLength(6);
   });
 
-  it('reads an upgrading hero at its current level: the export, like the API, shows the new one', () => {
+  it('reads an upgrading hero like everything else: at its current level, going up one', () => {
     const upgrading = clone(exportFixture) as any;
     upgrading.heroes.find((h: any) => h.data === 28000001).timer = 3600; // Archer Queen, listed at 37
     const parsed = VillageImportService.parseExport(upgrading);
     const queen = parsed.inProgressUpgrades.find((u) => u.code === 28000001)!;
-    expect([queen.currentLevel, queen.targetLevel]).toEqual([36, 37]);
-    expect(parsed.items.find((i) => i.code === 28000001)?.level).toBe(36);
-    expect(parsed.heroTimersFixed).toBe(true);
+    expect([queen.currentLevel, queen.targetLevel]).toEqual([37, 38]);
+    expect(parsed.items.find((i) => i.code === 28000001)?.level).toBe(37);
+    expect(parsed.heroTimersFixed).toBeUndefined();
   });
 
-  it('moves the upgrading heroes in imports from before that fix down a level, once', () => {
+  it('runs a timer to the level after the one listed: a real one outlasts the upgrade to the listed level', () => {
+    // Cannon 13 with 6.3 hours left, when reaching level 13 takes 6 hours: it's going to 14
+    const cannon = exportFixture.buildings.find((b) => b.data === 1000008 && 'timer' in b) as any;
+    expect(cannon.timer).toBeGreaterThan(getLevel(getById(1000008)!, cannon.lvl)!.upgradeSeconds!);
+  });
+
+  it('moves the upgrading heroes in imports that put them a level too low back up, once', () => {
     const upgrading = clone(exportFixture) as any;
     upgrading.heroes.find((h: any) => h.data === 28000001).timer = 3600;
     const stored = clone(VillageImportService.parseExport(upgrading)) as any;
-    // As an older import stored it: the hero and its timer a level too high
-    delete stored.heroTimersFixed;
-    stored.items.find((i: any) => i.code === 28000001).level = 37;
+    // As those imports stored it: the hero and its timer a level too low, with the flag set
+    stored.heroTimersFixed = true;
+    stored.items.find((i: any) => i.code === 28000001).level = 36;
     Object.assign(
       stored.inProgressUpgrades.find((u: any) => u.code === 28000001),
-      { currentLevel: 37, targetLevel: 38 }
+      { currentLevel: 36, targetLevel: 37 }
     );
     const cannonTimer = { ...stored.inProgressUpgrades.find((u: any) => u.name === 'Cannon') };
 
     const read = VillageImportService.read(stored)!;
     const queen = read.inProgressUpgrades.find((u) => u.code === 28000001)!;
-    expect([queen.currentLevel, queen.targetLevel]).toEqual([36, 37]);
-    expect(read.items.find((i) => i.code === 28000001)?.level).toBe(36);
+    expect([queen.currentLevel, queen.targetLevel]).toEqual([37, 38]);
+    expect(read.items.find((i) => i.code === 28000001)?.level).toBe(37);
     expect(read.inProgressUpgrades.find((u) => u.name === 'Cannon')).toEqual(cannonTimer);
     // Reading it again changes nothing
     VillageImportService.read(read);
-    expect(queen.targetLevel).toBe(37);
+    expect(queen.targetLevel).toBe(38);
+    expect(read.heroTimersFixed).toBeUndefined();
   });
 
   it('keeps the same upgrade on separate lines when the timers are hours apart', () => {

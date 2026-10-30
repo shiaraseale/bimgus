@@ -12,11 +12,9 @@ import { InProgressUpgrade, VillageImportService } from '../services/villageImpo
 import {
   UpgradeEvent,
   eventFromTimer,
-  heroUpgradeStarts,
+  finishedHeroTimer,
   isDmPaused,
   notifyUpgrades,
-  supersededHeroTimer,
-  withoutImportedTimers,
 } from '../services/upgradeNotifier';
 import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { log } from '../utils/log';
@@ -76,16 +74,7 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         account.builderHallLevel = freshPlayer.builderHallLevel;
         account.name = freshPlayer.name;
 
-        // Hero level-ups in the API are upgrade starts; they become timers rather than DMs
-        const detected = heroUpgradeStarts(
-          PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer),
-          village
-        );
-        events.push(...detected.events);
-        if (detected.pending.length > 0) {
-          account.pendingUpgrades = [...(account.pendingUpgrades ?? []), ...detected.pending];
-          userModified = true;
-        }
+        events.push(...PlayerTrackingService.detectApiUpgrades(account.lastSnapshot, freshPlayer));
 
         // Keep the stored snapshot fresh for /heroes, /sixth-builder, /status and /roast, but only
         // write it when it changed or is getting old (/roast treats one over 15 minutes old as stale)
@@ -101,35 +90,18 @@ export async function runPlayerTrackingJob(): Promise<{ success: boolean; checke
         log.warn(`[PlayerTracking] Failed to poll live player ${account.playerTag}: ${playerErr.message}`);
       }
 
-      // Hero timers started from the API: DM when they should be done (unless an import now covers them)
-      if (account.pendingUpgrades?.length) {
-        const now = Date.now();
-        const pending = withoutImportedTimers(account.pendingUpgrades, village).filter(
-          (p) => !supersededHeroTimer(p, account.lastSnapshot)
-        );
-        for (const up of pending.filter((p) => p.finishesAtMs <= now)) {
-          const event = eventFromTimer(up as InProgressUpgrade);
-          if (event) events.push(event);
-        }
-        const stillPending = pending.filter((p) => p.finishesAtMs > now);
-        if (stillPending.length !== account.pendingUpgrades.length) {
-          account.pendingUpgrades = stillPending;
-          userModified = true;
-        }
-      }
-
       // Timers from the imported export: move the stored level up, and DM for what the API can't see.
-      // A hero timer the API has moved past is finished too, but too late to DM about.
+      // A hero timer the API has reached is finished too, and the API's level-up has said so.
       if (village) {
         const now = Date.now();
-        const superseded = (up: InProgressUpgrade) => supersededHeroTimer(up, account.lastSnapshot);
-        const done = (up: InProgressUpgrade) => up.finishesAtMs <= now || superseded(up);
+        const reached = (up: InProgressUpgrade) => finishedHeroTimer(up, account.lastSnapshot);
+        const done = (up: InProgressUpgrade) => up.finishesAtMs <= now || reached(up);
         const due = village.inProgressUpgrades.filter(done);
         if (due.length > 0) {
           village.inProgressUpgrades = village.inProgressUpgrades.filter((up) => !done(up));
           for (const up of due) {
             VillageImportService.applyCompletedTimer(village, up);
-            const event = superseded(up) ? null : eventFromTimer(up);
+            const event = reached(up) ? null : eventFromTimer(up);
             if (event) events.push(event);
           }
           account.villageData = village;

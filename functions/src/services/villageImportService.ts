@@ -246,9 +246,6 @@ export class VillageImportService {
         );
       }
       const category = item?.category ?? 'unknown';
-      // The export, like the API, already shows an upgrading hero at its new level (found 2026-10-28,
-      // when import timers were a level above the API's and showed twice), so it's one level lower
-      if (timer > 0 && category === 'hero') level -= 1;
       const key = `${village}:${code}:${level}:${gearedUp ? 1 : 0}`;
       const existing = groups.get(key);
       if (existing) existing.count += count;
@@ -331,7 +328,6 @@ export class VillageImportService {
       items: [...groups.values()],
       inProgressUpgrades: [],
       boosts: exportBoosts,
-      heroTimersFixed: true,
     };
 
     data.inProgressUpgrades = inProgress
@@ -400,25 +396,26 @@ export class VillageImportService {
   static read(villageData: any): VillageDataV2 | null {
     if (!villageData || villageData.version !== VILLAGE_DATA_VERSION) return null;
     const data = villageData as VillageDataV2;
-    if (!data.heroTimersFixed) VillageImportService.fixHeroTimers(data);
+    if (data.heroTimersFixed) VillageImportService.restoreHeroTimers(data);
     return data;
   }
 
   /**
-   * Imports from before 2026-10-28 put each upgrading hero, and its timer, one level too high; moves
-   * them down once (the flag is saved with the data the next time it's written).
+   * Imports from 2026-10-28 to 2026-10-30 put each upgrading hero, and its timer, one level too low:
+   * the export lists a hero at its current level, like everything else. Moves them back up once (the
+   * flag's removal is saved with the data the next time it's written).
    */
-  static fixHeroTimers(data: VillageDataV2): void {
+  static restoreHeroTimers(data: VillageDataV2): void {
     for (const up of data.inProgressUpgrades ?? []) {
       if (up.category !== 'hero') continue;
       const item = data.items?.find(
         (i) => i.code === up.code && i.village === up.village && i.level === up.currentLevel
       );
-      if (item) item.level -= 1;
-      up.currentLevel -= 1;
-      up.targetLevel -= 1;
+      if (item) item.level += 1;
+      up.currentLevel += 1;
+      up.targetLevel += 1;
     }
-    data.heroTimersFixed = true;
+    delete data.heroTimersFixed;
   }
 
   static isStale(data: VillageDataV2, now: number = Date.now()): boolean {

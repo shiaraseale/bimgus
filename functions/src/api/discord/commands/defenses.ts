@@ -70,7 +70,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
         });
 
     // Running timers, under each village's own card
-    const timers = activeInProgress(account, village);
+    const timers = activeInProgress(village);
     const upgrading = (v: 'home' | 'builder'): CardSection[] => {
       const own = timers.filter((u) => u.village === v);
       if (own.length === 0) return [];

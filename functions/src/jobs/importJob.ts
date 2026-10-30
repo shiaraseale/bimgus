@@ -8,12 +8,7 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService } from '../services/discordService';
 import { CocAssetService } from '../services/cocAssetService';
 import { VillageDataV2, VillageImportService } from '../services/villageImportService';
-import {
-  describeEvent,
-  eventsFromImportChanges,
-  notifyUpgrades,
-  withoutImportedTimers,
-} from '../services/upgradeNotifier';
+import { describeEvent, eventsFromImportChanges, notifyUpgrades } from '../services/upgradeNotifier';
 import { InteractionReply, interactionReply } from './interactionReply';
 import { importListButton } from '../api/discord/components/importList';
 import { CardSection, VillageCard, villageCards } from '../api/discord/ui';
@@ -135,7 +130,6 @@ export async function runImportTask(
       const events = eventsFromImportChanges(changes);
 
       account.villageData = village;
-      account.pendingUpgrades = withoutImportedTimers(account.pendingUpgrades, village);
       if (events.length > 0) await notifyUpgrades(user, account, events);
 
       // A card per village: what's running and what changed, then what's left in a line. The "Full list"

@@ -219,7 +219,7 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
     bbTroops: itemSection('⚔️', 'Troops', bb.troops, `✅ All BB troops maxed for BH${bh}!`),
   };
 
-  return { th, bh, bob: bb.sixthBuilder, sections, timers: activeInProgress(account, village) };
+  return { th, bh, bob: bb.sixthBuilder, sections, timers: activeInProgress(village) };
 }
 
 // Walls are only listed while some are left
