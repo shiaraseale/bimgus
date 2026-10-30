@@ -21,6 +21,9 @@ export interface ReminderInput {
   roundNum?: number; // a CWL round
 }
 
+// Whole hours, rounded down as Discord's "in 3 hours" is, so the title and the end time agree
+const timeLeft = (hours: number) => (hours < 1 ? 'Under an hour' : `~${Math.floor(hours)}h`);
+
 /** Who still has attacks to make, with the time left and the score; null when everyone has attacked. */
 export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | null {
   const waiting = r.ourClan.members
@@ -36,10 +39,10 @@ export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | n
   return layoutMessage(
     card({
       accent: COLORS.RED,
-      title: `⚠️ ~${Math.round(r.hoursLeft)}h left in ${r.roundNum ? `CWL round ${r.roundNum}` : 'the war'} vs ${r.enemyClan.name}`,
+      title: `⚠️ ${timeLeft(r.hoursLeft)} left in ${r.roundNum ? `CWL round ${r.roundNum}` : 'the war'} vs ${r.enemyClan.name}`,
       body: [`**Still to attack**: ${names.join(', ')}`, `Ends ${discordTime(r.endMs)}`].join('\n'),
       footer: `Score ${scoreLine(r.ourClan, r.enemyClan)} · ${r.ourClan.attacks}/${r.teamSize * r.attacksPerMember} attacks`,
-      buttons: DiscordService.warReminderActionRow(r.clanTag).components,
+      buttons: DiscordService.warActionRow(r.clanTag).components,
     })
   );
 }

@@ -2,6 +2,13 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live, and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## Unreleased
+
+### For clan members
+
+- Attack reminders' second button says **Clash of Stats**, like the other war cards. It opens the same war page "Live War Map" did.
+- The time left in a reminder's title is rounded down, so it agrees with the end time under it ("~3h left" with "in 3 hours"), and it says "Under an hour" at the end.
+
 ## v2026.10.30 (30 October 2026)
 
 Every Bimgus message has a new look. Discord's newer card layouts replace the old embeds, and most messages are much shorter.

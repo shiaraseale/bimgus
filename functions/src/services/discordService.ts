@@ -237,16 +237,6 @@ export class DiscordService {
   }
 
   /**
-   * Action row for War / CWL pending attack reminders.
-   */
-  static warReminderActionRow(clanTag: string) {
-    return this.createActionRow([
-      this.createLinkButton('Open CoC', this.openGameLink(), '⚔️'),
-      this.createLinkButton('Live War Map', this.clashOfStatsWarLink(clanTag), '📊'),
-    ]);
-  }
-
-  /**
    * Action row for Clan Capital Raid Weekend notifications.
    */
   static raidActionRow(clanTag: string, enemyClanTag?: string) {

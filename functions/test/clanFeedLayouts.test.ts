@@ -6,7 +6,7 @@ import { DiscordService } from '../src/services/discordService';
 import { buildAttackReminder } from '../src/jobs/warPingJob';
 import { CocService } from '../src/services/cocService';
 import { CwlPlayerSummary, CwlSeasonSummary } from '../src/types/db';
-import { expectLayout, headings, texts } from './layoutHelpers';
+import { cards, expectLayout, headings, texts } from './layoutHelpers';
 
 // The clan feed's cards (5.5): short, and within Discord's layout limits however big the war
 const config: any = {
@@ -267,14 +267,22 @@ describe('attack reminders', () => {
   it('names who still has attacks, with how many are left for those who started', () => {
     const msg = reminder([warMember(2, [hit, hit]), warMember(3), warMember(1, [hit])])!;
     expectLayout(msg);
-    expect(headings(msg)).toEqual(['⚠️ ~3h left in the war vs Them']);
+    // 2.6 hours: rounded down, as Discord's "in 2 hours" is
+    expect(headings(msg)).toEqual(['⚠️ ~2h left in the war vs Them']);
+    const labels = cards(msg)[0]
+      .components.filter((c: any) => c.type === 1)
+      .flatMap((r: any) => r.components.map((b: any) => b.label));
+    expect(labels).toEqual(['Open CoC', 'Clash of Stats']);
     expect(texts(msg)).toContain('**Still to attack**: #1 Member 1 (1 left), #3 Member 3');
     expect(texts(msg)).toMatch(/^Ends <t:\d+:R> \(<t:\d+:s>\)$/m);
   });
 
   it('says which CWL round', () => {
     const msg = reminder([warMember(1)], { attacksPerMember: 1, roundNum: 4 })!;
-    expect(headings(msg)).toEqual(['⚠️ ~3h left in CWL round 4 vs Them']);
+    expect(headings(msg)).toEqual(['⚠️ ~2h left in CWL round 4 vs Them']);
+    expect(headings(reminder([warMember(1)], { hoursLeft: 0.4 })!)).toEqual([
+      '⚠️ Under an hour left in the war vs Them',
+    ]);
   });
 
   it('is null when everyone has attacked', () => {

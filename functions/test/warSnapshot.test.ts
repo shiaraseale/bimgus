@@ -26,7 +26,7 @@ const war = (state: string, opponent: string, attacks: number[] = []): any => ({
   teamSize: 5,
   preparationStartTime: `2026102${opponent === '#OLD' ? 4 : 6}T050000.000Z`,
   startTime: cocTime(Date.now() - 20 * 3600_000),
-  endTime: cocTime(Date.now() + 2 * 3600_000),
+  endTime: cocTime(Date.now() + 2.5 * 3600_000),
   clan: {
     tag: CLAN,
     name: 'Us',
@@ -154,6 +154,7 @@ describe('war reminders', () => {
     const snap = (await processWarDiff(current, await previousWarSnapshot(), botConfig))!;
     vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue(snap);
     await runWarPingJob(CLAN);
+    // 2.5 hours left: rounded down, as Discord's "in 2 hours" is
     expect(sent.flatMap(headings)).toContainEqual('⚠️ ~2h left in the war vs Them');
     expect(saved).toEqual([expect.objectContaining({ warId: getWarId(current), pingedMissedAttacks: true })]);
   });
