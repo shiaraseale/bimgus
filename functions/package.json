@@ -17,7 +17,8 @@
     "build:game-data": "node scripts/buildGameData.mts",
     "format": "prettier --ignore-path ../.prettierignore --write src test scripts",
     "format:check": "prettier --ignore-path ../.prettierignore --check src test scripts",
-    "import-names": "node scripts/importNameSheet.mts"
+    "import-names": "node scripts/importNameSheet.mts",
+    "preview-layouts": "npm run build && node lib/scripts/previewLayouts.js"
   },
   "engines": {
     "node": "22"

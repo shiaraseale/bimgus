@@ -30,6 +30,10 @@ export const config = {
     clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     coLeaderRoleId: process.env.DISCORD_COLEADER_ROLE_ID || '',
     leaderRoleId: process.env.DISCORD_LEADER_ROLE_ID || '',
+    /** A private channel's webhook that the layout preview script posts to (local runs only) */
+    get testChannelWebhook(): string {
+      return process.env.DISCORD_TEST_CHANNEL_WEBHOOK || '';
+    },
     /** An application emoji's ID from EMOJI_<KEY>_ID, or '' when it isn't set */
     emojiId(key: string): string {
       return (process.env[`EMOJI_${key}_ID`] || '').trim();
