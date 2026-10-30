@@ -22,10 +22,13 @@ import { expectLayout, texts } from './layoutHelpers';
 /** The first DM's heading, footer and the lines between them. */
 const dmText = (send: any) => {
   const lines = texts(send.mock.calls[0][1]).split('\n');
+  const body = lines.filter((l) => !/^(###|-#) /.test(l));
+  // The blank line card() puts above the footer
+  while (body.at(-1) === '') body.pop();
   return {
     title: lines.find((l) => l.startsWith('### ')) ?? '',
     footer: lines.find((l) => l.startsWith('-# ')) ?? '',
-    body: lines.filter((l) => !/^(###|-#) /.test(l)),
+    body,
   };
 };
 

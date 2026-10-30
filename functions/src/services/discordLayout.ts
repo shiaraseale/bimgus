@@ -61,20 +61,21 @@ export function card(c: Card): DiscordContainerComponent {
     .filter(Boolean)
     .join('\n');
   const blocks = (c.blocks ?? []).filter(Boolean);
-  // The footer joins the last piece of text rather than costing a component of its own
+  // The footer joins the last piece of text, after a blank line, rather than costing a component of its own
   const footer = c.footer ? `-# ${c.footer}` : '';
-  const withFooter = (s: string, last: boolean) => (last && footer ? [s, footer].filter(Boolean).join('\n') : s);
+  const withFooter = (s: string, last: boolean) => (last && footer ? (s ? `${s}\n\n${footer}` : footer) : s);
 
+  // Sections and the buttons are set apart with Discord's larger gap around each divider
   const children: DiscordContainerChild[] = [];
   const headText = withFooter(head, blocks.length === 0);
   if (c.thumbnail) children.push(section([headText || '​'], thumbnail(c.thumbnail)));
   else if (headText) children.push(text(headText));
   blocks.forEach((b, i) => {
-    if (children.length > 0) children.push(separator());
+    if (children.length > 0) children.push(separator('large'));
     children.push(text(withFooter(b, i === blocks.length - 1)));
   });
   if (c.buttons && c.buttons.length > 0) {
-    children.push(separator(), { type: 1, components: c.buttons });
+    children.push(separator('large'), { type: 1, components: c.buttons });
   }
   return container(c.accent, children);
 }

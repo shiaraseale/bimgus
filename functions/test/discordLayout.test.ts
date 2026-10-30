@@ -35,13 +35,17 @@ describe('card', () => {
   it('uses plain text without a thumbnail, divides blocks, and puts the footer in the last text', () => {
     const c = card({ title: 'Help', blocks: ['**A**\none', '**B**\ntwo'], footer: 'Account: X', buttons: [button] });
     expect(c.components.map((x) => x.type)).toEqual([10, 14, 10, 14, 10, 14, 1]);
-    expect((c.components[4] as any).content).toBe('**B**\ntwo\n-# Account: X');
+    // The larger gap around each divider, and a blank line above the footer
+    c.components
+      .filter((x) => x.type === 14)
+      .forEach((sep) => expect(sep).toEqual({ type: 14, divider: true, spacing: 2 }));
+    expect((c.components[4] as any).content).toBe('**B**\ntwo\n\n-# Account: X');
     expect(c).not.toHaveProperty('accent_color');
   });
 
   it('puts the footer under the body when there are no blocks', () => {
     const c = card({ title: 'Done', body: 'Text', footer: 'Bimgus' });
-    expect(c.components).toEqual([{ type: 10, content: '### Done\nText\n-# Bimgus' }]);
+    expect(c.components).toEqual([{ type: 10, content: '### Done\nText\n\n-# Bimgus' }]);
   });
 });
 
