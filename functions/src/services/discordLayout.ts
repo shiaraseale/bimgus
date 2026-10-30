@@ -8,6 +8,7 @@ import {
   DiscordContainerComponent,
   DiscordSectionComponent,
   DiscordSeparatorComponent,
+  DiscordStringSelectComponent,
   DiscordTextDisplayComponent,
   DiscordThumbnailComponent,
   DiscordTopLevelComponent,
@@ -52,7 +53,8 @@ export interface Card {
   thumbnail?: string;
   blocks?: string[]; // further text, each after a divider
   footer?: string; // small text at the bottom, e.g. the account
-  buttons?: DiscordButtonComponent[]; // a row at the bottom of the card
+  menus?: DiscordStringSelectComponent[]; // dropdowns at the bottom of the card, one row each
+  buttons?: DiscordButtonComponent[]; // a row at the bottom of the card, under any menus
 }
 
 /** One card, laid out the same way everywhere. */
@@ -74,9 +76,12 @@ export function card(c: Card): DiscordContainerComponent {
     if (children.length > 0) children.push(separator('large'));
     children.push(text(withFooter(b, i === blocks.length - 1)));
   });
-  if (c.buttons && c.buttons.length > 0) {
-    children.push(separator('large'), { type: 1, components: c.buttons });
-  }
+  // The menus and buttons sit together at the bottom, after one divider
+  const rows: DiscordContainerChild[] = [
+    ...(c.menus ?? []).map((m): DiscordContainerChild => ({ type: 1, components: [m] })),
+    ...(c.buttons && c.buttons.length > 0 ? [{ type: 1 as const, components: c.buttons }] : []),
+  ];
+  if (rows.length > 0) children.push(separator('large'), ...rows);
   return container(c.accent, children);
 }
 

@@ -372,9 +372,8 @@ async function previewStatus(send: (payload: DiscordWebhookPayload) => Promise<b
   };
   const second: LinkedAccount = { ...account, playerTag: '#P1', name: 'Blake' };
   const accounts = [account, second];
+  // One message, as /status sends; its menus redraw it once the bot answering them has /status
   await send(buildStatusMessage(accounts, account, player, false));
-  await send(buildStatusMessage(accounts, account, player, false, { village: 'home', area: 'defenses' }));
-  await send(buildStatusMessage(accounts, account, player, false, { village: 'builder', area: 'overview' }));
 }
 
 // The message's text and buttons, for --print

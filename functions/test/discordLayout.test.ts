@@ -43,6 +43,17 @@ describe('card', () => {
     expect(c).not.toHaveProperty('accent_color');
   });
 
+  it('puts menus at the bottom, one row each, above the buttons and after one divider', () => {
+    const menu = (id: string) => ({ type: 3 as const, custom_id: id, options: [{ label: 'A', value: 'a' }] });
+    const c = card({ title: 'T', body: 'x', menus: [menu('m1'), menu('m2')], buttons: [button] });
+    expect(c.components.map((x) => x.type)).toEqual([10, 14, 1, 1, 1]);
+    expect(c.components.slice(2).map((row: any) => row.components[0].custom_id ?? row.components[0].label)).toEqual([
+      'm1',
+      'm2',
+      'Open CoC',
+    ]);
+  });
+
   it('puts the footer under the body when there are no blocks', () => {
     const c = card({ title: 'Done', body: 'Text', footer: 'Bimgus' });
     expect(c.components).toEqual([{ type: 10, content: '### Done\nText\n\n-# Bimgus' }]);

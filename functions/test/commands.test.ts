@@ -169,6 +169,11 @@ describe('slash commands end to end (mocked services)', () => {
 
   /** A /status message: one village's card, within Discord's limits, with no list split into parts. */
   const expectStatusCard = (msg: any, heading: string, label = '') => {
+    // Everything, menus and buttons too, is inside the one card
+    expect(
+      msg.components.map((c: any) => c.type),
+      label
+    ).toEqual([17]);
     expect(headings(msg), label).toEqual([heading]);
     expectLayout(msg, label);
     expect(allText(msg)).not.toMatch(/cont\./i);

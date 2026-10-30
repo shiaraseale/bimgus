@@ -13,7 +13,7 @@ import { LinkedAccount, OutstandingUpgradeItem } from '../../../types/user';
 import type { PlayerLike } from '../../../types/coc';
 import { log } from '../../../utils/log';
 import { card, layoutMessage } from '../../../services/discordLayout';
-import { DiscordButtonComponent, DiscordStringSelectComponent, DiscordTopLevelComponent } from '../../../types/discord';
+import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext } from '../context';
 import {
@@ -267,15 +267,15 @@ const menuId = (menu: StatusMenu, tag: string, view: StatusView) =>
   `${MENU}${menu}:${tag}:${view.village}:${view.area}`;
 
 /**
- * The menus under a /status message: the account (with more than one linked), the village (once there's
- * a Builder Base) and the area. Each says what's picked, and carries the other two.
+ * The menus at the bottom of a /status card: the account (with more than one linked), the village (once
+ * there's a Builder Base) and the area. Each says what's picked, and carries the other two.
  */
 function statusMenus(
   accounts: LinkedAccount[],
   account: LinkedAccount,
   view: StatusView,
   halls: { th: number; bh: number }
-): DiscordTopLevelComponent[] {
+): DiscordStringSelectComponent[] {
   const menus: DiscordStringSelectComponent[] = [];
   if (accounts.length > 1) {
     menus.push({
@@ -324,7 +324,7 @@ function statusMenus(
       default: a.value === view.area,
     })),
   });
-  return menus.map((m) => ({ type: 1, components: [m] }));
+  return menus;
 }
 
 /**
@@ -391,6 +391,10 @@ export function buildStatusMessage(
     .filter(Boolean)
     .join('\n');
 
+  const buttons: DiscordButtonComponent[] = [];
+  if (view.area === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
+  buttons.push(DiscordService.openGameLinkButton('Open CoC'));
+
   const label = AREAS.find((a) => a.value === view.area)!.label;
   const shownCards = villageCards(
     [{ village: view.village, hallLevel: isHome ? th : bh, intro: intro || undefined, sections }],
@@ -401,20 +405,14 @@ export function buildStatusMessage(
         ? CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th)
         : CocAssetService.getBuilderHallUrl(bh),
       footer: `Account: ${account.name} (${account.playerTag})`,
+      menus: statusMenus(accounts, account, view, { th, bh }),
+      buttons,
       more: (hidden) => `…and ${hidden} more`,
     }
   );
 
-  const buttons: DiscordButtonComponent[] = [];
-  if (view.area === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
-  buttons.push(DiscordService.openGameLinkButton('Open CoC'));
-
-  // The menus and buttons are for the whole message, so they sit under the card
-  return layoutMessage(
-    ...shownCards,
-    ...statusMenus(accounts, account, view, { th, bh }),
-    DiscordService.createActionRow(buttons)
-  );
+  // One card: the menus and buttons are at its bottom
+  return layoutMessage(...shownCards);
 }
 
 /** The account couldn't be loaded: say so on its card, and keep the menus so another can be picked. */
@@ -427,8 +425,8 @@ function statusErrorMessage(accounts: LinkedAccount[], account: LinkedAccount, v
       author: `[${account.name}] Status`,
       title: villageHeading(fitted.village, fitted.village === 'home' ? account.townHallLevel : bh),
       body: `❌ Could not load **${account.name}** (${account.playerTag}): ${err?.message || 'API error'}`,
-    }),
-    ...statusMenus(accounts, account, fitted, { th: account.townHallLevel, bh })
+      menus: statusMenus(accounts, account, fitted, { th: account.townHallLevel, bh }),
+    })
   );
 }
 

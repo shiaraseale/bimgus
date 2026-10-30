@@ -4,7 +4,7 @@ import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../se
 import { VILLAGE_HEADINGS, withoutImportedTimers } from '../../services/upgradeNotifier';
 import { COLORS } from '../../services/discordService';
 import { card } from '../../services/discordLayout';
-import { DiscordButtonComponent } from '../../types/discord';
+import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../types/discord';
 import { Village } from '../../services/gameDataService';
 import { LinkedAccount } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
@@ -58,6 +58,7 @@ export interface CardsOptions {
   author?: string; // above the first card's heading, e.g. "[Tester] Upgrades: Lab"
   thumbnail?: string; // beside the first card's heading
   footer?: string; // under the last card, e.g. the account
+  menus?: DiscordStringSelectComponent[]; // at the bottom of the last card, above its buttons
   buttons?: DiscordButtonComponent[]; // at the bottom of the last card
   more?: (hidden: number) => string;
 }
@@ -98,6 +99,7 @@ export function villageCards(cards: VillageCard[], budget: number, opts: CardsOp
       blocks: thumb ? [lists] : undefined,
       thumbnail: thumb,
       footer: last ? opts.footer : undefined,
+      menus: last ? opts.menus : undefined,
       buttons: last ? opts.buttons : undefined,
     });
   });
