@@ -1,12 +1,48 @@
 import { CocService } from '../services/cocService';
 import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
+import { card, layoutMessage } from '../services/discordLayout';
 import { config } from '../config';
-import { CurrentWarResponse } from '../types/coc';
+import { CurrentWarResponse, WarClan } from '../types/coc';
+import { DiscordWebhookPayload } from '../types/discord';
 import { findActiveCwlWar } from '../diff/cwlWars';
-import { getWarId } from '../diff/warDiff';
+import { getWarId, scoreLine } from '../diff/warDiff';
 import { isExpectedApiMiss, log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
+
+export interface ReminderInput {
+  ourClan: WarClan;
+  enemyClan: WarClan;
+  teamSize: number;
+  attacksPerMember: number;
+  hoursLeft: number;
+  endMs: number;
+  clanTag: string;
+  roundNum?: number; // a CWL round
+}
+
+/** Who still has attacks to make, with the time left and the score; null when everyone has attacked. */
+export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | null {
+  const waiting = r.ourClan.members
+    .filter((m) => (m.attacks?.length ?? 0) < r.attacksPerMember)
+    .sort((a, b) => a.mapPosition - b.mapPosition);
+  if (waiting.length === 0) return null;
+
+  // "(1 left)" only for someone who has attacked but not used them all
+  const names = waiting.map((m) => {
+    const used = m.attacks?.length ?? 0;
+    return `#${m.mapPosition} ${m.name}${used > 0 ? ` (${r.attacksPerMember - used} left)` : ''}`;
+  });
+  return layoutMessage(
+    card({
+      accent: COLORS.RED,
+      title: `⚠️ ~${Math.round(r.hoursLeft)}h left in ${r.roundNum ? `CWL round ${r.roundNum}` : 'the war'} vs ${r.enemyClan.name}`,
+      body: [`**Still to attack**: ${names.join(', ')}`, `Ends ${discordTime(r.endMs)}`].join('\n'),
+      footer: `Score ${scoreLine(r.ourClan, r.enemyClan)} · ${r.ourClan.attacks}/${r.teamSize * r.attacksPerMember} attacks`,
+      buttons: DiscordService.warReminderActionRow(r.clanTag).components,
+    })
+  );
+}
 
 export async function runWarPingJob(clanTagOverride?: string): Promise<{ success: boolean; message: string }> {
   const targetTag = clanTagOverride || config.coc.clanTag;
@@ -76,38 +112,19 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
           return { success: true, message: `CWL reminder already sent for round ${cwlRoundIndex + 1}` };
         }
 
-        const attacksPerMember = 1; // Exactly 1 hit in CWL
-        const membersWithUnusedAttacks = ourClan.members
-          .filter((m) => !m.attacks || m.attacks.length < attacksPerMember)
-          .map(
-            (m) =>
-              `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — ${m.attacks?.length || 0}/${attacksPerMember} attacks used`
-          );
+        const reminder = buildAttackReminder({
+          ourClan,
+          enemyClan,
+          teamSize: activeWar.teamSize,
+          attacksPerMember: 1, // Exactly 1 hit in CWL
+          hoursLeft: hoursRemaining,
+          endMs: warEndTimeMs,
+          clanTag: targetTag,
+          roundNum: cwlRoundIndex + 1,
+        });
 
-        if (membersWithUnusedAttacks.length > 0) {
-          const roundNum = cwlRoundIndex + 1;
-          await DiscordService.sendWebhook(webhookUrl, {
-            content: '⚠️ **CWL Alert: Attacks Needed Before Round Ends!**',
-            embeds: [
-              {
-                title: `⏳ Only ~${Math.round(hoursRemaining)}h Left in CWL Round ${roundNum}!`,
-                description: [
-                  `War vs **${enemyClan.name}** ends ${discordTime(warEndTimeMs)}!`,
-                  '',
-                  `The following members still need to make their 1 attack:`,
-                  membersWithUnusedAttacks.join('\n'),
-                  '',
-                  `🏰 **Current Score**: ${ourClan.stars} ⭐ vs ${enemyClan.stars} ⭐`,
-                  `💥 **Destruction**: ${ourClan.destructionPercentage.toFixed(1)}% vs ${enemyClan.destructionPercentage.toFixed(1)}%`,
-                  `🗡️ **Clan Attacks**: ${ourClan.attacks}/${activeWar.teamSize}`,
-                ].join('\n'),
-                color: COLORS.RED,
-                footer: { text: `CWL Round ${roundNum} • Bimgus Tracker` },
-                timestamp: new Date().toISOString(),
-              },
-            ],
-            components: [DiscordService.warReminderActionRow(targetTag)],
-          });
+        if (reminder) {
+          await DiscordService.sendWebhook(webhookUrl, reminder);
 
           pingedRounds.add(cwlRoundIndex);
           if (cwlSnap) {
@@ -128,35 +145,18 @@ export async function runWarPingJob(clanTagOverride?: string): Promise<{ success
           return { success: true, message: 'Missed attacks reminder already sent for this war' };
         }
 
-        const attacksPerMember = activeWar.attacksPerMember || 2;
-        const membersWithUnusedAttacks = ourClan.members
-          .filter((m) => (!m.attacks ? attacksPerMember : attacksPerMember - m.attacks.length) > 0)
-          .map((m) => {
-            const used = m.attacks ? m.attacks.length : 0;
-            return `• **${m.name}** (used ${used}/${attacksPerMember})`;
-          });
+        const reminder = buildAttackReminder({
+          ourClan,
+          enemyClan,
+          teamSize: activeWar.teamSize,
+          attacksPerMember: activeWar.attacksPerMember || 2,
+          hoursLeft: hoursRemaining,
+          endMs: warEndTimeMs,
+          clanTag: targetTag,
+        });
 
-        if (membersWithUnusedAttacks.length > 0) {
-          await DiscordService.sendWebhook(botConfig.webhooks.warRoom || webhookUrl, {
-            content: '⚠️ **War Alert: Remaining Attacks Warning!**',
-            embeds: [
-              {
-                title: `⏳ Only ~${Math.round(hoursRemaining)} Hours Left in War!`,
-                description: [
-                  `The following members still have attacks remaining:`,
-                  '',
-                  membersWithUnusedAttacks.join('\n'),
-                  '',
-                  `🏰 **Current Score**: ${ourClan.stars} ⭐ vs ${enemyClan.stars} ⭐`,
-                  `💥 **Clan Destruction**: ${ourClan.destructionPercentage.toFixed(1)}%`,
-                ].join('\n'),
-                color: COLORS.RED,
-                footer: { text: 'Bimgus • Clash of Clans Tracker' },
-                timestamp: new Date().toISOString(),
-              },
-            ],
-            components: [DiscordService.warReminderActionRow(targetTag)],
-          });
+        if (reminder) {
+          await DiscordService.sendWebhook(botConfig.webhooks.warRoom || webhookUrl, reminder);
 
           await FirestoreService.saveWarSnapshot(targetTag, { ...warSnap, pingedMissedAttacks: true });
         }

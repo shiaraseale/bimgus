@@ -6,7 +6,7 @@ import cors from 'cors';
 import { defineSecret } from 'firebase-functions/params';
 import { FirestoreService } from '../services/firestoreService';
 import { CocService } from '../services/cocService';
-import { DiscordService, COLORS } from '../services/discordService';
+import { DiscordService } from '../services/discordService';
 import { runPollClanJob } from '../jobs/pollClanJob';
 import { buildCwlSeasonSummary, sendCwlSeasonSummaryDiscord } from '../diff/cwlDiff';
 import { sendWarSummaryDiscord } from '../diff/warDiff';
@@ -269,20 +269,10 @@ router.post('/test-webhook', requireAdminKey, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing webhook URL or webhook not configured yet' });
     }
 
-    const ok = await DiscordService.sendWebhook(targetUrl, {
-      embeds: [
-        {
-          title: '✅ Webhook Test Successful',
-          description: `This channel is successfully configured for **${channelName || 'Clash Alerts'}**!`,
-          color: COLORS.GREEN,
-          fields: [
-            { name: 'Status', value: 'Ready for live streaming', inline: true },
-            { name: 'Source', value: 'Bimgus', inline: true },
-          ],
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    });
+    const ok = await DiscordService.sendWebhook(
+      targetUrl,
+      DiscordService.webhookTestMessage(channelName || 'Clash Alerts')
+    );
 
     if (ok) {
       return res.json({ success: true, message: 'Test message sent to Discord!' });

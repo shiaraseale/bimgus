@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { DiscordService } from '../src/services/discordService';
+import { expectLayout, headings, texts } from './layoutHelpers';
 
 describe('DiscordService DRY_RUN_DISCORD', () => {
   const originalEnv = process.env.DRY_RUN_DISCORD;
@@ -81,5 +82,14 @@ describe('DiscordService.resolveChannelId', () => {
     expect(await DiscordService.resolveChannelId(url)).toBe('888');
     expect(await DiscordService.resolveChannelId(url)).toBe('888');
     expect(get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DiscordService.webhookTestMessage', () => {
+  it('is a card naming the channel', () => {
+    const msg = DiscordService.webhookTestMessage('War Room');
+    expectLayout(msg);
+    expect(headings(msg)).toEqual(['✅ Webhook works']);
+    expect(texts(msg)).toContain('**War Room**');
   });
 });

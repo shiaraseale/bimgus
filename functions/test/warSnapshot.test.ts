@@ -154,7 +154,7 @@ describe('war reminders', () => {
     const snap = (await processWarDiff(current, await previousWarSnapshot(), botConfig))!;
     vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue(snap);
     await runWarPingJob(CLAN);
-    expect(sent.map((p) => p.content)).toContain('⚠️ **War Alert: Remaining Attacks Warning!**');
+    expect(sent.flatMap(headings)).toContainEqual('⚠️ ~2h left in the war vs Them');
     expect(saved).toEqual([expect.objectContaining({ warId: getWarId(current), pingedMissedAttacks: true })]);
   });
 });

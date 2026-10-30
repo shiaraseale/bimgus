@@ -3,6 +3,7 @@ import { processClanDiff } from '../src/diff/clanDiff';
 import { buildAttackCard, sendWarSummaryDiscord } from '../src/diff/warDiff';
 import { processCwlDiff, sendCwlSeasonSummaryDiscord } from '../src/diff/cwlDiff';
 import { DiscordService } from '../src/services/discordService';
+import { buildAttackReminder } from '../src/jobs/warPingJob';
 import { CocService } from '../src/services/cocService';
 import { CwlPlayerSummary, CwlSeasonSummary } from '../src/types/db';
 import { expectLayout, headings, texts } from './layoutHelpers';
@@ -37,9 +38,9 @@ const member = (tag: string, extra: any = {}) => ({
   ...extra,
 });
 
-const warMember = (i: number, attacks: any[] = []) => ({
+const warMember = (i: number, attacks: any[] = [], name = `Member ${i}`) => ({
   tag: `#M${i}`,
-  name: `Member ${i}`,
+  name,
   mapPosition: i,
   townhallLevel: 12,
   attacks,
@@ -201,5 +202,43 @@ describe('CWL cards', () => {
     const all = sent.flatMap(headings);
     expect(all).toEqual(['🏆 CWL 2026-10: 4W 3L', '⭐ Stars leaderboard']);
     expect(sent.map(texts).join('\n')).toContain('🥊 **Underdogs**');
+  });
+});
+
+describe('attack reminders', () => {
+  const clan = (members: any[]): any => ({ name: 'Us', stars: 20, destructionPercentage: 40, attacks: 30, members });
+  const hit = { order: 1, attackerTag: '#X', defenderTag: '#Y', stars: 2, destructionPercentage: 70 };
+  const reminder = (members: any[], extra: any = {}) =>
+    buildAttackReminder({
+      ourClan: clan(members),
+      enemyClan: { ...clan([]), name: 'Them', stars: 18 },
+      teamSize: members.length,
+      attacksPerMember: 2,
+      hoursLeft: 2.6,
+      endMs: Date.UTC(2026, 9, 30, 12),
+      clanTag: '#C',
+      ...extra,
+    });
+
+  it('names who still has attacks, with how many are left for those who started', () => {
+    const msg = reminder([warMember(2, [hit, hit]), warMember(3), warMember(1, [hit])])!;
+    expectLayout(msg);
+    expect(headings(msg)).toEqual(['⚠️ ~3h left in the war vs Them']);
+    expect(texts(msg)).toContain('**Still to attack**: #1 Member 1 (1 left), #3 Member 3');
+    expect(texts(msg)).toMatch(/^Ends <t:\d+:R> \(<t:\d+:s>\)$/m);
+  });
+
+  it('says which CWL round', () => {
+    const msg = reminder([warMember(1)], { attacksPerMember: 1, roundNum: 4 })!;
+    expect(headings(msg)).toEqual(['⚠️ ~3h left in CWL round 4 vs Them']);
+  });
+
+  it('is null when everyone has attacked', () => {
+    expect(reminder([warMember(1, [hit, hit])])).toBeNull();
+  });
+
+  it('fits a 50v50 war where nobody has attacked', () => {
+    const members = Array.from({ length: 50 }, (_, i) => warMember(i + 1, [], `A rather long player name ${i}`));
+    expectLayout(reminder(members)!);
   });
 });

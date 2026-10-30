@@ -3,7 +3,7 @@ import axios from 'axios';
 import { DiscordWebhookPayload } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
 import { log } from '../utils/log';
-import { overLimits } from './discordLayout';
+import { card, layoutMessage, overLimits } from './discordLayout';
 
 export const COLORS = {
   GOLD: 0xffd700,
@@ -223,6 +223,17 @@ export class DiscordService {
       buttons.push(this.createLinkButton('Opponent Clan', this.clanDeepLink(opponentTag), '🛡️'));
     }
     return this.createActionRow(buttons);
+  }
+
+  /** What the dashboard's "Test webhook" posts: the same kind of card as the channel's real messages. */
+  static webhookTestMessage(channelName: string): DiscordWebhookPayload {
+    return layoutMessage(
+      card({
+        accent: COLORS.GREEN,
+        title: '✅ Webhook works',
+        body: `This channel will get Bimgus's **${channelName}** messages.`,
+      })
+    );
   }
 
   /**
