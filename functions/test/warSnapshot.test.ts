@@ -135,7 +135,7 @@ describe('a new war after the war task missed its first tick', () => {
     await processWarDiff(war('inWar', '#NEW', [1, 2]), battle, botConfig);
     const titles = sent.flatMap(headings);
     expect(titles).toHaveLength(2);
-    titles.forEach((t) => expect(t).toMatch(/^💥 Our attack: .* 70%$/));
+    titles.forEach((t) => expect(t).toMatch(/^💥 Clan attack: .* 70%$/));
   });
 });
 

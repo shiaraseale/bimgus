@@ -46,7 +46,7 @@ export function buildAttackCard(
   const isThreeStar = attack.stars === 3;
   return card({
     accent: isClanAttack ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
-    title: `${isClanAttack ? '💥 Our attack' : '🛡️ Enemy attack'}: ${DiscordService.formatStars(attack.stars)} ${attack.destructionPercentage}%`,
+    title: `${isClanAttack ? '💥 Clan attack' : '🛡️ Enemy attack'}: ${DiscordService.formatStars(attack.stars)} ${attack.destructionPercentage}%`,
     body: `**#${attacker.mapPosition} ${attacker.name}** (TH${attacker.townhallLevel}) → **#${defender.mapPosition} ${defender.name}** (TH${defender.townhallLevel})`,
     footer: [`Score ${scoreLine(ours, theirs)}`, context].filter(Boolean).join(' · '),
     buttons,
