@@ -220,7 +220,7 @@ export class DiscordService {
       this.createLinkButton('Clash of Stats', this.clashOfStatsWarLink(clanTag), '📊'),
     ];
     if (opponentTag) {
-      buttons.push(this.createLinkButton('Opponent Clan', this.clanDeepLink(opponentTag), '🛡️'));
+      buttons.push(this.createLinkButton('Enemy Clan', this.clanDeepLink(opponentTag), '🛡️'));
     }
     return this.createActionRow(buttons);
   }
