@@ -1,15 +1,56 @@
 import { CurrentWarResponse, WarAttack, WarClanMember } from '../types/coc';
 import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
-import { DiscordEmbed } from '../types/discord';
+import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
+import { card, fitLines, layoutMessage } from '../services/discordLayout';
 import { EMOJIS } from '../constants/emojis';
 import { discordTime } from '../utils/discordTime';
 import type { WarAudit } from '../types/api';
 
-interface FlatAttack extends WarAttack {
+// Room for the post-war audit's lists (Discord allows 4,000 characters per message)
+const AUDIT_BUDGET = 3500;
+
+export interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
   attacker: WarClanMember;
   defender: WarClanMember;
+}
+
+interface ClanScore {
+  stars: number;
+  destructionPercentage: number;
+}
+
+/** Members as "#3 Alice, #7 Bob", in map order. */
+export function positionList(members: Array<{ mapPosition: number; name: string }>): string {
+  return [...members]
+    .sort((a, b) => a.mapPosition - b.mapPosition)
+    .map((m) => `#${m.mapPosition} ${m.name}`)
+    .join(', ');
+}
+
+/** "12–10 ⭐ · 45.0% vs 38.2%", ours first. */
+export function scoreLine(ours: ClanScore, theirs: ClanScore): string {
+  return `${ours.stars}–${theirs.stars} ${EMOJIS.STAR} · ${ours.destructionPercentage.toFixed(1)}% vs ${theirs.destructionPercentage.toFixed(1)}%`;
+}
+
+/** One attack in a war or CWL round, ours or theirs: the result, who hit whom, then the live score. */
+export function buildAttackCard(
+  attack: FlatAttack,
+  ours: ClanScore,
+  theirs: ClanScore,
+  buttons: DiscordButtonComponent[],
+  context?: string // e.g. "CWL round 3 · 10/15 attacks", at the end of the footer
+): DiscordContainerComponent {
+  const { attacker, defender, isClanAttack } = attack;
+  const isThreeStar = attack.stars === 3;
+  return card({
+    accent: isClanAttack ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
+    title: `${isClanAttack ? '💥 Our attack' : '🛡️ Enemy attack'}: ${DiscordService.formatStars(attack.stars)} ${attack.destructionPercentage}%`,
+    body: `**#${attacker.mapPosition} ${attacker.name}** (TH${attacker.townhallLevel}) → **#${defender.mapPosition} ${defender.name}** (TH${defender.townhallLevel})`,
+    footer: [`Score ${scoreLine(ours, theirs)}`, context].filter(Boolean).join(' · '),
+    buttons,
+  });
 }
 
 export function getWarId(currentWar: CurrentWarResponse): string {
@@ -34,11 +75,7 @@ export async function processWarDiff(
 
   // 1. Announce War Matchup if it hasn't been announced yet
   if (!matchupAnnounced && webhookUrl && (currentWar.state === 'preparation' || currentWar.state === 'inWar')) {
-    const embed = buildWarMatchupEmbed(currentWar);
-    await DiscordService.sendWebhook(webhookUrl, {
-      embeds: [embed],
-      components: [DiscordService.warActionRow(currentWar.clan.tag, currentWar.opponent.tag)],
-    });
+    await DiscordService.sendWebhook(webhookUrl, layoutMessage(buildWarMatchupCard(currentWar)));
     matchupAnnounced = true;
   }
 
@@ -96,28 +133,13 @@ export async function processWarDiff(
       const newAttacks = allAttacks.filter((a) => !loggedOrders.has(a.order));
 
       for (const attack of newAttacks) {
-        const starsStr = DiscordService.formatStars(attack.stars);
-        const isThreeStar = attack.stars === 3;
-        const isClan = attack.isClanAttack;
-
-        const embed: DiscordEmbed = {
-          title: isClan ? `💥 War Attack: ${attack.attacker.name}` : `🛡️ Enemy Attack on: ${attack.defender.name}`,
-          description: [
-            `**#${attack.attacker.mapPosition} ${attack.attacker.name}** (TH${attack.attacker.townhallLevel}) attacked **#${attack.defender.mapPosition} ${attack.defender.name}** (TH${attack.defender.townhallLevel})`,
-            '',
-            `⭐ **Result**: ${starsStr} (${attack.destructionPercentage}%)`,
-            `🏰 **Live Score**: ${currentWar.clan.stars} ${EMOJIS.STAR} vs ${currentWar.opponent.stars} ${EMOJIS.STAR}`,
-            `💥 **Destruction**: ${currentWar.clan.destructionPercentage.toFixed(1)}% vs ${currentWar.opponent.destructionPercentage.toFixed(1)}%`,
-          ].join('\n'),
-          color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
-          footer: { text: 'Bimgus • Clash of Clans Tracker' },
-          timestamp: new Date().toISOString(),
-        };
-
-        await DiscordService.sendWebhook(webhookUrl, {
-          embeds: [embed],
-          components: [DiscordService.warActionRow(currentWar.clan.tag, currentWar.opponent.tag)],
-        });
+        const attackCard = buildAttackCard(
+          attack,
+          currentWar.clan,
+          currentWar.opponent,
+          DiscordService.warActionRow(currentWar.clan.tag, currentWar.opponent.tag).components
+        );
+        await DiscordService.sendWebhook(webhookUrl, layoutMessage(attackCard));
         loggedOrders.add(attack.order);
         // Small delay to maintain gentle pacing
         await new Promise((r) => setTimeout(r, 350));
@@ -130,7 +152,7 @@ export async function processWarDiff(
     }
   }
 
-  const { postWarAudit } = buildWarEndSummaryMessages(currentWar);
+  const { postWarAudit } = buildWarEndSummary(currentWar);
 
   // 4. War Ended Announcement
   // Only for a war the bot saw before it ended, so a first run (or a fresh deploy) doesn't post an old war
@@ -185,55 +207,35 @@ export function formatCoCTime(cocTime: string): string {
   );
 }
 
-/**
- * Builds a clean War Matchup / Preparation embed with schedule and war format.
- */
-function buildWarMatchupEmbed(currentWar: CurrentWarResponse): DiscordEmbed {
+/** The war's opponent and schedule, posted once when the bot first sees the war. */
+function buildWarMatchupCard(currentWar: CurrentWarResponse): DiscordContainerComponent {
   const startMs = currentWar.startTime ? new Date(formatCoCTime(currentWar.startTime)).getTime() : null;
   const endMs = currentWar.endTime ? new Date(formatCoCTime(currentWar.endTime)).getTime() : null;
-
   const isPrep = currentWar.state === 'preparation';
+  const { opponent, teamSize } = currentWar;
 
-  // The title says whether it's preparation or battle day
-  const descLines: string[] = [
-    `🎯 **Opponent**: **${currentWar.opponent.name}** (${currentWar.opponent.tag}) • clan level ${currentWar.opponent.clanLevel}`,
-    `👥 **${currentWar.teamSize}v${currentWar.teamSize}** · 2 attacks each (${currentWar.teamSize * 2} total)`,
-  ];
-
-  if (isPrep && startMs) {
-    descLines.push(`⏰ **Battle Day Begins**: ${discordTime(startMs)}`);
-  }
-  if (endMs) {
-    descLines.push(`🏁 **War Concludes**: ${discordTime(endMs)}`);
-  }
-
-  const badgeUrl =
-    currentWar.opponent.badgeUrls?.large ||
-    currentWar.opponent.badgeUrls?.medium ||
-    currentWar.opponent.badgeUrls?.small;
-
-  return {
-    title: isPrep
-      ? `⚔️ War Preparation: ${currentWar.clan.name} vs ${currentWar.opponent.name}`
-      : `🔥 War Battle Day: ${currentWar.clan.name} vs ${currentWar.opponent.name}`,
-    description: descLines.join('\n'),
-    color: isPrep ? COLORS.PURPLE : COLORS.GOLD,
-    thumbnail: badgeUrl ? { url: badgeUrl } : undefined,
-    footer: { text: `Clan War • ${currentWar.teamSize}v${currentWar.teamSize} • Bimgus Tracker` },
-    timestamp: new Date().toISOString(),
-  };
+  return card({
+    accent: isPrep ? COLORS.PURPLE : COLORS.GOLD,
+    title: `${isPrep ? '⚔️ War declared' : '🔥 Battle day'}: vs ${opponent.name}`,
+    body: [
+      `${teamSize}v${teamSize} · clan level ${opponent.clanLevel}`,
+      isPrep && startMs ? `Battle day ${discordTime(startMs)}` : '',
+      endMs ? `Ends ${discordTime(endMs)}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    thumbnail: opponent.badgeUrls?.large || opponent.badgeUrls?.medium || opponent.badgeUrls?.small,
+    footer: opponent.tag,
+    buttons: DiscordService.warActionRow(currentWar.clan.tag, opponent.tag).components,
+  });
 }
 
 export interface WarEndSummaryResult {
-  endEmbed: DiscordEmbed;
-  auditEmbed: DiscordEmbed;
-  auditLines: string[];
+  summaryCard: DiscordContainerComponent;
   postWarAudit: WarAudit;
-  won: boolean;
-  tied: boolean;
 }
 
-export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarEndSummaryResult {
+export function buildWarEndSummary(currentWar: CurrentWarResponse): WarEndSummaryResult {
   const attacksPerMember = 2;
   const allAttacks: FlatAttack[] = [];
   const clanMap = new Map<string, WarClanMember>(currentWar.clan.members.map((m) => [m.tag, m]));
@@ -367,110 +369,37 @@ export function buildWarEndSummaryMessages(currentWar: CurrentWarResponse): WarE
     currentWar.clan.stars === currentWar.opponent.stars &&
     currentWar.clan.destructionPercentage === currentWar.opponent.destructionPercentage;
 
-  const outcomeTitle = won ? '🏆 WAR VICTORY!' : tied ? '🤝 WAR TIED!' : '💀 WAR DEFEAT';
+  const outcome = won ? '🏆 War won' : tied ? '🤝 War tied' : '💀 War lost';
   const outcomeColor = won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED;
 
-  const endEmbed: DiscordEmbed = {
-    title: outcomeTitle,
-    description: [
-      `The war against **${currentWar.opponent.name}** has officially ended!`,
-      '',
-      `🏰 **${currentWar.clan.name}**:`,
-      `${EMOJIS.STAR} **Stars**: ${currentWar.clan.stars}`,
-      `💥 **Destruction**: ${currentWar.clan.destructionPercentage.toFixed(2)}%`,
-      `🗡️ **Attacks Used**: ${currentWar.clan.attacks}`,
-      '',
-      `⚔️ **${currentWar.opponent.name}**:`,
-      `${EMOJIS.STAR} **Stars**: ${currentWar.opponent.stars}`,
-      `💥 **Destruction**: ${currentWar.opponent.destructionPercentage.toFixed(2)}%`,
-      `🗡️ **Attacks Used**: ${currentWar.opponent.attacks}`,
-    ].join('\n'),
-    color: outcomeColor,
-    footer: { text: 'Bimgus • Clash of Clans Tracker' },
-    timestamp: new Date().toISOString(),
-  };
-
+  // The audit: one line per kind of finding, naming the members
   const auditLines: string[] = [];
-
-  if (zeroAttacks.length > 0) {
-    auditLines.push(`🚨 **Missed All Attacks (0/${attacksPerMember})**:`);
-    zeroAttacks
-      .sort((a, b) => a.mapPosition - b.mapPosition)
-      .forEach((m) => {
-        auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 0 attacks`);
-      });
-    auditLines.push('');
-  } else {
-    auditLines.push('✅ **100% Clan Participation**: Every member hit at least once!');
-    auditLines.push('');
-  }
-
+  if (zeroAttacks.length > 0) auditLines.push(`🚨 **No attacks**: ${positionList(zeroAttacks)}`);
   if (partialAttacks.length > 0) {
-    auditLines.push(`⚠️ **Partial Attacks (1/${attacksPerMember})**:`);
-    partialAttacks
-      .sort((a, b) => a.mapPosition - b.mapPosition)
-      .forEach((m) => {
-        auditLines.push(
-          `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 1 hit (${m.starsGained} ${EMOJIS.STAR})`
-        );
-      });
-    auditLines.push('');
+    auditLines.push(`⚠️ **1 of ${attacksPerMember} attacks**: ${positionList(partialAttacks)}`);
   }
-
+  if (zeroAttacks.length === 0 && partialAttacks.length === 0) auditLines.push('✅ Everyone used every attack');
   if (wastedAttacks.length > 0) {
-    auditLines.push(`🎯 **Attacked Bases Already 3-Starred (0 Net Stars)**:`);
-    wastedAttacks.forEach((w) => {
-      auditLines.push(
-        `• **#${w.attackerPos} ${w.attackerName}** attacked **#${w.defenderPos} ${w.defenderName}** (was already 3 ${EMOJIS.STAR})`
-      );
-    });
-    auditLines.push('');
-  } else {
-    auditLines.push('🎯 **Smart Targeting**: No attacks were wasted on already 3-starred bases!');
-    auditLines.push('');
+    const wasted = wastedAttacks.map((w) => `#${w.attackerPos} ${w.attackerName} on #${w.defenderPos}`).join(', ');
+    auditLines.push(`🎯 **Hit a base already at 3 ${EMOJIS.STAR}**: ${wasted}`);
   }
+  if (mvps.length > 0) auditLines.push(`${EMOJIS.STAR} **All ${attacksPerMember * 3} stars**: ${positionList(mvps)}`);
 
-  if (mvps.length > 0) {
-    auditLines.push(`${EMOJIS.STAR} **War MVPs (Max ${attacksPerMember * 3} ${EMOJIS.STAR} Hitters)**:`);
-    mvps.forEach((mvp) => {
-      auditLines.push(
-        `• **#${mvp.mapPosition} ${mvp.name}** (TH${mvp.townhallLevel}) — ${mvp.totalStars} ${EMOJIS.STAR} (${mvp.avgDestruction.toFixed(0)}% avg)`
-      );
-    });
-  }
+  const summaryCard = card({
+    accent: outcomeColor,
+    title: `${outcome} vs ${currentWar.opponent.name}`,
+    body: [
+      scoreLine(currentWar.clan, currentWar.opponent),
+      `🗡️ ${currentWar.clan.attacks}–${currentWar.opponent.attacks} of ${currentWar.teamSize * attacksPerMember} attacks used`,
+    ].join('\n'),
+    // A big war's lists are trimmed to fit the message
+    blocks: [fitLines(auditLines, AUDIT_BUDGET).join('\n')],
+    buttons: DiscordService.warActionRow(currentWar.clan.tag, currentWar.opponent.tag).components,
+  });
 
-  const auditEmbed: DiscordEmbed = {
-    title: '📋 Post-War Performance & Attack Audit',
-    description: auditLines.join('\n'),
-    color: COLORS.PURPLE,
-    footer: { text: 'Bimgus • Clash of Clans Tracker' },
-    timestamp: new Date().toISOString(),
-  };
-
-  return {
-    endEmbed,
-    auditEmbed,
-    auditLines,
-    postWarAudit,
-    won,
-    tied,
-  };
+  return { summaryCard, postWarAudit };
 }
 
 export async function sendWarSummaryDiscord(webhookUrl: string, currentWar: CurrentWarResponse): Promise<boolean> {
-  const { endEmbed, auditEmbed } = buildWarEndSummaryMessages(currentWar);
-
-  // 1. Send War Recap Embed
-  await DiscordService.sendWebhook(webhookUrl, {
-    embeds: [endEmbed],
-    components: [DiscordService.warActionRow(currentWar.clan.tag, currentWar.opponent.tag)],
-  });
-
-  // 2. Build and Send Post-War Audit Embed
-  await DiscordService.sendWebhook(webhookUrl, {
-    embeds: [auditEmbed],
-    components: [DiscordService.warActionRow(currentWar.clan.tag)],
-  });
-
-  return true;
+  return DiscordService.sendWebhook(webhookUrl, layoutMessage(buildWarEndSummary(currentWar).summaryCard));
 }

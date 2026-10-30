@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import axios from 'axios';
 import {
   card,
+  fitLines,
   layoutMessage,
   layoutSize,
   overLimits,
@@ -77,6 +78,23 @@ describe('packMessages', () => {
   it('splits on text length too', () => {
     const cards = [1, 2, 3].map(() => card({ body: 'x'.repeat(1500) }));
     expect(packMessages(cards).map((m) => m.components!.length)).toEqual([2, 1]);
+  });
+});
+
+describe('fitLines', () => {
+  it('keeps every line when they fit', () => {
+    expect(fitLines(['a', 'b'], 10)).toEqual(['a', 'b']);
+  });
+
+  it('keeps what fits and says how many were left out, within the budget', () => {
+    const lines = Array.from({ length: 10 }, (_, i) => `line ${i}`);
+    const fitted = fitLines(lines, 30);
+    expect(fitted).toEqual(['line 0', 'line 1', '…and 8 more']);
+    expect(fitted.join('\n').length).toBeLessThanOrEqual(30);
+  });
+
+  it('takes its own wording for the last line', () => {
+    expect(fitLines(['aaaa', 'bbbb', 'cccc'], 13, (n) => `+${n}`)).toEqual(['aaaa', 'bbbb', '+1']);
   });
 });
 

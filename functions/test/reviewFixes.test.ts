@@ -4,6 +4,7 @@ import { processWarDiff } from '../src/diff/warDiff';
 import { processRaidDiff } from '../src/diff/raidDiff';
 import { withOurClanFirst } from '../src/diff/cwlWars';
 import { DiscordService } from '../src/services/discordService';
+import { expectLayout, headings, texts } from './layoutHelpers';
 
 // Findings from the 4.6 review
 const config: any = {
@@ -49,8 +50,7 @@ describe('clan diff', () => {
     };
     const clan: any = { tag: '#C', name: 'C', clanLevel: 1, members: 2, memberList: [member('#A'), member('#B')] };
     await processClanDiff(clan, prev, config);
-    const titles = sent.flatMap((p) => p.embeds.map((e: any) => e.title));
-    expect(titles).toEqual(['📥 New Member Joined']);
+    expect(sent.flatMap(headings)).toEqual(['📥 #B joined']);
   });
 });
 
@@ -65,32 +65,33 @@ describe('war diff', () => {
 
   it('does not post a summary for a war that ended before the bot saw it', async () => {
     await processWarDiff(war('warEnded'), null, config);
-    expect(sent.some((p) => p.embeds[0].title.includes('VICTORY'))).toBe(false);
+    expect(sent.flatMap(headings).some((h) => h.includes('War won'))).toBe(false);
   });
 
   it('posts the summary when a war it was tracking ends', async () => {
     const tracked = await processWarDiff(war('inWar'), null, config);
     sent = [];
     await processWarDiff(war('warEnded'), tracked, config);
-    expect(sent[0].embeds[0].title).toBe('🏆 WAR VICTORY!');
+    expect(headings(sent[0])).toEqual(['🏆 War won vs O']);
+    expect(texts(sent[0])).toContain('✅ Everyone used every attack');
   });
 });
 
 describe('raid diff', () => {
-  const district = (i: number) => ({
+  const district = (i: number, hits: number) => ({
     id: i,
     name: `District ${i}`,
     districtHallLevel: 5,
     destructionPercent: 100,
-    attackCount: 6,
+    attackCount: hits,
     totalLooted: 1000,
-    attacks: Array.from({ length: 6 }, (_, n) => ({
+    attacks: Array.from({ length: hits }, (_, n) => ({
       attacker: { tag: '#X', name: `A very long attacker name ${n}` },
-      destructionPercent: (n + 1) * 16,
+      destructionPercent: Math.min(100, (n + 1) * 16),
       stars: 1,
     })),
   });
-  const weekend = (state: string): any => ({
+  const weekend = (state: string, hits = 6): any => ({
     state,
     startTime: 'W1',
     capitalTotalLoot: 9000,
@@ -102,21 +103,32 @@ describe('raid diff', () => {
         attackCount: 60,
         districtCount: 10,
         districtsDestroyed: 10,
-        districts: Array.from({ length: 10 }, (_, i) => district(i)),
+        districts: Array.from({ length: 10 }, (_, i) => district(i, hits)),
       },
     ],
   });
 
-  it("keeps the conquered-capital post under Discord's 4,096-character limit", async () => {
-    const prev: any = { weekendId: 'W1', state: 'ongoing', completedCapitalTags: [], announcedWeekendEnd: false };
+  const prev: any = { weekendId: 'W1', state: 'ongoing', completedCapitalTags: [], announcedWeekendEnd: false };
+
+  it('lists each district with its attackers in order', async () => {
     await processRaidDiff(weekend('ongoing'), prev, config, '#C');
     expect(sent).toHaveLength(1);
-    expect(sent[0].embeds[0].description.length).toBeLessThanOrEqual(4096);
+    expectLayout(sent[0]);
+    // The API lists the latest attack first
+    expect(texts(sent[0])).toContain('A very long attacker name 5, A very long attacker name 4');
+  });
+
+  it("keeps the conquered-capital post within Discord's limits, dropping attackers' names first", async () => {
+    await processRaidDiff(weekend('ongoing', 20), prev, config, '#C');
+    expect(sent).toHaveLength(1);
+    expectLayout(sent[0]);
+    expect(texts(sent[0])).not.toContain('attacker name');
+    expect(texts(sent[0])).toContain('District 9');
   });
 
   it('does not announce "Raid Weekend Started" on the very first run', async () => {
     await processRaidDiff(weekend('ongoing'), null, config, '#C');
-    expect(sent.some((p) => p.embeds[0].title.includes('Started'))).toBe(false);
+    expect(sent).toEqual([]);
   });
 });
 

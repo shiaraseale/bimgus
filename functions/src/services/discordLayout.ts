@@ -153,6 +153,20 @@ export function packMessages(
   return messages.map((m) => layoutMessage(...m, ...trailing));
 }
 
+/** As many lines as fit `budget` characters, ending "…and N more" when some don't. */
+export function fitLines(
+  lines: string[],
+  budget: number,
+  more: (hidden: number) => string = (hidden) => `…and ${hidden} more`
+): string[] {
+  if (lines.join('\n').length <= budget) return lines;
+  const room = budget - more(lines.length).length - 1;
+  let used = 0;
+  let kept = 0;
+  while (kept < lines.length && used + lines[kept].length + 1 <= room) used += lines[kept++].length + 1;
+  return [...lines.slice(0, kept), more(lines.length - kept)];
+}
+
 /** Adds a line of text at the top of a message, whether it's a layout or plain content. */
 export function prependNotice<T extends { flags?: number; content?: string; components?: any[] }>(
   payload: T,

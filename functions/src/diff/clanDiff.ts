@@ -1,7 +1,8 @@
 import { ClanMember, ClanResponse } from '../types/coc';
 import { ClanSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
-import { DiscordEmbed } from '../types/discord';
+import { DiscordContainerComponent } from '../types/discord';
+import { card, packMessages } from '../services/discordLayout';
 import { CocAssetService } from '../services/cocAssetService';
 import { EMOJIS } from '../constants/emojis';
 
@@ -33,27 +34,22 @@ export async function processClanDiff(
   // Joins are judged by the tag list: older snapshots kept departed members in membersMap
   const prevTags = new Set(previousSnapshot.memberTags);
   const webhookUrl = config.webhooks.clanActivity;
-  const embedsToSend: DiscordEmbed[] = [];
+  const cards: DiscordContainerComponent[] = [];
 
   if (webhookUrl && config.notificationsEnabled.memberJoinedLeft) {
     // 1. Check for joined members
     for (const tag of currentTags) {
       if (!prevTags.has(tag)) {
         const joined = currentMembersMap[tag];
-        embedsToSend.push({
-          title: '📥 New Member Joined',
-          description: [
-            `**${joined.name}** (${joined.tag}) has entered the clan!`,
-            '',
-            `🏆 **Trophies**: ${joined.trophies.toLocaleString()}`,
-            `🎖️ **Role**: ${formatRole(joined.role)}`,
-            `📊 **Clan Size**: ${currentClan.members}/50`,
-          ].join('\n'),
-          color: COLORS.GREEN,
-          thumbnail: joined.league?.iconUrls?.small ? { url: joined.league.iconUrls.small } : undefined,
-          footer: { text: 'Bimgus • Clash of Clans Tracker' },
-          timestamp: new Date().toISOString(),
-        });
+        cards.push(
+          card({
+            title: `📥 ${joined.name} joined`,
+            body: `🏆 ${joined.trophies.toLocaleString()} · ${formatRole(joined.role)}`,
+            accent: COLORS.GREEN,
+            thumbnail: joined.league?.iconUrls?.small,
+            footer: `${joined.tag} · ${currentClan.members}/50 members`,
+          })
+        );
       }
     }
 
@@ -61,19 +57,14 @@ export async function processClanDiff(
     for (const prevTag of previousSnapshot.memberTags) {
       if (!currentMembersMap[prevTag]) {
         const left = prevMap[prevTag];
-        embedsToSend.push({
-          title: '📤 Member Left',
-          description: [
-            `**${left.name}** (${left.tag}) has left or was kicked from the clan.`,
-            '',
-            `🎖️ **Last Role**: ${formatRole(left.role)}`,
-            `🏆 **Trophies**: ${left.trophies.toLocaleString()}`,
-            `📊 **Clan Size**: ${currentClan.members}/50`,
-          ].join('\n'),
-          color: COLORS.RED,
-          footer: { text: 'Bimgus • Clash of Clans Tracker' },
-          timestamp: new Date().toISOString(),
-        });
+        cards.push(
+          card({
+            title: `📤 ${left.name} left`,
+            body: `Was ${formatRole(left.role)} · 🏆 ${left.trophies.toLocaleString()}`,
+            accent: COLORS.RED,
+            footer: `${left.tag} · ${currentClan.members}/50 members`,
+          })
+        );
       }
     }
   }
@@ -85,18 +76,14 @@ export async function processClanDiff(
       const curr = currentMembersMap[tag];
       if (prev && curr && prev.role !== curr.role) {
         const isPromotion = getRoleWeight(curr.role) > getRoleWeight(prev.role);
-        embedsToSend.push({
-          title: isPromotion ? `${EMOJIS.CROWN} Clan Promotion` : '🔻 Clan Demotion',
-          description: [
-            `**${curr.name}** (${curr.tag}) status changed!`,
-            '',
-            `📜 **Previous Role**: ${formatRole(prev.role)}`,
-            `🎖️ **New Role**: ${formatRole(curr.role)}`,
-          ].join('\n'),
-          color: isPromotion ? COLORS.GOLD : COLORS.BLUE,
-          footer: { text: 'Bimgus • Clash of Clans Tracker' },
-          timestamp: new Date().toISOString(),
-        });
+        cards.push(
+          card({
+            title: isPromotion ? `${EMOJIS.CROWN} ${curr.name} promoted` : `🔻 ${curr.name} demoted`,
+            body: `${formatRole(prev.role)} → ${formatRole(curr.role)}`,
+            accent: isPromotion ? COLORS.GOLD : COLORS.BLUE,
+            footer: curr.tag,
+          })
+        );
       }
     }
   }
@@ -107,44 +94,27 @@ export async function processClanDiff(
       const prev = prevTags.has(tag) ? prevMap[tag] : undefined;
       const curr = currentMembersMap[tag];
       if (prev && curr && prev.townHallLevel && curr.townHallLevel && curr.townHallLevel > prev.townHallLevel) {
-        embedsToSend.push({
-          title: '🏛️ Town Hall Upgraded!',
-          description: [
-            `**${curr.name}** (${curr.tag}) has upgraded their Town Hall!`,
-            '',
-            `🏚️ **Previous Town Hall**: TH${prev.townHallLevel}`,
-            `🏰 **New Town Hall**: TH${curr.townHallLevel}`,
-            `🏆 **Trophies**: ${curr.trophies.toLocaleString()}`,
-            `🎖️ **Role**: ${formatRole(curr.role)}`,
-          ].join('\n'),
-          color: COLORS.GOLD,
-          thumbnail: {
-            url: CocAssetService.getTownHallUrl(curr.townHallLevel),
-          },
-          footer: { text: 'Bimgus • Clash of Clans Tracker' },
-          timestamp: new Date().toISOString(),
-        });
+        cards.push(
+          card({
+            title: `🏛️ ${curr.name} reached TH${curr.townHallLevel}`,
+            body: `Up from TH${prev.townHallLevel}`,
+            accent: COLORS.GOLD,
+            thumbnail: CocAssetService.getTownHallUrl(curr.townHallLevel),
+            footer: curr.tag,
+          })
+        );
       }
     }
   }
 
-  // Send batch embeds to Discord
-  if (webhookUrl && embedsToSend.length > 0) {
-    // Discord allows up to 10 embeds per webhook message
-    for (let i = 0; i < embedsToSend.length; i += 10) {
-      await DiscordService.sendWebhook(webhookUrl, {
-        embeds: embedsToSend.slice(i, i + 10),
-        components: [
-          DiscordService.createActionRow([
-            DiscordService.createLinkButton('Open CoC', DiscordService.openGameLink(), '⚔️'),
-            DiscordService.createLinkButton(
-              'Clash of Stats',
-              DiscordService.clashOfStatsClanLink(currentClan.tag),
-              '📊'
-            ),
-          ]),
-        ],
-      });
+  // Send the poll's events together, as few messages as Discord's limits allow
+  if (webhookUrl && cards.length > 0) {
+    const links = DiscordService.createActionRow([
+      DiscordService.createLinkButton('Open CoC', DiscordService.openGameLink(), '⚔️'),
+      DiscordService.createLinkButton('Clash of Stats', DiscordService.clashOfStatsClanLink(currentClan.tag), '📊'),
+    ]);
+    for (const message of packMessages(cards, [links])) {
+      await DiscordService.sendWebhook(webhookUrl, message);
     }
   }
 

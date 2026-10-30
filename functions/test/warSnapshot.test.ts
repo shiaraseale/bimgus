@@ -6,6 +6,7 @@ import { getWarId, processWarDiff } from '../src/diff/warDiff';
 import { runPlayerTrackingJob } from '../src/jobs/playerTrackingJob';
 import { runWarPingJob } from '../src/jobs/warPingJob';
 import { config } from '../src/config';
+import { headings } from './layoutHelpers';
 
 // Only the war snapshot's owner (the war task) may start a new war's snapshot. When the war task
 // failed on the tick a war was declared, the roster DM check wrote the new war id onto the previous
@@ -132,7 +133,9 @@ describe('a new war after the war task missed its first tick', () => {
     const battle = (await processWarDiff(war('inWar', '#NEW'), prep, botConfig))!;
     sent = [];
     await processWarDiff(war('inWar', '#NEW', [1, 2]), battle, botConfig);
-    expect(sent.map((p) => p.embeds[0].title)).toEqual(['💥 War Attack: Me', '💥 War Attack: Me']);
+    const titles = sent.flatMap(headings);
+    expect(titles).toHaveLength(2);
+    titles.forEach((t) => expect(t).toMatch(/^💥 Our attack: .* 70%$/));
   });
 });
 

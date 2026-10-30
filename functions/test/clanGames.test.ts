@@ -5,6 +5,7 @@ import { processClanGamesDiff } from '../src/diff/clanGamesDiff';
 import { isClanGamesActive } from '../src/diff/clanGamesWindow';
 import { BotConfigDoc } from '../src/types/db';
 import { ClanMember } from '../src/types/coc';
+import { headings, texts } from './layoutHelpers';
 
 const utc = (iso: string) => new Date(`${iso}Z`);
 
@@ -44,7 +45,7 @@ describe('processClanGamesDiff start announcement', () => {
   });
 
   const startMessages = () =>
-    sendWebhook.mock.calls.filter(([, payload]: any[]) => payload.embeds?.[0]?.title?.includes('Have Begun'));
+    sendWebhook.mock.calls.filter(([, payload]: any[]) => headings(payload).includes('🎪 Clan Games have started'));
 
   it('does not announce at 07:59 UTC on the 22nd', async () => {
     const snapshot = await processClanGamesDiff(members, null, config, coc, '#CLAN', utc('2026-11-22T07:59:00'));
@@ -72,9 +73,9 @@ describe('processClanGamesDiff start announcement', () => {
     const withBaseline = { ...start, memberBaselinePoints: { '#P1': 1000 } };
     await processClanGamesDiff(members, withBaseline, config, maxed, '#CLAN', utc('2026-11-22T10:00:00'));
     const maxedMsg = sendWebhook.mock.calls
-      .map(([, p]: any[]) => p.embeds[0])
-      .find((e: any) => e.title.includes('Maxed'));
-    expect(maxedMsg.description).not.toContain('Role');
+      .map(([, p]: any[]) => p)
+      .find((p: any) => headings(p).includes('🌟 Player maxed Clan Games'));
+    expect(texts(maxedMsg)).not.toContain('Role');
   });
 
   it('announces after a pre-08:00 poll on the same day', async () => {

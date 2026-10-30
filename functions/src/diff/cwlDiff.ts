@@ -1,22 +1,12 @@
-import { CwlGroupResponse, WarClanMember, WarAttack } from '../types/coc';
+import { CwlGroupResponse, WarClanMember } from '../types/coc';
 import { CwlSnapshotDoc, BotConfigDoc, CwlSeasonSummary, CwlPlayerSummary, CwlUnderdogHit } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
-import { DiscordEmbed } from '../types/discord';
+import { card, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
+import { buildAttackCard, FlatAttack, formatCoCTime, positionList, scoreLine } from './warDiff';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
-
-interface FlatAttack extends WarAttack {
-  isClanAttack: boolean;
-  attacker: WarClanMember;
-  defender: WarClanMember;
-}
-
-function formatCoCTime(cocTime: string): string {
-  if (cocTime.includes('-')) return cocTime;
-  return cocTime.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/, '$1-$2-$3T$4:$5:$6.$7Z');
-}
 
 /**
  * Builds the comprehensive Clan War Leagues season summary across all played rounds.
@@ -196,228 +186,85 @@ export async function buildCwlSeasonSummary(
 }
 
 /**
- * Dispatches the formatted 2-part Discord embed for the CWL Season Summary.
+ * The season's recap: the record, highlights, underdogs and missed attacks, then the stars leaderboard.
  */
 export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, webhookUrl: string): Promise<void> {
-  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-
-  // 1. Season Highlights & Superlatives
+  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
   const highlightLines: string[] = [];
 
-  // Check for flawless player(s)
   const flawless = summary.playerSummaries.find(
     (p) => p.roundsRostered >= 5 && p.attacksUsed === p.roundsRostered && p.totalStars === p.roundsRostered * 3
   );
   if (flawless) {
     highlightLines.push(
-      `• 👑 **Flawless MVP**: **${flawless.name}** (TH${flawless.townhallLevel}) finished with a perfect **${flawless.totalStars}/${flawless.totalStars} ⭐** (${flawless.attacksUsed} attacks, ${flawless.perfectHits}x 3★, 100.0% avg)!`
+      `👑 **Flawless**: ${flawless.name} (TH${flawless.townhallLevel}), ${flawless.totalStars}/${flawless.totalStars} ⭐`
     );
   }
 
-  // Underdog MVP (Player with most total underdog stars, then max deficit, then 3-star hits)
-  const underdogMVP = summary.playerSummaries
-    .filter((p) => p.underdogHits && p.underdogHits.length > 0)
-    .sort((a, b) => {
-      const aStars = a.underdogHits.reduce((acc, h) => acc + h.stars, 0);
-      const bStars = b.underdogHits.reduce((acc, h) => acc + h.stars, 0);
-      if (bStars !== aStars) return bStars - aStars;
-      const aMaxDiff = Math.max(...a.underdogHits.map((h) => h.thDiff));
-      const bMaxDiff = Math.max(...b.underdogHits.map((h) => h.thDiff));
-      if (bMaxDiff !== aMaxDiff) return bMaxDiff - aMaxDiff;
-      const a3 = a.underdogHits.filter((h) => h.stars === 3).length;
-      const b3 = b.underdogHits.filter((h) => h.stars === 3).length;
-      return b3 - a3;
-    })[0];
-
-  if (underdogMVP) {
-    const u3Count = underdogMVP.underdogHits.filter((h) => h.stars === 3).length;
-    const uTotal = underdogMVP.underdogHits.reduce((acc, h) => acc + h.stars, 0);
-    const bestHit = underdogMVP.underdogHits.find((h) => h.stars === 3 && h.thDiff >= 2) || underdogMVP.underdogHits[0];
-    highlightLines.push(
-      `• 🥊 **Underdog MVP**: **${underdogMVP.name}** (TH${underdogMVP.townhallLevel}) secured **${uTotal} ⭐** across ${underdogMVP.underdogHits.length} underdog matches (${u3Count}x 3★, including 3★ vs **${bestHit.defenderName}** (TH${bestHit.defenderTh}) [+${bestHit.thDiff} TH] in R${bestHit.round})!`
-    );
-  }
-
-  // Goliath Takedown (Largest Town Hall gap hit)
+  // The largest Town Hall gap anyone scored across
   const goliathHit = [...summary.underdogHits].sort((a, b) => b.thDiff - a.thDiff || b.destruction - a.destruction)[0];
   if (goliathHit && goliathHit.thDiff >= 2) {
     highlightLines.push(
-      `• 🎯 **Goliath Takedown**: **${goliathHit.attackerName}** (TH${goliathHit.attackerTh}) scored against **${goliathHit.defenderName}** (TH${goliathHit.defenderTh}) across a **+${goliathHit.thDiff} Town Hall deficit** in Round ${goliathHit.round} (${goliathHit.stars} ⭐, ${goliathHit.destruction}%)!`
+      `🎯 **Biggest upset**: ${goliathHit.attackerName} (TH${goliathHit.attackerTh}) took ${goliathHit.stars} ⭐ ${goliathHit.destruction}% off ${goliathHit.defenderName} (TH${goliathHit.defenderTh}) in round ${goliathHit.round}`
     );
   }
 
-  // Anchor performer
   const anchor = summary.topPerformers.find(
     (p) => p.name !== flawless?.name && p.attacksUsed === p.roundsRostered && p.perfectHits >= 4
   );
   if (anchor) {
     highlightLines.push(
-      `• 🛡️ **Clan Anchor**: **${anchor.name}** (TH${anchor.townhallLevel}) delivered **${anchor.totalStars} ⭐** with ${anchor.perfectHits}x 3★ and ${anchor.avgDestruction}% avg destruction.`
+      `🛡️ **Anchor**: ${anchor.name} (TH${anchor.townhallLevel}), ${anchor.totalStars} ⭐ with ${anchor.perfectHits}× 3★`
     );
   }
 
-  // 2. Top Performers Podium
-  const podiumLines = summary.topPerformers.map((p, idx) => {
-    const medal = medals[idx] || '⭐';
-    return `${medal} **#${idx + 1} ${p.name}** (TH${p.townhallLevel})\n   • **${p.totalStars} ⭐** (${p.attacksUsed}/${p.roundsRostered} hits • ${p.avgDestruction}% avg${p.perfectHits > 0 ? ` • ${p.perfectHits}x 3★` : ''})`;
-  });
-
-  // 3. Underdog Heroes Ranking with Sub-Points per Match
-  const underdogPlayers = summary.playerSummaries
+  // Stars scored against higher Town Halls: most stars, then the largest gap, then the most 3-star hits
+  const underdogs = summary.playerSummaries
     .filter((p) => p.underdogHits && p.underdogHits.length > 0)
-    .map((p) => {
-      const uStars = p.underdogHits.reduce((acc, h) => acc + h.stars, 0);
-      const u3Stars = p.underdogHits.filter((h) => h.stars === 3).length;
-      const maxDiff = Math.max(...p.underdogHits.map((h) => h.thDiff));
-      const uDest = p.underdogHits.reduce((acc, h) => acc + h.destruction, 0);
-      return {
-        ...p,
-        uStars,
-        u3Stars,
-        maxDiff,
-        uDest,
-      };
-    });
-
-  // Sort underdogs: primary total underdog stars desc, secondary max TH deficit desc, tertiary 3-star count desc
-  underdogPlayers.sort(
-    (a, b) => b.uStars - a.uStars || b.maxDiff - a.maxDiff || b.u3Stars - a.u3Stars || b.uDest - a.uDest
-  );
-
-  const underdogSections: string[] = [];
-  if (underdogPlayers.length > 0) {
-    const top5Underdogs = underdogPlayers.slice(0, 5);
-    const goliathAttackerName = goliathHit?.attackerName;
-    const goliathPlayer = underdogPlayers.find(
-      (p) => p.name === goliathAttackerName || p.underdogHits.some((h) => h.attackerName === goliathAttackerName)
+    .map((p) => ({
+      ...p,
+      uStars: p.underdogHits.reduce((acc, h) => acc + h.stars, 0),
+      u3Stars: p.underdogHits.filter((h) => h.stars === 3).length,
+      maxDiff: Math.max(...p.underdogHits.map((h) => h.thDiff)),
+      uDest: p.underdogHits.reduce((acc, h) => acc + h.destruction, 0),
+    }))
+    .sort((a, b) => b.uStars - a.uStars || b.maxDiff - a.maxDiff || b.u3Stars - a.u3Stars || b.uDest - a.uDest);
+  const underdogLines = underdogs
+    .slice(0, 5)
+    .map(
+      (p, idx) =>
+        `${medals[idx]} ${p.name} (TH${p.townhallLevel}): ${p.uStars} ⭐ in ${p.underdogHits.length} hit${p.underdogHits.length === 1 ? '' : 's'}, up to +${p.maxDiff} TH`
     );
-    const isGoliathInTop5 = goliathPlayer && top5Underdogs.some((p) => p.name === goliathPlayer.name);
 
-    top5Underdogs.forEach((p, idx) => {
-      const medal = medals[idx] || '⭐';
-      const isGoliathAttacker = goliathHit && (p.name === goliathHit.attackerName || p.tag === goliathHit.attackerTag);
-      const playerHeader = `${medal} **#${idx + 1} ${p.name}** (TH${p.townhallLevel}) — **${p.uStars} ⭐** across ${p.underdogHits.length} underdog hits *(Max +${p.maxDiff} TH)*${isGoliathAttacker ? ' 🎯' : ''}`;
+  const missed = summary.missedAttacksList.map((m) => `${m.name} (${m.missedAttacks} of ${m.roundsRostered})`);
 
-      // Sort matches: 3★ first, then largest TH diff, then round
-      const sortedHits = [...p.underdogHits].sort(
-        (a, b) => b.stars - a.stars || b.thDiff - a.thDiff || a.round - b.round
-      );
-
-      const hitSublines = sortedHits.map((h) => {
-        const starIcons = '⭐'.repeat(h.stars);
-        const isThisGoliathHit =
-          goliathHit &&
-          h.round === goliathHit.round &&
-          h.defenderName === goliathHit.defenderName &&
-          h.thDiff === goliathHit.thDiff;
-        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '';
-        return `   └ ⚔️ **R${h.round}**: ${starIcons} (${h.destruction}%) vs **${h.defenderName}** (TH${h.defenderTh}) \`[+${h.thDiff} TH]\`${badge}`;
-      });
-
-      underdogSections.push([playerHeader, ...hitSublines].join('\n'));
-    });
-
-    // If whoever had the Goliath hit is outside the top 5, include them as a dedicated shoutout
-    if (goliathPlayer && !isGoliathInTop5) {
-      const goliathRank = underdogPlayers.findIndex((p) => p.name === goliathPlayer.name) + 1;
-      const goliathHeader = `🎯 **Goliath Shoutout: #${goliathRank} ${goliathPlayer.name}** (TH${goliathPlayer.townhallLevel}) — **${goliathPlayer.uStars} ⭐** across ${goliathPlayer.underdogHits.length} underdog hits *(Max +${goliathPlayer.maxDiff} TH)*`;
-
-      const sortedHits = [...goliathPlayer.underdogHits].sort(
-        (a, b) => b.stars - a.stars || b.thDiff - a.thDiff || a.round - b.round
-      );
-
-      const hitSublines = sortedHits.map((h) => {
-        const starIcons = '⭐'.repeat(h.stars);
-        const isThisGoliathHit =
-          goliathHit &&
-          h.round === goliathHit.round &&
-          h.defenderName === goliathHit.defenderName &&
-          h.thDiff === goliathHit.thDiff;
-        const badge = isThisGoliathHit ? ' 🎯 Goliath Hit!' : h.stars === 3 && h.thDiff >= 2 ? ' 👑' : '';
-        return `   └ ⚔️ **R${h.round}**: ${starIcons} (${h.destruction}%) vs **${h.defenderName}** (TH${h.defenderTh}) \`[+${h.thDiff} TH]\`${badge}`;
-      });
-
-      underdogSections.push([goliathHeader, ...hitSublines].join('\n'));
-    }
-  } else {
-    underdogSections.push('• *No attacks scored against higher Town Halls this season.*');
-  }
-
-  // 4. Missed Attacks Callout
-  const missedLines: string[] = [];
-  if (summary.missedAttacksList.length > 0) {
-    summary.missedAttacksList.forEach((m) => {
-      missedLines.push(
-        `• **${m.name}** (TH${m.townhallLevel}) — missed **${m.missedAttacks}/${m.roundsRostered}** attacks`
-      );
-    });
-  } else {
-    missedLines.push('✅ **Flawless 100% Attendance!** Zero missed attacks across all 7 rounds!');
-  }
-
-  // EMBED 1: Overview, Highlights, Top MVPs, Missed Attacks
-  const overviewEmbed: DiscordEmbed = {
-    title: `🏆 CWL Season ${summary.season} Final Summary`,
-    description: [
-      `Overall Clan War Leagues performance recap for **${summary.clanName}**!`,
-      '',
-      `⚔️ **Record**: **${summary.wins}W - ${summary.losses}L${summary.ties > 0 ? ` - ${summary.ties}T` : ''}** (${summary.roundsPlayed} Rounds)`,
-      `⭐ **Total Stars**: **${summary.totalClanStars}** (${summary.winBonusStars} win bonus stars)`,
-      `💥 **Avg Destruction**: **${summary.avgClanDestruction}%**`,
-      '',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '🌟 **SEASON HIGHLIGHTS & SUPERLATIVES**',
+  const overviewCard = card({
+    accent: summary.wins >= summary.losses ? COLORS.GOLD : COLORS.PURPLE,
+    title: `🏆 CWL ${summary.season}: ${summary.wins}W ${summary.losses}L${summary.ties > 0 ? ` ${summary.ties}T` : ''}`,
+    body: `⭐ ${summary.totalClanStars} stars (${summary.winBonusStars} from wins) · 💥 ${summary.avgClanDestruction}% average`,
+    blocks: [
       highlightLines.join('\n'),
-      '',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '🎖️ **TOP PERFORMERS / MVPS**',
-      podiumLines.length > 0 ? podiumLines.join('\n') : '• *No attacks recorded.*',
-      '',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '🚨 **MISSED ATTACKS AUDIT**',
-      missedLines.join('\n'),
-    ].join('\n'),
-    color: summary.wins >= summary.losses ? COLORS.GOLD : COLORS.PURPLE,
-    footer: { text: `CWL Final Season Recap • Bimgus Tracker` },
-    timestamp: new Date().toISOString(),
-  };
-
-  // EMBED 2: Underdog Heroes Ranking with Subpoints
-  const underdogEmbed: DiscordEmbed = {
-    title: `🛡️ CWL Underdog Heroes Ranking (Top 5 & Highlights)`,
-    description: [
-      `Ranked list of clan members who conquered bases with **higher Town Hall levels**:`,
-      '',
-      underdogSections.join('\n\n'),
-    ].join('\n'),
-    color: COLORS.PURPLE,
-    footer: { text: `Top 5 Underdogs & Goliath Shoutout • Bimgus Tracker` },
-    timestamp: new Date().toISOString(),
-  };
-
-  // EMBED 3: Full Clan Stars Leaderboard (All rostered participants)
-  const rosterLines = summary.playerSummaries.map((p, idx) => {
-    const starStr = `${p.totalStars} ⭐`.padEnd(6, ' ');
-    const hitStr = `${p.attacksUsed}/${p.roundsRostered} hits`;
-    return `\`${String(idx + 1).padStart(2, ' ')}.\` **${p.name}** (TH${p.townhallLevel}) — **${starStr}** (${hitStr} • ${p.avgDestruction}%${p.perfectHits > 0 ? ` • ${p.perfectHits}x 3★` : ''})`;
+      underdogLines.length > 0 ? ['🥊 **Underdogs** (stars on higher Town Halls)', ...underdogLines].join('\n') : '',
+      missed.length > 0 ? `🚨 **Missed attacks**: ${missed.join(', ')}` : '✅ No missed attacks',
+    ],
+    footer: summary.clanName,
   });
 
-  const rosterEmbed: DiscordEmbed = {
-    title: `⭐ CWL Full Clan Stars Leaderboard`,
-    description: [
-      `Full player ranking by total stars scored in CWL Season **${summary.season}**:`,
-      '',
-      rosterLines.join('\n'),
-    ].join('\n'),
-    color: COLORS.BLUE,
-    footer: { text: `${summary.playerSummaries.length} clan members participated • Bimgus Tracker` },
-    timestamp: new Date().toISOString(),
-  };
-
-  await DiscordService.sendWebhook(webhookUrl, {
-    embeds: [overviewEmbed, underdogEmbed, rosterEmbed],
-    components: [DiscordService.warActionRow(summary.clanTag)],
+  const leaderboardLines = summary.playerSummaries.map(
+    (p, idx) =>
+      `\`${String(idx + 1).padStart(2, ' ')}.\` **${p.name}** (TH${p.townhallLevel}) ${p.totalStars} ⭐ · ${p.attacksUsed}/${p.roundsRostered} · ${p.avgDestruction}%`
+  );
+  const leaderboardCard = card({
+    accent: COLORS.BLUE,
+    title: '⭐ Stars leaderboard',
+    body: fitLines(leaderboardLines, 3000).join('\n'),
+    footer: `${summary.playerSummaries.length} members took part · stars · attacks · average`,
   });
+
+  // Both cards together when they fit, otherwise one message each
+  for (const message of packMessages([overviewCard, leaderboardCard], [DiscordService.warActionRow(summary.clanTag)])) {
+    await DiscordService.sendWebhook(webhookUrl, message);
+  }
 }
 
 export async function processCwlDiff(
@@ -445,27 +292,16 @@ export async function processCwlDiff(
 
   // 1. Announce CWL Group Draw
   if (!announcedGroup && webhookUrl && config.notificationsEnabled.cwlGroup) {
-    const clanLines = cwlGroup.clans.map((c, i) => `**${i + 1}. ${c.name}** (Level ${c.clanLevel})`);
+    const others = cwlGroup.clans.filter((c) => c.tag.toUpperCase() !== clanTag.toUpperCase()).map((c) => c.name);
 
-    const groupEmbed: DiscordEmbed = {
-      title: `🛡️ Clan War Leagues Started! (${cwlGroup.season})`,
-      description: [
-        'The CWL group stage has officially begun! Here are the 8 clans in our tier:',
-        '',
-        clanLines.join('\n'),
-        '',
-        `⚔️ **Total Rounds**: 7 Rounds`,
-        `👥 **Roster Format**: 15v15 / 30v30 (1 attack per member)`,
-      ].join('\n'),
-      color: COLORS.GOLD,
-      footer: { text: 'Bimgus • Clash of Clans Tracker' },
-      timestamp: new Date().toISOString(),
-    };
-
-    await DiscordService.sendWebhook(webhookUrl, {
-      embeds: [groupEmbed],
-      components: [DiscordService.warActionRow(clanTag)],
+    const groupCard = card({
+      title: `🛡️ CWL ${cwlGroup.season} has started`,
+      body: `7 rounds, 1 attack each. Our group: ${others.join(', ')}`,
+      accent: COLORS.GOLD,
+      buttons: DiscordService.warActionRow(clanTag).components,
     });
+
+    await DiscordService.sendWebhook(webhookUrl, layoutMessage(groupCard));
   }
 
   // 2. Scan and Process CWL Rounds
@@ -501,24 +337,21 @@ export async function processCwlDiff(
             const startMs = war.startTime ? new Date(formatCoCTime(war.startTime)).getTime() : null;
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
-            const matchupEmbed: DiscordEmbed = {
-              title: `⚔️ CWL Round ${roundNum} Found!`,
-              description: [
-                `**${ourClan.name}** vs **${enemyClan.name}** (clan level ${enemyClan.clanLevel})`,
-                `👥 **${war.teamSize}v${war.teamSize}** · 1 attack each`,
-                `🎯 **Battle Starts**: ${startMs ? discordTime(startMs) : 'Unknown'}`,
-                `⏰ **Round Ends**: ${endMs ? discordTime(endMs) : 'Unknown'}`,
-              ].join('\n'),
-              color: COLORS.PURPLE,
-              thumbnail: enemyClan.badgeUrls?.large ? { url: enemyClan.badgeUrls.large } : undefined,
-              footer: { text: 'Bimgus • Clash of Clans Tracker' },
-              timestamp: new Date().toISOString(),
-            };
-
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [matchupEmbed],
-              components: [DiscordService.warActionRow(clanTag, enemyClan.tag)],
+            const matchupCard = card({
+              title: `⚔️ CWL round ${roundNum}: vs ${enemyClan.name}`,
+              body: [
+                `${war.teamSize}v${war.teamSize} · clan level ${enemyClan.clanLevel}`,
+                war.state === 'preparation' && startMs ? `Battle day ${discordTime(startMs)}` : '',
+                endMs ? `Ends ${discordTime(endMs)}` : '',
+              ]
+                .filter(Boolean)
+                .join('\n'),
+              accent: COLORS.PURPLE,
+              thumbnail: enemyClan.badgeUrls?.large,
+              buttons: DiscordService.warActionRow(clanTag, enemyClan.tag).components,
             });
+
+            await DiscordService.sendWebhook(webhookUrl, layoutMessage(matchupCard));
             announcedMatchups.add(roundIndex);
           }
 
@@ -526,23 +359,15 @@ export async function processCwlDiff(
           if (webhookUrl && war.state === 'inWar' && !announcedBattleDays.has(roundIndex)) {
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
-            const battleEmbed: DiscordEmbed = {
-              title: `🔥 CWL Round ${roundNum} Battle Day Has Begun!`,
-              description: [
-                `Round ${roundNum} against **${enemyClan.name}** is live!`,
-                `⚔️ **Attacks**: 1 each (${war.teamSize} total)`,
-                `⏰ **Round Ends**: ${endMs ? discordTime(endMs) : 'in 24 hours'}`,
-              ].join('\n'),
-              color: COLORS.GOLD,
-              thumbnail: ourClan.badgeUrls?.large ? { url: ourClan.badgeUrls.large } : undefined,
-              footer: { text: 'Bimgus • Clash of Clans Tracker' },
-              timestamp: new Date().toISOString(),
-            };
-
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [battleEmbed],
-              components: [DiscordService.warActionRow(clanTag, enemyClan.tag)],
+            const battleCard = card({
+              title: `🔥 CWL round ${roundNum} battle day: vs ${enemyClan.name}`,
+              body: `1 attack each · ends ${endMs ? discordTime(endMs) : 'in 24 hours'}`,
+              accent: COLORS.GOLD,
+              thumbnail: ourClan.badgeUrls?.large,
+              buttons: DiscordService.warActionRow(clanTag, enemyClan.tag).components,
             });
+
+            await DiscordService.sendWebhook(webhookUrl, layoutMessage(battleCard));
             announcedBattleDays.add(roundIndex);
           }
 
@@ -598,31 +423,14 @@ export async function processCwlDiff(
             } else {
               const newAttacks = allAttacks.filter((a) => !warLoggedOrders.has(a.order));
               for (const attack of newAttacks) {
-                const starsStr = DiscordService.formatStars(attack.stars);
-                const isThreeStar = attack.stars === 3;
-                const isClan = attack.isClanAttack;
-
-                const attackEmbed: DiscordEmbed = {
-                  title: isClan
-                    ? `💥 CWL Attack: ${attack.attacker.name}`
-                    : `🛡️ Enemy Attack on: ${attack.defender.name}`,
-                  description: [
-                    `**#${attack.attacker.mapPosition} ${attack.attacker.name}** (TH${attack.attacker.townhallLevel}) attacked **#${attack.defender.mapPosition} ${attack.defender.name}** (TH${attack.defender.townhallLevel})`,
-                    '',
-                    `⭐ **Result**: ${starsStr} (${attack.destructionPercentage}%)`,
-                    `🏰 **Live Score**: ${ourClan.stars} ⭐ vs ${enemyClan.stars} ⭐`,
-                    `💥 **Destruction**: ${ourClan.destructionPercentage.toFixed(1)}% vs ${enemyClan.destructionPercentage.toFixed(1)}%`,
-                    `🗡️ **Attacks Used**: ${ourClan.attacks}/${war.teamSize}`,
-                  ].join('\n'),
-                  color: isClan ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
-                  footer: { text: `CWL Round ${roundNum} • Bimgus Tracker` },
-                  timestamp: new Date().toISOString(),
-                };
-
-                await DiscordService.sendWebhook(webhookUrl, {
-                  embeds: [attackEmbed],
-                  components: [DiscordService.warActionRow(clanTag, enemyClan.tag)],
-                });
+                const attackCard = buildAttackCard(
+                  attack,
+                  ourClan,
+                  enemyClan,
+                  DiscordService.warActionRow(clanTag, enemyClan.tag).components,
+                  `CWL round ${roundNum} · ${ourClan.attacks}/${war.teamSize} attacks`
+                );
+                await DiscordService.sendWebhook(webhookUrl, layoutMessage(attackCard));
                 warLoggedOrders.add(attack.order);
                 await new Promise((r) => setTimeout(r, 350));
               }
@@ -652,80 +460,29 @@ export async function processCwlDiff(
             const tied =
               ourClan.stars === enemyClan.stars && ourClan.destructionPercentage === enemyClan.destructionPercentage;
 
-            const outcomeTitle = won
-              ? `🏆 CWL Round ${roundNum}: VICTORY!`
-              : tied
-                ? `🤝 CWL Round ${roundNum}: TIED!`
-                : `💀 CWL Round ${roundNum}: DEFEAT`;
-            const outcomeColor = won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED;
+            const outcome = won ? '🏆' : tied ? '🤝' : '💀';
+            const result = won ? 'won' : tied ? 'tied' : 'lost';
 
-            const roundEmbed: DiscordEmbed = {
-              title: outcomeTitle,
-              description: [
-                `Round ${roundNum} against **${enemyClan.name}** has finished!`,
-                '',
-                `🏰 **${ourClan.name}**:`,
-                `⭐ **Stars Earned**: ${ourClan.stars} ${won ? '(+10 Bonus Stars for Win!)' : ''}`,
-                `💥 **Destruction**: ${ourClan.destructionPercentage.toFixed(2)}%`,
-                `🗡️ **Attacks**: ${ourClan.attacks}/${war.teamSize}`,
-                '',
-                `⚔️ **${enemyClan.name}**:`,
-                `⭐ **Stars Earned**: ${enemyClan.stars} ${!won && !tied ? '(+10 Bonus Stars for Win!)' : ''}`,
-                `💥 **Destruction**: ${enemyClan.destructionPercentage.toFixed(2)}%`,
-                `🗡️ **Attacks**: ${enemyClan.attacks}/${war.teamSize}`,
-              ].join('\n'),
-              color: outcomeColor,
-              footer: { text: 'Bimgus • Clash of Clans Tracker' },
-              timestamp: new Date().toISOString(),
-            };
-
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [roundEmbed],
-              components: [DiscordService.warActionRow(clanTag, enemyClan.tag)],
-            });
-
-            // Post-Round Audit (Missed attacks & 3-star stars)
+            // The result and the round's audit in one card
             const missedAttacks = ourClan.members.filter((m) => !m.attacks || m.attacks.length === 0);
-            const threeStarMaxers = ourClan.members.filter((m) => m.attacks && m.attacks.some((a) => a.stars === 3));
+            const threeStars = ourClan.members.filter((m) => m.attacks && m.attacks.some((a) => a.stars === 3));
+            const auditLines = [
+              missedAttacks.length > 0 ? `🚨 **No attack**: ${positionList(missedAttacks)}` : '✅ Everyone attacked',
+              threeStars.length > 0 ? `⭐ **3 stars**: ${positionList(threeStars)}` : '',
+            ].filter(Boolean);
 
-            const auditLines: string[] = [];
-            if (missedAttacks.length > 0) {
-              auditLines.push(`🚨 **Missed Attack (0/1)**:`);
-              missedAttacks
-                .sort((a, b) => a.mapPosition - b.mapPosition)
-                .forEach((m) => {
-                  auditLines.push(`• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 0 attacks`);
-                });
-              auditLines.push('');
-            } else {
-              auditLines.push('✅ **100% Clan Participation**: Every member completed their CWL attack!');
-              auditLines.push('');
-            }
-
-            if (threeStarMaxers.length > 0) {
-              auditLines.push(`⭐ **Round MVPs (Max 3 ⭐ Stars)**:`);
-              threeStarMaxers
-                .sort((a, b) => a.mapPosition - b.mapPosition)
-                .forEach((m) => {
-                  const atk = m.attacks![0];
-                  auditLines.push(
-                    `• **#${m.mapPosition} ${m.name}** (TH${m.townhallLevel}) — 3 ⭐ (${atk.destructionPercentage}%)`
-                  );
-                });
-            }
-
-            const auditEmbed: DiscordEmbed = {
-              title: `📋 CWL Round ${roundNum} Performance Audit`,
-              description: auditLines.join('\n'),
-              color: COLORS.PURPLE,
-              footer: { text: 'Bimgus • Clash of Clans Tracker' },
-              timestamp: new Date().toISOString(),
-            };
-
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [auditEmbed],
-              components: [DiscordService.warActionRow(clanTag)],
+            const roundCard = card({
+              title: `${outcome} CWL round ${roundNum}: ${result} vs ${enemyClan.name}`,
+              body: [
+                scoreLine(ourClan, enemyClan),
+                `🗡️ ${ourClan.attacks}–${enemyClan.attacks} of ${war.teamSize} attacks used`,
+              ].join('\n'),
+              blocks: [fitLines(auditLines, 3500).join('\n')],
+              accent: won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED,
+              buttons: DiscordService.warActionRow(clanTag, enemyClan.tag).components,
             });
+
+            await DiscordService.sendWebhook(webhookUrl, layoutMessage(roundCard));
             loggedRounds.add(roundIndex);
           }
 

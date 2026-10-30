@@ -1,109 +1,68 @@
 import { CapitalRaidWeekend } from '../types/coc';
 import { RaidSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
-import { DiscordEmbed } from '../types/discord';
+import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
+import { card, fitLines, layoutMessage } from '../services/discordLayout';
+import { formatCoCTime } from './warDiff';
+import { discordTime } from '../utils/discordTime';
 
-const MAX_DESCRIPTION = 4096;
+// Room for a capital's district lines (Discord allows 4,000 characters per message)
+const DISTRICTS_BUDGET = 3300;
+
+type RaidLogEntry = NonNullable<CapitalRaidWeekend['attackLog']>[number];
+
+/** One district: how far it got, its hits and loot, and who attacked it in order (when `withNames`). */
+function districtLine(d: RaidLogEntry['districts'][number], withNames: boolean): string {
+  const head = `${d.destructionPercent === 100 ? '✅' : '⚪'} **${d.name}** (${d.districtHallLevel})`;
+  if (!d.attacks || d.attacks.length === 0) return `${head}: not attacked`;
+  const hits = `${d.attackCount} hit${d.attackCount === 1 ? '' : 's'}`;
+  const loot = `${(d.totalLooted || 0).toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`;
+  // The API lists the latest attack first
+  const names = withNames
+    ? ` · ${[...d.attacks]
+        .reverse()
+        .map((a) => a.attacker.name)
+        .join(', ')}`
+    : '';
+  return `${head}: ${d.destructionPercent}% · ${hits} · ${loot}${names}`;
+}
 
 /**
- * Builds a rich summary embed when an entire enemy clan capital is conquered (100% destroyed),
- * or when the raid weekend concludes while a capital was partially attacked.
- * Details all attacks grouped by district in chronological order, showing 0% for unattacked districts.
+ * A capital the clan conquered, or one it was still attacking when the weekend ended: the totals, then
+ * a line per district with its attackers in order.
  */
-function buildCapitalConqueredEmbed(
-  raid: NonNullable<CapitalRaidWeekend['attackLog']>[number],
-  weekendTotals?: {
-    districtsDestroyed: number;
-    capitalTotalLoot: number;
-    raidsCompleted?: number;
-  },
-  isPartialWeekendEnd: boolean = false
-): DiscordEmbed {
+function buildCapitalCard(
+  raid: RaidLogEntry,
+  weekendTotals: { districtsDestroyed: number; capitalTotalLoot: number; raidsCompleted?: number },
+  isPartialWeekendEnd: boolean,
+  buttons: DiscordButtonComponent[]
+): DiscordContainerComponent {
   const totalLoot = raid.districts.reduce((sum, d) => sum + (d.totalLooted || 0), 0);
   const percentCleared =
     raid.districtCount > 0 ? Math.round((raid.districtsDestroyed / raid.districtCount) * 100) : 100;
 
-  const lines: string[] = [
-    isPartialWeekendEnd
-      ? 'Raid Weekend has ended with an active attack in progress on an enemy Clan Capital!'
-      : 'The clan has completely conquered an enemy Clan Capital!',
-    '',
-    `🎯 **Enemy Clan**: **${raid.defender.name}** (Lvl ${raid.defender.level})`,
-    `🏰 **Districts Cleared**: **${raid.districtsDestroyed}/${raid.districtCount}** (${isPartialWeekendEnd ? `${percentCleared}%` : '100%'})`,
-    `⚔️ **Total Attacks**: **${raid.attackCount}**`,
-    `${EMOJIS.CAPITAL_GOLD} **Capital Gold Looted**: **${totalLoot.toLocaleString()}**`,
-  ];
+  // A long breakdown loses the attackers' names first, then districts from the end
+  let districts = raid.districts.map((d) => districtLine(d, true));
+  if (districts.join('\n').length > DISTRICTS_BUDGET) districts = raid.districts.map((d) => districtLine(d, false));
 
-  if (isPartialWeekendEnd) {
-    lines.push('⏳ **Status**: *Raid Weekend ended before capital could be completed*');
-  }
+  const totals = [
+    `${weekendTotals.districtsDestroyed} districts`,
+    `${weekendTotals.capitalTotalLoot.toLocaleString()} capital gold`,
+    weekendTotals.raidsCompleted ? `${weekendTotals.raidsCompleted} capitals` : '',
+  ].filter(Boolean);
 
-  lines.push('');
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  lines.push('📋 **DISTRICT ATTACK BREAKDOWN**');
-  lines.push('');
-
-  for (const d of raid.districts) {
-    const districtLoot = (d.totalLooted || 0).toLocaleString();
-    lines.push(
-      `🏰 **${d.name}** (Lvl ${d.districtHallLevel}) — ${d.attackCount} hit${d.attackCount === 1 ? '' : 's'} • ${districtLoot} ${EMOJIS.CAPITAL_GOLD}`
-    );
-
-    if (!d.attacks || d.attacks.length === 0) {
-      lines.push('   └ ⚪ *0% — Not attacked (0 hits)*');
-    } else {
-      // The API returns attacks in reverse order (latest first); reverse for chronological order
-      const chronAttacks = [...d.attacks].reverse();
-      let prevDest = 0;
-
-      chronAttacks.forEach((atk, idx) => {
-        const gain = atk.destructionPercent - prevDest;
-        const isFinish = atk.destructionPercent === 100;
-        const starIcon = atk.stars > 0 ? '⭐'.repeat(atk.stars) : '0★';
-        const finishBadge = isFinish ? ' 💥 Cleared!' : '';
-
-        lines.push(
-          `   └ ⚔️ Hit ${idx + 1}: **${atk.attacker.name}** — +${gain}% → ${atk.destructionPercent}% (${starIcon})${finishBadge}`
-        );
-        prevDest = atk.destructionPercent;
-      });
-    }
-
-    lines.push('');
-  }
-
-  if (weekendTotals) {
-    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    lines.push(isPartialWeekendEnd ? '📊 **FINAL WEEKEND TOTALS**' : '📊 **CLAN WEEKEND TOTALS**');
-    lines.push(`🏰 **Districts Destroyed**: **${weekendTotals.districtsDestroyed}**`);
-    lines.push(
-      `${EMOJIS.CAPITAL_GOLD} **Capital Gold Looted**: **${weekendTotals.capitalTotalLoot.toLocaleString()}**`
-    );
-    if (weekendTotals.raidsCompleted !== undefined && weekendTotals.raidsCompleted > 0) {
-      lines.push(`🏛️ **Capitals Completed**: **${weekendTotals.raidsCompleted}**`);
-    }
-  }
-
-  const badgeUrl = raid.defender.badgeUrls?.large || raid.defender.badgeUrls?.medium || raid.defender.badgeUrls?.small;
-
-  // Discord rejects descriptions over 4,096 characters; drop the per-hit lines if needed
-  let description = lines.join('\n');
-  if (description.length > MAX_DESCRIPTION) {
-    description = lines.filter((l) => !l.startsWith('   └ ⚔️')).join('\n');
-  }
-  if (description.length > MAX_DESCRIPTION) description = description.slice(0, MAX_DESCRIPTION - 1) + '…';
-
-  return {
+  return card({
+    accent: isPartialWeekendEnd ? COLORS.PURPLE : COLORS.GOLD,
     title: isPartialWeekendEnd
-      ? `${EMOJIS.RAID} Raid Weekend Concluded: ${raid.defender.name} (Partial Attack)`
-      : `${EMOJIS.RAID} Clan Capital Conquered: ${raid.defender.name}`,
-    description,
-    color: isPartialWeekendEnd ? COLORS.PURPLE : COLORS.GOLD,
-    thumbnail: badgeUrl ? { url: badgeUrl } : undefined,
-    footer: { text: 'Clan Capital Raid Weekend • Bimgus Tracker' },
-    timestamp: new Date().toISOString(),
-  };
+      ? `${EMOJIS.RAID} ${raid.defender.name}: ${percentCleared}% when the weekend ended`
+      : `${EMOJIS.RAID} Conquered ${raid.defender.name}`,
+    body: `🏰 ${raid.districtsDestroyed}/${raid.districtCount} districts · ⚔️ ${raid.attackCount} attacks · ${totalLoot.toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`,
+    thumbnail: raid.defender.badgeUrls?.large || raid.defender.badgeUrls?.medium || raid.defender.badgeUrls?.small,
+    blocks: [fitLines(districts, DISTRICTS_BUDGET).join('\n')],
+    footer: `${isPartialWeekendEnd ? 'Weekend total' : 'Weekend so far'}: ${totals.join(' · ')}`,
+    buttons,
+  });
 }
 
 export async function processRaidDiff(
@@ -118,22 +77,14 @@ export async function processRaidDiff(
 
   // 1. Raid Weekend Start Announcement (not on the very first run, which only records a baseline)
   if (isNewWeekend && prevSnapshot && webhookUrl && latestRaid.state === 'ongoing') {
-    const embed: DiscordEmbed = {
-      title: `${EMOJIS.RAID} Raid Weekend Started!`,
-      description: [
-        'Clan Capital Raid Weekend is now active! Make sure to take all 5 (+1 bonus) attacks before Monday morning.',
-        '',
-        `${EMOJIS.CAPITAL_GOLD} **Total Capital Loot**: ${latestRaid.capitalTotalLoot.toLocaleString()}`,
-        `🏰 **Districts Destroyed**: ${latestRaid.enemyDistrictsDestroyed}`,
-      ].join('\n'),
-      color: COLORS.GOLD,
-      footer: { text: 'Bimgus • Clash of Clans Tracker' },
-      timestamp: new Date().toISOString(),
-    };
-    await DiscordService.sendWebhook(webhookUrl, {
-      embeds: [embed],
-      components: [DiscordService.raidActionRow(clanTag)],
+    const endMs = latestRaid.endTime ? new Date(formatCoCTime(latestRaid.endTime)).getTime() : null;
+    const startCard = card({
+      accent: COLORS.GOLD,
+      title: `${EMOJIS.RAID} Raid weekend has started`,
+      body: `5 attacks each, plus a bonus one${endMs ? ` · ends ${discordTime(endMs)}` : ''}`,
+      buttons: DiscordService.raidActionRow(clanTag).components,
     });
+    await DiscordService.sendWebhook(webhookUrl, layoutMessage(startCard));
   }
 
   // 2. Track Completed Clan Capitals
@@ -153,19 +104,17 @@ export async function processRaidDiff(
       if (isFullyConquered) {
         if (!completedCapitalTags.has(raid.defender.tag)) {
           if (!isInitialSnapshot && webhookUrl && config.notificationsEnabled.raidDistricts) {
-            const embed = buildCapitalConqueredEmbed(
+            const capitalCard = buildCapitalCard(
               raid,
               {
                 districtsDestroyed: latestRaid.enemyDistrictsDestroyed,
                 capitalTotalLoot: latestRaid.capitalTotalLoot,
                 raidsCompleted: latestRaid.raidsCompleted,
               },
-              false
+              false,
+              DiscordService.raidActionRow(clanTag, raid.defender.tag).components
             );
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [embed],
-              components: [DiscordService.raidActionRow(clanTag, raid.defender.tag)],
-            });
+            await DiscordService.sendWebhook(webhookUrl, layoutMessage(capitalCard));
             // Add a small pause to prevent hitting Discord rate limits
             await new Promise((r) => setTimeout(r, 400));
           }
@@ -188,19 +137,17 @@ export async function processRaidDiff(
         // If attacks were started on this capital but it was not fully completed before weekend ended
         if (!isFullyConquered && raid.attackCount > 0 && !completedCapitalTags.has(raid.defender.tag)) {
           if (!isInitialSnapshot && webhookUrl && config.notificationsEnabled.raidDistricts) {
-            const embed = buildCapitalConqueredEmbed(
+            const capitalCard = buildCapitalCard(
               raid,
               {
                 districtsDestroyed: latestRaid.enemyDistrictsDestroyed,
                 capitalTotalLoot: latestRaid.capitalTotalLoot,
                 raidsCompleted: latestRaid.raidsCompleted,
               },
-              true /* isPartialWeekendEnd */
+              true /* isPartialWeekendEnd */,
+              DiscordService.raidActionRow(clanTag, raid.defender.tag).components
             );
-            await DiscordService.sendWebhook(webhookUrl, {
-              embeds: [embed],
-              components: [DiscordService.raidActionRow(clanTag, raid.defender.tag)],
-            });
+            await DiscordService.sendWebhook(webhookUrl, layoutMessage(capitalCard));
             await new Promise((r) => setTimeout(r, 400));
           }
           completedCapitalTags.add(raid.defender.tag);
