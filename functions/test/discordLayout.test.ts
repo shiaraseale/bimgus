@@ -43,11 +43,12 @@ describe('card', () => {
     expect(c).not.toHaveProperty('accent_color');
   });
 
-  it('puts menus at the bottom, one row each, above the buttons and after one divider', () => {
+  it('puts menus at the bottom, one row each, with a divider before them and another before the buttons', () => {
     const menu = (id: string) => ({ type: 3 as const, custom_id: id, options: [{ label: 'A', value: 'a' }] });
     const c = card({ title: 'T', body: 'x', menus: [menu('m1'), menu('m2')], buttons: [button] });
-    expect(c.components.map((x) => x.type)).toEqual([10, 14, 1, 1, 1]);
-    expect(c.components.slice(2).map((row: any) => row.components[0].custom_id ?? row.components[0].label)).toEqual([
+    expect(c.components.map((x) => x.type)).toEqual([10, 14, 1, 1, 14, 1]);
+    const rows = c.components.filter((x) => x.type === 1);
+    expect(rows.map((row: any) => row.components[0].custom_id ?? row.components[0].label)).toEqual([
       'm1',
       'm2',
       'Open CoC',

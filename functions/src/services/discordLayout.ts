@@ -76,12 +76,11 @@ export function card(c: Card): DiscordContainerComponent {
     if (children.length > 0) children.push(separator('large'));
     children.push(text(withFooter(b, i === blocks.length - 1)));
   });
-  // The menus and buttons sit together at the bottom, after one divider
-  const rows: DiscordContainerChild[] = [
-    ...(c.menus ?? []).map((m): DiscordContainerChild => ({ type: 1, components: [m] })),
-    ...(c.buttons && c.buttons.length > 0 ? [{ type: 1 as const, components: c.buttons }] : []),
-  ];
-  if (rows.length > 0) children.push(separator('large'), ...rows);
+  // The menus, then the buttons, at the bottom, each group after a divider
+  const menus = c.menus ?? [];
+  if (menus.length > 0)
+    children.push(separator('large'), ...menus.map((m): DiscordContainerChild => ({ type: 1, components: [m] })));
+  if (c.buttons && c.buttons.length > 0) children.push(separator('large'), { type: 1, components: c.buttons });
   return container(c.accent, children);
 }
 
