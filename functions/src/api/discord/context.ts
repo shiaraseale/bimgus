@@ -74,7 +74,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
     if (fromTask) (req as any).work.push(promise);
   };
 
-  // Edits the initial deferred reply with the final content, embeds, and action rows
+  // Edits the initial deferred reply with the final message (a layout, or plain content)
   const editDeferredReply = async (messageData: any): Promise<boolean> => {
     try {
       const webhookUrl = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;

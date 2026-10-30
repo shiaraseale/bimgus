@@ -50,12 +50,12 @@ export interface Card {
   title?: string;
   body?: string; // under the title, beside the thumbnail when there is one
   thumbnail?: string;
-  blocks?: string[]; // further text, each after a divider (what were an embed's fields)
+  blocks?: string[]; // further text, each after a divider
   footer?: string; // small text at the bottom, e.g. the account
   buttons?: DiscordButtonComponent[]; // a row at the bottom of the card
 }
 
-/** One card, laid out the same way everywhere: what an embed used to be. */
+/** One card, laid out the same way everywhere. */
 export function card(c: Card): DiscordContainerComponent {
   const head = [c.author ? `-# ${c.author}` : '', c.title ? `### ${c.title}` : '', c.body ?? '']
     .filter(Boolean)

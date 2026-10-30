@@ -20,7 +20,7 @@ export class CocAssetService {
 
   /**
    * Official Town Hall level image URL (Levels 1 to 18).
-   * Appears in the top-right thumbnail of Discord embed messages.
+   * Shown beside a card's heading in Discord messages.
    */
   static getTownHallUrl(level: number): string {
     const safeLevel = Math.max(1, Math.min(18, Math.floor(level)));
@@ -131,7 +131,7 @@ export class CocAssetService {
 
   /**
    * Universal resolver: given item name, category, and level, returns the asset thumbnail URL
-   * to place in the top-right of Discord embeds.
+   * to show beside a card's heading in Discord messages.
    */
   static getThumbnail(
     name: string,

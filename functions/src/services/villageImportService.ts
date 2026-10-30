@@ -585,16 +585,6 @@ export class VillageImportService {
     }));
   }
 
-  /** Characters Discord counts towards its limit for one embed. */
-  static embedSize(embed: any): number {
-    return (
-      (embed.title?.length ?? 0) +
-      (embed.description?.length ?? 0) +
-      (embed.footer?.text?.length ?? 0) +
-      (embed.fields ?? []).reduce((n: number, f: any) => n + f.name.length + f.value.length, 0)
-    );
-  }
-
   /**
    * One line per running upgrade, soonest first, with a countdown and the date:
    * "• 2x **Spring Trap** → Lv 6 · in 5 hours (22/10/2026, 11:11)". The same upgrade finishing within an

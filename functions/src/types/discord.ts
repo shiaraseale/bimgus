@@ -1,33 +1,3 @@
-export interface DiscordEmbedField {
-  name: string;
-  value: string;
-  inline?: boolean;
-}
-
-export interface DiscordEmbedAuthor {
-  name: string;
-  url?: string;
-  icon_url?: string;
-}
-
-export interface DiscordEmbedFooter {
-  text: string;
-  icon_url?: string;
-}
-
-export interface DiscordEmbed {
-  title?: string;
-  description?: string;
-  url?: string;
-  color?: number; // Integer color code, e.g. 0xffd700 for gold
-  fields?: DiscordEmbedField[];
-  author?: DiscordEmbedAuthor;
-  footer?: DiscordEmbedFooter;
-  timestamp?: string; // ISO 8601 string
-  thumbnail?: { url: string };
-  image?: { url: string };
-}
-
 export interface DiscordButtonEmoji {
   name?: string;
   id?: string;
@@ -114,7 +84,7 @@ export interface DiscordWebhookPayload {
   username?: string;
   avatar_url?: string;
   content?: string;
-  embeds?: DiscordEmbed[];
+  embeds?: []; // only to clear an old embed message's embeds when it's redrawn as a layout
   components?: DiscordTopLevelComponent[];
   flags?: number;
   allowed_mentions?: { parse?: ('users' | 'roles' | 'everyone')[]; users?: string[] };
