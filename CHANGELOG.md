@@ -1,8 +1,8 @@
 # Changelog
 
-What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live, and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
+What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
-## Unreleased
+## v2026.10.30.2 (30 October 2026)
 
 ### For clan members
 
