@@ -1,4 +1,4 @@
-import { CurrentWarResponse, WarAttack, WarClanMember } from '../types/coc';
+import { CurrentWarResponse, WarAttack, WarClan, WarClanMember } from '../types/coc';
 import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
@@ -9,6 +9,8 @@ import type { WarAudit } from '../types/api';
 
 // Room for the post-war audit's lists (Discord allows 4,000 characters per message)
 const AUDIT_BUDGET = 3500;
+// Room for a matchup's lineup, under its header (a 50v50 war fits)
+const LINEUP_BUDGET = 3300;
 
 export interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -27,6 +29,24 @@ export function positionList(members: Array<{ mapPosition: number; name: string 
     .sort((a, b) => a.mapPosition - b.mapPosition)
     .map((m) => `#${m.mapPosition} ${m.name}`)
     .join(', ');
+}
+
+/**
+ * The lineup, one map position a line with our player and their mirror:
+ * "` 1` Avery (TH15) vs Rival 1 (TH15)". Empty when the war has no members listed.
+ */
+export function lineupBlock(ours: WarClan, theirs: WarClan): string {
+  const byPosition = (clan: WarClan) => new Map(clan.members.map((m) => [m.mapPosition, m]));
+  const us = byPosition(ours);
+  const them = byPosition(theirs);
+  const who = (m?: WarClanMember) => (m ? `${m.name} (TH${m.townhallLevel})` : '–');
+  const size = Math.max(ours.members.length, theirs.members.length);
+  if (size === 0) return '';
+  const lines = Array.from(
+    { length: size },
+    (_, i) => `\`${String(i + 1).padStart(2, ' ')}\` ${who(us.get(i + 1))} vs ${who(them.get(i + 1))}`
+  );
+  return [`**${ours.name}** vs **${theirs.name}**`, ...fitLines(lines, LINEUP_BUDGET)].join('\n');
 }
 
 /** "12–10 ⭐ · 45.0% vs 38.2%", ours first. */
@@ -225,6 +245,7 @@ function buildWarMatchupCard(currentWar: CurrentWarResponse): DiscordContainerCo
       .filter(Boolean)
       .join('\n'),
     thumbnail: opponent.badgeUrls?.large || opponent.badgeUrls?.medium || opponent.badgeUrls?.small,
+    blocks: [lineupBlock(currentWar.clan, opponent)],
     footer: opponent.tag,
     buttons: DiscordService.warActionRow(currentWar.clan.tag, opponent.tag).components,
   });

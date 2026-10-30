@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processClanDiff } from '../src/diff/clanDiff';
-import { buildAttackCard, sendWarSummaryDiscord } from '../src/diff/warDiff';
+import { buildAttackCard, processWarDiff, sendWarSummaryDiscord } from '../src/diff/warDiff';
 import { processCwlDiff, sendCwlSeasonSummaryDiscord } from '../src/diff/cwlDiff';
 import { DiscordService } from '../src/services/discordService';
 import { buildAttackReminder } from '../src/jobs/warPingJob';
@@ -92,6 +92,48 @@ describe('war cards', () => {
     expect(text).toMatch(/^### 🛡️ Enemy attack: .* 85%$/m);
     expect(text).toContain('**#4 Them 4** (TH13) → **#2 Member 2** (TH12)');
     expect(text).toMatch(/^-# Score 12–10 .* · 45\.0% vs 38\.2% · CWL round 3$/m);
+  });
+
+  const prepWar = (size: number, name = (i: number) => `Member ${i}`): any => ({
+    state: 'preparation',
+    teamSize: size,
+    clan: {
+      tag: '#C',
+      name: 'Us',
+      stars: 0,
+      destructionPercentage: 0,
+      attacks: 0,
+      members: Array.from({ length: size }, (_, i) => ({ ...warMember(i + 1, [], name(i + 1)), townhallLevel: 15 })),
+    },
+    opponent: {
+      tag: '#O',
+      name: 'Them',
+      clanLevel: 12,
+      stars: 0,
+      destructionPercentage: 0,
+      attacks: 0,
+      members: Array.from({ length: size }, (_, i) => ({ ...warMember(i + 1, [], `Rival ${i + 1}`), tag: `#O${i}` })),
+    },
+  });
+
+  it("lists the matchup's lineup, our player and their mirror on each line", async () => {
+    await processWarDiff(prepWar(3), null, config);
+    expect(sent).toHaveLength(1);
+    expectLayout(sent[0]);
+    const text = texts(sent[0]);
+    expect(text).toContain('**Us** vs **Them**\n` 1` Member 1 (TH15) vs Rival 1 (TH12)');
+    expect(text).toContain('` 3` Member 3 (TH15) vs Rival 3 (TH12)');
+  });
+
+  it("fits a 50v50 war's lineup in the matchup message", async () => {
+    // Clash allows 15-character names
+    await processWarDiff(
+      prepWar(50, (i) => `Fifteen chars${String(i).padStart(2, '0')}`),
+      null,
+      config
+    );
+    expectLayout(sent[0]);
+    expect(texts(sent[0])).toContain('`50` Fifteen chars50 (TH15) vs Rival 50 (TH12)');
   });
 
   it("fits a 50v50 war's summary and audit in one message", async () => {

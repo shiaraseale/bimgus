@@ -4,7 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { card, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
-import { buildAttackCard, FlatAttack, formatCoCTime, positionList, scoreLine } from './warDiff';
+import { buildAttackCard, FlatAttack, formatCoCTime, lineupBlock, positionList, scoreLine } from './warDiff';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -348,6 +348,7 @@ export async function processCwlDiff(
                 .join('\n'),
               accent: COLORS.PURPLE,
               thumbnail: enemyClan.badgeUrls?.large,
+              blocks: [lineupBlock(ourClan, enemyClan)],
               buttons: DiscordService.warActionRow(clanTag, enemyClan.tag).components,
             });
 

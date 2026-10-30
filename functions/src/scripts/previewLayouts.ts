@@ -21,6 +21,8 @@ import { log } from '../utils/log';
  *
  *   npm run preview-layouts              posts to DISCORD_TEST_CHANNEL_WEBHOOK (functions/.env)
  *   npm run preview-layouts -- --print   prints each message's text instead
+ *   npm run preview-layouts -- war cwl   only those sections (clan, clan-games, war, cwl, raids,
+ *                                        reminders, dms)
  *
  * Every message goes to the test channel, whatever webhook the code asks for. Slash command replies
  * need an interaction, so try those with the test bot instead.
@@ -107,7 +109,8 @@ const warClan = (tag: string, name: string, size: number, attacks: (i: number) =
     tag: `${tag}-${i + 1}`,
     name: tag === CLAN ? NAMES[i] : `Rival ${i + 1}`,
     mapPosition: i + 1,
-    townhallLevel: 15 - Math.floor(i / 3),
+    // The rivals' Town Halls run a little behind ours, so the lineup shows some mismatches
+    townhallLevel: 15 - Math.floor((tag === CLAN ? i : i + 1) / 3),
     attacks: attacks(i),
   }));
   const all = members.flatMap((m) => m.attacks);
@@ -393,13 +396,19 @@ async function main() {
   };
   const post = (payload: DiscordWebhookPayload) => DiscordService.sendWebhook(target, payload);
 
-  await previewClan();
-  await previewClanGames();
-  await previewWar();
-  await previewCwl();
-  await previewRaids();
-  await previewReminders(post);
-  await previewDms(post);
+  const sections: Array<[string, () => Promise<void>]> = [
+    ['clan', previewClan],
+    ['clan-games', previewClanGames],
+    ['war', previewWar],
+    ['cwl', previewCwl],
+    ['raids', previewRaids],
+    ['reminders', () => previewReminders(post)],
+    ['dms', () => previewDms(post)],
+  ];
+  const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  for (const [name, run] of sections) {
+    if (only.length === 0 || only.includes(name)) await run();
+  }
 
   if (print) return;
   log.info(`[previewLayouts] Sent ${sent} messages to the test channel`);
