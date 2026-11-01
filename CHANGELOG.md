@@ -2,6 +2,20 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## v2026.11.01.2 (1 November 2026)
+
+### For clan members
+
+**Gear-ups are now under Defenses in `/status`.** They used to be listed with Buildings. The row now sits at the top of the Defenses list, with a much shorter name: `Gear-Ups  1/3`.
+
+- `/defenses` uses the same short name.
+- The "all maxed" messages have moved with it: Defenses now mentions gear-ups, and Buildings doesn't.
+
+### If you run your own copy
+
+- Deploy the functions: `firebase deploy --only functions`. The slash commands and dashboard haven't changed, so there's nothing to re-register.
+- The row's name is in `functions/src/templates/commands.json`, as `status.gearUps`, if you want to change it.
+
 ## v2026.11.01 (1 November 2026)
 
 ### For clan members
