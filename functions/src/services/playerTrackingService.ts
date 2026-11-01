@@ -255,6 +255,7 @@ export class PlayerTrackingService {
     const byCategory: OutstandingUpgradesSummary['byCategory'] = {
       home: {
         buildings: [],
+        defenses: [],
         heroes: [],
         equipment: [],
         spells: [],
@@ -414,16 +415,16 @@ export class PlayerTrackingService {
     const gearUpsCount = highGear ? Math.min(3, highGear.value || 0) : 0;
     if (gearUpsCount < 3) {
       const item: OutstandingUpgradeItem = {
-        name: 'Home Defense Gear-Ups (Cannon/Archer Tower/Mortar)',
+        name: commandWords.status.gearUps,
         currentLevel: gearUpsCount,
         maxLevel: 3,
         levelsRemaining: 3 - gearUpsCount,
         village: 'home' as const,
         resourceType: 'gold' as const,
-        category: 'building' as const,
+        category: 'defense' as const,
       };
       byResource.gold.push(item);
-      byCategory.home.buildings.push(item);
+      byCategory.home.defenses.push(item);
       totalRemainingLevels += 3 - gearUpsCount;
     }
 

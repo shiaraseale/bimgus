@@ -79,7 +79,7 @@ export interface OutstandingUpgradeItem {
   levelsRemaining: number;
   village: 'home' | 'builder';
   resourceType: 'gold' | 'elixir' | 'darkElixir' | 'builderGold' | 'builderElixir' | 'ores';
-  category: 'hero' | 'equipment' | 'troop' | 'spell' | 'building';
+  category: 'hero' | 'equipment' | 'troop' | 'spell' | 'building' | 'defense';
 }
 
 export interface OutstandingUpgradesSummary {
@@ -98,6 +98,7 @@ export interface OutstandingUpgradesSummary {
   byCategory: {
     home: {
       buildings: OutstandingUpgradeItem[];
+      defenses: OutstandingUpgradeItem[];
       heroes: OutstandingUpgradeItem[];
       equipment: OutstandingUpgradeItem[];
       spells: OutstandingUpgradeItem[];

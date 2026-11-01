@@ -230,8 +230,8 @@
     "townHallMaxed": "🏆 **Town Hall**: Maxed (TH{level})",
     "townHallNext": "• **Town Hall**: Lv {level}/{next}",
     "townHallNextCost": "• **Town Hall**: Lv {level}/{next} — {cost}",
-    "gearUpsDone": "✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)",
-    "gearUps": "• **Defense Gear-Ups**: {count}/3 (Cannon, Archer Tower, Mortar)",
+    "gearUpsDone": "✅ **Gear-Ups**: 3/3",
+    "gearUps": "• **Gear-Ups**: {count}/3",
     "importedSection": "🛡️ Current Defenses & Next Upgrades",
     "homeCapsSection": "🛡️ Defense Upgrades to Max TH{level}",
     "builderCapsSection": "🛡️ Defense Upgrades to Max BH{level}",
@@ -254,6 +254,7 @@
     "authorArea": "[{name}] Status: {area}",
     "levelsLeft": "**{levels}** levels left. Pick an area below for the full list.",
     "exportPrefix": "Defenses & buildings based on the export taken",
+    "gearUps": "Gear-Ups",
     "more": "…and {hidden} more",
     "couldNotLoad": "❌ Could not load **{name}** ({tag}): {reason}",
     "noLongerLinked": "⚠️ `{tag}` isn't linked to your profile any more.",
@@ -283,7 +284,7 @@
       "buildings": {
         "emoji": "🏛️",
         "name": "Buildings & Storages",
-        "done": "✅ All buildings, storages & gear-ups maxed!"
+        "done": "✅ All buildings & storages maxed!"
       },
       "walls": {
         "emoji": "🧱",
@@ -293,7 +294,7 @@
       "defenses": {
         "emoji": "🛡️",
         "name": "Defenses",
-        "done": "✅ All home defenses maxed for TH{th}!"
+        "done": "✅ All home defenses & gear-ups maxed for TH{th}!"
       },
       "heroes": {
         "emoji": "{crown}",

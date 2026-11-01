@@ -204,7 +204,7 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
       withHallLevels(home.buildings, th)
     ),
     walls: importSection(wording('walls'), unmaxed('home', ['wall'])),
-    defenses: importSection(wording('defenses'), unmaxed('home', HOME_DEFENSE_CATEGORIES)),
+    defenses: importSection(wording('defenses'), unmaxed('home', HOME_DEFENSE_CATEGORIES), home.defenses),
     heroes: itemSection(wording('heroes'), home.heroes),
     equipment: itemSection(wording('equipment'), home.equipment),
     troops: itemSection(wording('troops'), home.troops),

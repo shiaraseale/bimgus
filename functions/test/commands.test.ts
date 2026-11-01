@@ -281,6 +281,17 @@ describe('slash commands end to end (mocked services)', () => {
     expect(texts(builder)).toContain('Cannon (BB)');
   });
 
+  it('/status lists unfinished gear-ups under Defenses, not Buildings', async () => {
+    const player = clone(apiFixture) as any;
+    player.achievements.find((a: any) => a.name === 'High Gear').value = 1;
+    vi.spyOn(CocService.prototype, 'getPlayer').mockImplementation(async () => player);
+    await importFile();
+    const defenses = texts(await pick('status:area:#ANON12345:home:overview', 'defenses'));
+    expect(defenses).toMatch(/\*\*🛡️ Defenses \(52\)\*\*\n`Gear-Ups +1\/3`/);
+    const buildings = texts(await pick('status:area:#ANON12345:home:overview', 'buildings'));
+    expect(buildings).not.toContain('Gear-Ups');
+  });
+
   it('with several accounts, /status has an account menu, and switching keeps the village and area', async () => {
     user.accounts.push({ playerTag: '#ANON67890', name: 'Second', townHallLevel: 12, builderHallLevel: 9 } as any);
     const overview = await command('status');
