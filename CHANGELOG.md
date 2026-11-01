@@ -2,6 +2,37 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## v2026.11.01 (1 November 2026)
+
+### For clan members
+
+**Raid weekends now end with a recap.** When a weekend finishes, Bimgus posts its totals, ranks everyone who raided by capital gold, like the in-game list, and names the clan members who didn't attack.
+
+- A nearly full clan's ranking carries on into a second message, so nobody is left out.
+- "No attacks" lists who's in the clan when the weekend ends. Someone who joined late after raiding with another clan shows up there, because the game doesn't share that.
+
+**Lists are in neat columns.** Names, levels and amounts now line up, with only the emoji outside the columns.
+
+- This covers the raid ranking, war and CWL lineups, the CWL season leaderboard, and the upgrade lists in `/status`, `/defenses`, `/troops`, `/spells`, `/heroes` and an import's Full list.
+- Capital cards list each district in a row, with who attacked it on a small line underneath.
+- Lineups read `name (TH) vs name (TH)`. On the widest rows a rival's name is shortened so the row fits on a phone. Your own players' names never are.
+
+**Every button sits inside its card.** The clan feed, `/defenses`, CWL season recaps and import replies used to show buttons below the card. They now match every other message.
+
+**Smaller changes**
+
+- `/status` shows your Town Hall instead of your league badge.
+- Town Hall upgrades get a "🎉 Well done!"
+- Turning DMs off or on with a DM's button now replies with a card, like `/dms`.
+- Upgrade lists drop the "Lv", so a row reads `Barbarian King  36/65`.
+
+### If you run your own copy
+
+- Deploy the functions and the dashboard: `firebase deploy --only functions,hosting`. The slash commands haven't changed, so there's nothing to re-register.
+- There's a new setting on the dashboard, **Raid Weekend Ranking Recap**. It's on unless you turn it off, and no data needs updating.
+- The wording of every message now lives in JSON files in `functions/src/templates`, so you can change it without touching the code. The README in that folder explains how. Edits go live when you deploy, and `firebase deploy` stops if the tests or build fail.
+- `npm --prefix functions run preview-layouts -- raids` now also shows a full clan's recap, and `-- war` shows a lineup at its widest.
+
 ## v2026.10.30.4 (30 October 2026)
 
 ### For clan members
