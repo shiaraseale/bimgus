@@ -12,6 +12,9 @@ import { snapshotKey } from './playerTrackingService';
 import { LinkedAccount, PlayerSnapshot, UserDoc } from '../types/user';
 import { DiscordWebhookPayload } from '../types/discord';
 import { card, layoutMessage } from './discordLayout';
+import words from '../templates/dms.json';
+import shared from '../templates/shared.json';
+import { accountFooter, fill } from '../templates';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
 
@@ -38,14 +41,7 @@ export const MUTED_CATEGORIES = new Set(['equipment']);
 const IGNORED_CATEGORIES = new Set(['wall']);
 export const DM_BLOCK_PAUSE_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const VILLAGE_HEADINGS: Record<Village, string> = { home: '🏰 Home Village', builder: '🔨 Builder Base' };
-
-const KIND_TITLES: Record<UpgradeKind, string> = {
-  upgraded: 'Upgrade Completed!',
-  unlocked: 'Unlocked!',
-  built: 'New Building!',
-  expected: 'Upgrade Should Be Done',
-};
+export const VILLAGE_HEADINGS: Record<Village, string> = shared.villages;
 
 function thumbnailCategory(category: string): string {
   if (['hero', 'equipment', 'spell', 'townHall', 'builderHall', 'trap', 'pet', 'guardian'].includes(category))
@@ -64,17 +60,12 @@ function hallTag(account: LinkedAccount, village: Village): string {
  */
 export function describeEvent(e: UpgradeEvent, hall?: string): string {
   const countPrefix = e.count > 1 ? `${e.count}x ` : '';
-  const levels = `Lv ${e.newLevel}/${e.maxLevel}${hall ? ` for ${hall}` : ''}`;
-  switch (e.kind) {
-    case 'unlocked':
-      return `🔓 **${e.name}** unlocked (${levels})`;
-    case 'built':
-      return `🏗️ ${countPrefix}**${e.name}** built (${levels})`;
-    case 'expected':
-      return `🏗️ ${countPrefix}**${e.name}** should now be ${levels}`;
-    default:
-      return `🎉 ${countPrefix}**${e.name}** reached ${levels}`;
-  }
+  const levels = fill(hall ? words.upgrades.levelsForHall : words.upgrades.levels, {
+    level: e.newLevel,
+    max: e.maxLevel,
+    hall: hall ?? '',
+  });
+  return fill(words.upgrades.lines[e.kind], { count: countPrefix, name: e.name, levels });
 }
 
 /** Event lines, under a heading per village when both have some. */
@@ -172,14 +163,14 @@ export function isDmPaused(user: UserDoc, now: number = Date.now()): boolean {
  * footer says (a gem or boost used since the export may have finished it sooner).
  */
 export function buildUpgradeDm(account: LinkedAccount, events: UpgradeEvent[]): DiscordWebhookPayload {
-  const estimated = events.some((e) => e.kind === 'expected') ? "Estimated from your import's timer • " : '';
+  const estimated = events.some((e) => e.kind === 'expected');
   const [only] = events;
   return layoutMessage(
     card({
       accent: COLORS.GOLD,
       ...(events.length === 1
         ? {
-            title: `${only.kind === 'unlocked' ? '🔓' : only.kind === 'upgraded' ? '🎉' : '🏗️'} [${account.name}] ${KIND_TITLES[only.kind]}`,
+            title: fill(words.upgrades.titles[only.kind], { account: account.name }),
             body: describeEvent(only, hallTag(account, only.village)),
             thumbnail: CocAssetService.getThumbnail(
               only.assetName,
@@ -189,10 +180,12 @@ export function buildUpgradeDm(account: LinkedAccount, events: UpgradeEvent[]): 
             ),
           }
         : {
-            title: `🎉 [${account.name}] ${events.length} Upgrades`,
+            title: fill(words.upgrades.listTitle, { account: account.name, count: events.length }),
             body: byVillage(events).slice(0, 3700),
           }),
-      footer: `${estimated}Account: ${account.name} (${account.playerTag})`,
+      footer: estimated
+        ? fill(words.upgrades.footerEstimated, { name: account.name, tag: account.playerTag })
+        : accountFooter(account),
       buttons: [DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)],
     })
   );

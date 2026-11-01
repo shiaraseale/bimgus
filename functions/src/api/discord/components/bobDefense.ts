@@ -1,6 +1,9 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 
+const words = commandWords.sixthBuilder;
 const DONE = 'bob_defense_done:';
 const UNDONE = 'bob_defense_undone:';
 
@@ -10,14 +13,14 @@ export function bobDefenseButton(playerTag: string, completed: boolean, short: b
     ? {
         type: 2 as const,
         style: 2 as const,
-        label: short ? 'Mark BB Def Lv 9 Incomplete' : 'Mark Defense Lv 9 Incomplete',
+        label: short ? words.markUndoneShort : words.markUndone,
         custom_id: `${UNDONE}${playerTag}`,
         emoji: { name: '🔄' },
       }
     : {
         type: 2 as const,
         style: 3 as const,
-        label: short ? 'Mark BB Def Lv 9 Done' : 'Mark Defense Lv 9 Completed',
+        label: short ? words.markDoneShort : words.markDone,
         custom_id: `${DONE}${playerTag}`,
         emoji: { name: '✅' },
       };
@@ -34,11 +37,7 @@ export async function handleBobDefenseButton(customId: string, discordUserId: st
   return {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: {
-      content: success
-        ? isDone
-          ? `✅ Builder Base Defense Lv 9 has been marked as **completed** for \`${tag}\`! Run \`/sixth-builder\` to view your updated progress.`
-          : `🔄 Builder Base Defense Lv 9 has been marked as **incomplete** for \`${tag}\`. Run \`/sixth-builder\` to view your updated progress.`
-        : `⚠️ Could not find linked account \`${tag}\` under your profile.`,
+      content: fill(success ? (isDone ? words.markedDone : words.markedUndone) : words.markFailed, { tag }),
       flags: 64,
     },
   };

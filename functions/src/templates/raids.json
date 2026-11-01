@@ -1,0 +1,23 @@
+{
+  "started": {
+    "title": "{raid} Raid weekend has started",
+    "body": "5 attacks each, plus a bonus one · ends {time}",
+    "bodyNoEnd": "5 attacks each, plus a bonus one"
+  },
+  "capital": {
+    "conquered": "{raid} Conquered {enemy}",
+    "unfinished": "{raid} {enemy}: {percent}% when the weekend ended",
+    "body": "🏰 {destroyed}/{total} districts · ⚔️ {attacks} attacks · {loot} {capital_gold}",
+    "weekendSoFar": "Weekend so far: {totals}",
+    "weekendTotal": "Weekend total: {totals}",
+    "totalGold": "{gold} capital gold"
+  },
+  "recap": {
+    "title": "{raid} Raid weekend has ended",
+    "body": "🏰 {capitals} · {districts} · ⚔️ {attacks} · {loot} {capital_gold}",
+    "ranking": "🏅 **Ranking**",
+    "noAttacks": "🚨 **No attacks ({count})**: {names}",
+    "everyoneRaided": "✅ Everyone raided",
+    "footer": "{members} took part"
+  }
+}

@@ -1,3 +1,4 @@
+import commandWords from '../../../templates/commands.json';
 import { ImportTaskData, runImportTask } from '../../../jobs/importJob';
 import { CommandContext } from '../context';
 import { queueTask } from '../tasks';
@@ -86,15 +87,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
   if (attachments.length === 0 && !jsonText) {
     return respondPersonal({
-      content:
-        '⚠️ **Please provide your village JSON export!**\n\n' +
-        '• **One export per account; it includes both your Home Village and Builder Base.**\n' +
-        '• Attach up to 6 `.json` files at once if you have several accounts, or paste one export into the `json_text` option.\n\n' +
-        '📖 **How to export from Clash of Clans:**\n' +
-        '1. Open Clash of Clans ➔ Tap **Settings** ⚙️\n' +
-        '2. Tap **More Settings**\n' +
-        '3. Scroll to the bottom to **Data Export**\n' +
-        '4. Tap **Copy** next to *"Export village data in JSON format"*',
+      content: commandWords.import.instructions,
     });
   }
 

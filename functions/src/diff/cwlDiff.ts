@@ -2,6 +2,8 @@ import { CwlGroupResponse, WarClanMember } from '../types/coc';
 import { CwlSnapshotDoc, BotConfigDoc, CwlSeasonSummary, CwlPlayerSummary, CwlUnderdogHit } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, codeSafe, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
+import words from '../templates/cwl.json';
+import { fill } from '../templates';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
 import { buildAttackCard, FlatAttack, formatCoCTime, lineupBlock, positionList, scoreLine } from './warDiff';
@@ -197,7 +199,7 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   );
   if (flawless) {
     highlightLines.push(
-      `👑 **Flawless**: ${flawless.name} (TH${flawless.townhallLevel}), ${flawless.totalStars}/${flawless.totalStars} ⭐`
+      fill(words.season.flawless, { name: flawless.name, th: flawless.townhallLevel, stars: flawless.totalStars })
     );
   }
 
@@ -205,7 +207,15 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   const goliathHit = [...summary.underdogHits].sort((a, b) => b.thDiff - a.thDiff || b.destruction - a.destruction)[0];
   if (goliathHit && goliathHit.thDiff >= 2) {
     highlightLines.push(
-      `🎯 **Biggest upset**: ${goliathHit.attackerName} (TH${goliathHit.attackerTh}) took ${goliathHit.stars} ⭐ ${goliathHit.destruction}% off ${goliathHit.defenderName} (TH${goliathHit.defenderTh}) in round ${goliathHit.round}`
+      fill(words.season.biggestUpset, {
+        attacker: goliathHit.attackerName,
+        attackerTh: goliathHit.attackerTh,
+        stars: goliathHit.stars,
+        destruction: goliathHit.destruction,
+        defender: goliathHit.defenderName,
+        defenderTh: goliathHit.defenderTh,
+        round: goliathHit.round,
+      })
     );
   }
 
@@ -214,7 +224,12 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   );
   if (anchor) {
     highlightLines.push(
-      `🛡️ **Anchor**: ${anchor.name} (TH${anchor.townhallLevel}), ${anchor.totalStars} ⭐ with ${anchor.perfectHits}× 3★`
+      fill(words.season.anchor, {
+        name: anchor.name,
+        th: anchor.townhallLevel,
+        stars: anchor.totalStars,
+        perfectHits: anchor.perfectHits,
+      })
     );
   }
 
@@ -229,23 +244,38 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
       uDest: p.underdogHits.reduce((acc, h) => acc + h.destruction, 0),
     }))
     .sort((a, b) => b.uStars - a.uStars || b.maxDiff - a.maxDiff || b.u3Stars - a.u3Stars || b.uDest - a.uDest);
-  const underdogLines = underdogs
-    .slice(0, 5)
-    .map(
-      (p, idx) =>
-        `${medals[idx]} ${p.name} (TH${p.townhallLevel}): ${p.uStars} ⭐ in ${p.underdogHits.length} hit${p.underdogHits.length === 1 ? '' : 's'}, up to +${p.maxDiff} TH`
-    );
+  const underdogLines = underdogs.slice(0, 5).map((p, idx) =>
+    fill(words.season.underdog, {
+      medal: medals[idx],
+      name: p.name,
+      th: p.townhallLevel,
+      stars: p.uStars,
+      hits: `${p.underdogHits.length} hit${p.underdogHits.length === 1 ? '' : 's'}`,
+      gap: p.maxDiff,
+    })
+  );
 
-  const missed = summary.missedAttacksList.map((m) => `${m.name} (${m.missedAttacks} of ${m.roundsRostered})`);
+  const missed = summary.missedAttacksList.map((m) =>
+    fill(words.season.missedPlayer, { name: m.name, missed: m.missedAttacks, rounds: m.roundsRostered })
+  );
 
   const overviewCard = card({
     accent: summary.wins >= summary.losses ? COLORS.GOLD : COLORS.PURPLE,
-    title: `🏆 CWL ${summary.season}: ${summary.wins}W ${summary.losses}L${summary.ties > 0 ? ` ${summary.ties}T` : ''}`,
-    body: `⭐ ${summary.totalClanStars} stars (${summary.winBonusStars} from wins) · 💥 ${summary.avgClanDestruction}% average`,
+    title: fill(summary.ties > 0 ? words.season.titleWithTies : words.season.title, {
+      season: summary.season,
+      wins: summary.wins,
+      losses: summary.losses,
+      ties: summary.ties,
+    }),
+    body: fill(words.season.body, {
+      stars: summary.totalClanStars,
+      bonusStars: summary.winBonusStars,
+      destruction: summary.avgClanDestruction,
+    }),
     blocks: [
       highlightLines.join('\n'),
-      underdogLines.length > 0 ? ['🥊 **Underdogs** (stars on higher Town Halls)', ...underdogLines].join('\n') : '',
-      missed.length > 0 ? `🚨 **Missed attacks**: ${missed.join(', ')}` : '✅ No missed attacks',
+      underdogLines.length > 0 ? [words.season.underdogsHeading, ...underdogLines].join('\n') : '',
+      missed.length > 0 ? fill(words.season.missedAttacks, { names: missed.join(', ') }) : words.season.noMissedAttacks,
     ],
     footer: summary.clanName,
   });
@@ -265,9 +295,9 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   });
   const leaderboardCard = card({
     accent: COLORS.BLUE,
-    title: '⭐ Stars leaderboard',
+    title: words.season.leaderboardTitle,
     body: fitLines(leaderboardLines, 3000).join('\n'),
-    footer: `${summary.playerSummaries.length} members took part · stars · attacks · average`,
+    footer: fill(words.season.leaderboardFooter, { count: summary.playerSummaries.length }),
   });
 
   // Both cards together when they fit, otherwise one message each
@@ -305,8 +335,8 @@ export async function processCwlDiff(
     const others = cwlGroup.clans.filter((c) => c.tag.toUpperCase() !== clanTag.toUpperCase()).map((c) => c.name);
 
     const groupCard = card({
-      title: `🛡️ CWL ${cwlGroup.season} has started`,
-      body: `7 rounds, 1 attack each. Our group: ${others.join(', ')}`,
+      title: fill(words.group.title, { season: cwlGroup.season }),
+      body: fill(words.group.body, { clans: others.join(', ') }),
       accent: COLORS.GOLD,
       buttons: DiscordService.warActionRow(clanTag).components,
     });
@@ -348,11 +378,13 @@ export async function processCwlDiff(
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const matchupCard = card({
-              title: `⚔️ CWL round ${roundNum}: vs ${enemyClan.name}`,
+              title: fill(words.matchup.title, { round: roundNum, enemy: enemyClan.name }),
               body: [
-                `${war.teamSize}v${war.teamSize} · clan level ${enemyClan.clanLevel}`,
-                war.state === 'preparation' && startMs ? `Battle day ${discordTime(startMs)}` : '',
-                endMs ? `Ends ${discordTime(endMs)}` : '',
+                fill(words.matchup.size, { size: war.teamSize, clanLevel: enemyClan.clanLevel }),
+                war.state === 'preparation' && startMs
+                  ? fill(words.matchup.starts, { time: discordTime(startMs) })
+                  : '',
+                endMs ? fill(words.matchup.ends, { time: discordTime(endMs) }) : '',
               ]
                 .filter(Boolean)
                 .join('\n'),
@@ -371,8 +403,8 @@ export async function processCwlDiff(
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const battleCard = card({
-              title: `🔥 CWL round ${roundNum} battle day: vs ${enemyClan.name}`,
-              body: `1 attack each · ends ${endMs ? discordTime(endMs) : 'in 24 hours'}`,
+              title: fill(words.battleDay.title, { round: roundNum, enemy: enemyClan.name }),
+              body: endMs ? fill(words.battleDay.body, { time: discordTime(endMs) }) : words.battleDay.bodyNoEnd,
               accent: COLORS.GOLD,
               thumbnail: ourClan.badgeUrls?.large,
               buttons: DiscordService.warActionRow(clanTag, enemyClan.tag).components,
@@ -439,7 +471,7 @@ export async function processCwlDiff(
                   ourClan,
                   enemyClan,
                   DiscordService.warActionRow(clanTag, enemyClan.tag).components,
-                  `CWL round ${roundNum} · ${ourClan.attacks}/${war.teamSize} attacks`
+                  fill(words.attackContext, { round: roundNum, used: ourClan.attacks, total: war.teamSize })
                 );
                 await DiscordService.sendWebhook(webhookUrl, layoutMessage(attackCard));
                 warLoggedOrders.add(attack.order);
@@ -471,22 +503,27 @@ export async function processCwlDiff(
             const tied =
               ourClan.stars === enemyClan.stars && ourClan.destructionPercentage === enemyClan.destructionPercentage;
 
-            const outcome = won ? '🏆' : tied ? '🤝' : '💀';
-            const result = won ? 'won' : tied ? 'tied' : 'lost';
+            const outcome = won ? words.round.won : tied ? words.round.tied : words.round.lost;
 
             // The result and the round's audit in one card
             const missedAttacks = ourClan.members.filter((m) => !m.attacks || m.attacks.length === 0);
             const threeStars = ourClan.members.filter((m) => m.attacks && m.attacks.some((a) => a.stars === 3));
             const auditLines = [
-              missedAttacks.length > 0 ? `🚨 **No attack**: ${positionList(missedAttacks)}` : '✅ Everyone attacked',
-              threeStars.length > 0 ? `⭐ **3 stars**: ${positionList(threeStars)}` : '',
+              missedAttacks.length > 0
+                ? fill(words.round.noAttack, { names: positionList(missedAttacks) })
+                : words.round.everyoneAttacked,
+              threeStars.length > 0 ? fill(words.round.threeStars, { names: positionList(threeStars) }) : '',
             ].filter(Boolean);
 
             const roundCard = card({
-              title: `${outcome} CWL round ${roundNum}: ${result} vs ${enemyClan.name}`,
+              title: fill(outcome, { round: roundNum, enemy: enemyClan.name }),
               body: [
                 scoreLine(ourClan, enemyClan),
-                `🗡️ Attacks used: ${ourClan.attacks}/${war.teamSize} vs ${enemyClan.attacks}/${war.teamSize}`,
+                fill(words.round.attacksUsed, {
+                  ours: ourClan.attacks,
+                  theirs: enemyClan.attacks,
+                  total: war.teamSize,
+                }),
               ].join('\n'),
               blocks: [fitLines(auditLines, 3500).join('\n')],
               accent: won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED,

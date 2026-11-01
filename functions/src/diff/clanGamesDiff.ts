@@ -2,6 +2,8 @@ import { ClanMember } from '../types/coc';
 import { ClanGamesSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, layoutMessage } from '../services/discordLayout';
+import words from '../templates/clanGames.json';
+import { fill } from '../templates';
 import { CocService } from '../services/cocService';
 import { isClanGamesActive } from './clanGamesWindow';
 import { mapWithConcurrency } from '../utils/concurrency';
@@ -53,8 +55,11 @@ export async function processClanGamesDiff(
   // 1. Announce Start of Clan Games
   if ((isNewEvent || !prevSnapshot?.announcedStart) && webhookUrl && config.notificationsEnabled.clanGamesStart) {
     const startCard = card({
-      title: '🎪 Clan Games have started',
-      body: `Up to ${MAX_CLAN_GAMES_POINTS.toLocaleString()} points each · tier 6 at ${CLAN_GAMES_TIERS[5].points.toLocaleString()} · ends on the 28th`,
+      title: words.started.title,
+      body: fill(words.started.body, {
+        maxPoints: MAX_CLAN_GAMES_POINTS.toLocaleString(),
+        tier6Points: CLAN_GAMES_TIERS[5].points.toLocaleString(),
+      }),
       accent: COLORS.GOLD,
       buttons: DiscordService.clanGamesActionRow(clanTag).components,
     });
@@ -95,8 +100,8 @@ export async function processClanGamesDiff(
 
         if (webhookUrl && config.notificationsEnabled.clanGamesMaxers) {
           const maxCard = card({
-            title: `🌟 ${member.name} maxed Clan Games`,
-            body: `All ${MAX_CLAN_GAMES_POINTS.toLocaleString()} points`,
+            title: fill(words.maxed.title, { name: member.name }),
+            body: fill(words.maxed.body, { maxPoints: MAX_CLAN_GAMES_POINTS.toLocaleString() }),
             footer: member.tag,
             accent: COLORS.GOLD,
             buttons: DiscordService.clanGamesActionRow(clanTag).components,
@@ -121,8 +126,15 @@ export async function processClanGamesDiff(
 
     if (tier) {
       const tierCard = card({
-        title: `🎉 Clan Games tier ${tier} unlocked`,
-        body: `**${totalClanPoints.toLocaleString()}** points · ${tier < 6 ? `tier ${tier + 1} at ${CLAN_GAMES_TIERS[tier].points.toLocaleString()}` : 'every tier unlocked 🏆'}`,
+        title: fill(words.tier.title, { tier }),
+        body:
+          tier < 6
+            ? fill(words.tier.body, {
+                points: totalClanPoints.toLocaleString(),
+                nextTier: tier + 1,
+                nextPoints: CLAN_GAMES_TIERS[tier].points.toLocaleString(),
+              })
+            : fill(words.tier.bodyAllTiers, { points: totalClanPoints.toLocaleString() }),
         accent: COLORS.GREEN,
         buttons: DiscordService.clanGamesActionRow(clanTag).components,
       });

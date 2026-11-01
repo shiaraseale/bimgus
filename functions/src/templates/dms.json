@@ -1,0 +1,34 @@
+{
+  "upgrades": {
+    "titles": {
+      "upgraded": "🎉 [{account}] Upgrade Completed!",
+      "unlocked": "🔓 [{account}] Unlocked!",
+      "built": "🏗️ [{account}] New Building!",
+      "expected": "🏗️ [{account}] Upgrade Should Be Done"
+    },
+    "listTitle": "🎉 [{account}] {count} Upgrades",
+    "lines": {
+      "upgraded": "🎉 {count}**{name}** reached {levels}",
+      "unlocked": "🔓 **{name}** unlocked ({levels})",
+      "built": "🏗️ {count}**{name}** built ({levels})",
+      "expected": "🏗️ {count}**{name}** should now be {levels}"
+    },
+    "levels": "Lv {level}/{max}",
+    "levelsForHall": "Lv {level}/{max} for {hall}",
+    "footerEstimated": "Estimated from your import's timer • Account: {name} ({tag})"
+  },
+  "roster": {
+    "title": "⚔️ [{account}] You're in the war vs {enemy}",
+    "position": "#{position} on the map · TH{th} · {size}v{size}",
+    "battleDay": "Battle day {time}"
+  },
+  "toggle": {
+    "turnOff": "Turn off these DMs",
+    "turnOn": "Turn DMs back on",
+    "notLinked": "⚠️ `{tag}` isn't linked to your profile any more, so there's nothing to change.",
+    "onTitle": "🔔 DMs On",
+    "onBody": "DMs are back **on** for **{name}**.",
+    "offTitle": "🔕 DMs Off",
+    "offBody": "DMs are now **off** for **{name}**. Use `/dms on` or the button below to turn them back on."
+  }
+}

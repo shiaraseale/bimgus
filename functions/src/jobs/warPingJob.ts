@@ -2,6 +2,8 @@ import { CocService } from '../services/cocService';
 import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, layoutMessage } from '../services/discordLayout';
+import warWords from '../templates/war.json';
+import { fill } from '../templates';
 import { config } from '../config';
 import { CurrentWarResponse, WarClan } from '../types/coc';
 import { DiscordWebhookPayload } from '../types/discord';
@@ -22,7 +24,8 @@ export interface ReminderInput {
 }
 
 // Whole hours, rounded down as Discord's "in 3 hours" is, so the title and the end time agree
-const timeLeft = (hours: number) => (hours < 1 ? 'Under an hour' : `~${Math.floor(hours)}h`);
+const words = warWords.reminder;
+const timeLeft = (hours: number) => (hours < 1 ? words.underAnHour : fill(words.hours, { hours: Math.floor(hours) }));
 
 /** Who still has attacks to make, with the time left and the score; null when everyone has attacked. */
 export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | null {
@@ -34,14 +37,27 @@ export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | n
   // "(1 left)" only for someone who has attacked but not used them all
   const names = waiting.map((m) => {
     const used = m.attacks?.length ?? 0;
-    return `#${m.mapPosition} ${m.name}${used > 0 ? ` (${r.attacksPerMember - used} left)` : ''}`;
+    const member = { position: m.mapPosition, name: m.name };
+    return used > 0
+      ? fill(words.waitingMemberStarted, { ...member, left: r.attacksPerMember - used })
+      : fill(words.waitingMember, member);
   });
   return layoutMessage(
     card({
       accent: COLORS.RED,
-      title: `⚠️ ${timeLeft(r.hoursLeft)} left in ${r.roundNum ? `CWL round ${r.roundNum}` : 'the war'} vs ${r.enemyClan.name}`,
-      body: [`**Still to attack**: ${names.join(', ')}`, `Ends ${discordTime(r.endMs)}`].join('\n'),
-      footer: `Score ${scoreLine(r.ourClan, r.enemyClan)} · ${r.ourClan.attacks}/${r.teamSize * r.attacksPerMember} attacks`,
+      title: fill(r.roundNum ? words.cwlTitle : words.warTitle, {
+        timeLeft: timeLeft(r.hoursLeft),
+        round: r.roundNum ?? '',
+        enemy: r.enemyClan.name,
+      }),
+      body: [fill(words.waiting, { names: names.join(', ') }), fill(words.ends, { time: discordTime(r.endMs) })].join(
+        '\n'
+      ),
+      footer: fill(words.footer, {
+        score: scoreLine(r.ourClan, r.enemyClan),
+        used: r.ourClan.attacks,
+        total: r.teamSize * r.attacksPerMember,
+      }),
       buttons: DiscordService.warActionRow(r.clanTag).components,
     })
   );

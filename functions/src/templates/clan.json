@@ -1,0 +1,30 @@
+{
+  "joined": {
+    "title": "📥 {name} joined",
+    "body": "🏆 {trophies} · {role}",
+    "footer": "{tag} · {members}/50 members"
+  },
+  "left": {
+    "title": "📤 {name} left",
+    "body": "Was {role} · 🏆 {trophies}",
+    "footer": "{tag} · {members}/50 members"
+  },
+  "promoted": {
+    "title": "{crown} {name} promoted",
+    "body": "{from} → {to}"
+  },
+  "demoted": {
+    "title": "🔻 {name} demoted",
+    "body": "{from} → {to}"
+  },
+  "townHall": {
+    "title": "🏛️ {name} reached TH{level}",
+    "body": "🎉 Well done!"
+  },
+  "roles": {
+    "member": "Member",
+    "admin": "Elder",
+    "coLeader": "Co-Leader",
+    "leader": "Leader"
+  }
+}

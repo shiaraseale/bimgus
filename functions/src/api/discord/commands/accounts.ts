@@ -1,6 +1,8 @@
 import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { card, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 import { LinkedAccount } from '../../../types/user';
 import { CommandContext } from '../context';
 
@@ -15,6 +17,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.accounts;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { deferReply, editDeferredReply, getTargetAccounts, track } = ctx;
   deferReply();
@@ -23,35 +27,41 @@ export async function execute(ctx: CommandContext): Promise<any> {
     try {
       const { accounts, error } = await getTargetAccounts();
       if (error || !accounts || accounts.length === 0) {
-        await editDeferredReply({ content: error || 'No accounts linked.' });
+        await editDeferredReply({ content: error || words.none });
         return;
       }
 
       const accountList = accounts.map((a: LinkedAccount, idx: number) => {
-        const dmBadge = a.dmsEnabled === false ? '🔕 DMs Off' : '🔔 DMs On';
-        return `${idx + 1}. **${a.name}** (\`${a.playerTag}\`)\n   • Town Hall ${a.townHallLevel} | Builder Hall ${a.builderHallLevel || 'N/A'} | ${dmBadge}`;
+        return fill(words.row, {
+          index: idx + 1,
+          name: a.name,
+          tag: a.playerTag,
+          th: a.townHallLevel,
+          bh: a.builderHallLevel || words.noBuilderHall,
+          dms: a.dmsEnabled === false ? words.dmsOff : words.dmsOn,
+        });
       });
 
       await editDeferredReply(
         layoutMessage(
           card({
             accent: COLORS.DISCORD_BLURPLE,
-            title: '📋 Your Linked Clash of Clans Accounts',
+            title: words.title,
             body: [
-              `You have **${accounts.length}** account${accounts.length === 1 ? '' : 's'} linked (all equal status):`,
+              fill(words.intro, { count: accounts.length, accounts: accounts.length === 1 ? 'account' : 'accounts' }),
               '',
               accountList.join('\n\n'),
               '',
-              '💡 *All linked accounts are of equal status! `/status` has a menu to switch between them, and commands like `/heroes` and `/sixth-builder` send a message for each.*',
+              words.tip,
               '',
-              '*To turn DMs on or off, run `/dms on` or `/dms off` (add `account:` for just one).*',
+              words.dmsTip,
             ].join('\n'),
             thumbnail: CocAssetService.getTownHallUrl(accounts[0].townHallLevel),
           })
         )
       );
     } catch (accErr: any) {
-      await editDeferredReply({ content: `❌ Error loading accounts: ${accErr.message}` });
+      await editDeferredReply({ content: fill(words.failed, { reason: accErr.message }) });
     }
   });
 

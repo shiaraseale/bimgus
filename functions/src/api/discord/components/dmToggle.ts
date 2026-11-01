@@ -2,7 +2,10 @@ import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage, withFlags } from '../../../services/discordLayout';
+import dmWords from '../../../templates/dms.json';
+import { fill } from '../../../templates';
 
+const words = dmWords.toggle;
 const OFF = 'dms_off:';
 const ON = 'dms_on:';
 
@@ -12,14 +15,14 @@ export function dmToggleButton(playerTag: string, enable: boolean = false) {
     ? {
         type: 2 as const,
         style: 3 as const,
-        label: 'Turn DMs back on',
+        label: words.turnOn,
         custom_id: `${ON}${playerTag}`,
         emoji: { name: '🔔' },
       }
     : {
         type: 2 as const,
         style: 2 as const,
-        label: 'Turn off these DMs',
+        label: words.turnOff,
         custom_id: `${OFF}${playerTag}`,
         emoji: { name: '🔕' },
       };
@@ -37,7 +40,7 @@ export async function handleDmToggleButton(customId: string, discordUserId: stri
     return {
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `⚠️ \`${tag}\` isn't linked to your profile any more, so there's nothing to change.`,
+        content: fill(words.notLinked, { tag }),
         flags: 64,
       },
     };
@@ -45,10 +48,8 @@ export async function handleDmToggleButton(customId: string, discordUserId: stri
   const name = changed[0]?.name ?? tag;
   const reply = card({
     accent: enable ? COLORS.GREEN : COLORS.RED,
-    title: enable ? '🔔 DMs On' : '🔕 DMs Off',
-    body: enable
-      ? `DMs are back **on** for **${name}**.`
-      : `DMs are now **off** for **${name}**. Use \`/dms on\` or the button below to turn them back on.`,
+    title: enable ? words.onTitle : words.offTitle,
+    body: fill(enable ? words.onBody : words.offBody, { name }),
     buttons: enable ? undefined : [dmToggleButton(tag, true)],
   });
   return {

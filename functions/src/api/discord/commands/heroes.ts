@@ -1,8 +1,10 @@
 import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
-import { EMOJIS } from '../../../constants/emojis';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { formatProgressBar } from '../ui';
 
@@ -36,6 +38,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.heroes;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, sendAccountMessage, getPlayerWithFallback } = ctx;
   const villageFilter = optionsMap['village'] || 'both';
@@ -59,36 +63,37 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     if (villageFilter === 'home' || villageFilter === 'both') {
       blocks.push(
-        `**🏰 Home Village Heroes (TH${freshPlayer.townHallLevel}) — ${heroSummary.overallHomePercentage}% Maxed**\n` +
-          (heroSummary.homeHeroes.length > 0
-            ? heroLines(heroSummary.homeHeroes).join('\n')
-            : 'No Home Village heroes unlocked yet.')
+        `${fill(words.homeHeading, { level: freshPlayer.townHallLevel, percent: heroSummary.overallHomePercentage })}\n` +
+          (heroSummary.homeHeroes.length > 0 ? heroLines(heroSummary.homeHeroes).join('\n') : words.noHomeHeroes)
       );
     }
 
     if (villageFilter === 'builder' || villageFilter === 'both') {
       blocks.push(
-        `**🔨 Builder Base Heroes (BH${freshPlayer.builderHallLevel || 'N/A'}) — ${heroSummary.overallBuilderPercentage}% Maxed**\n` +
+        `${fill(words.builderHeading, { level: freshPlayer.builderHallLevel || words.noBuilderHall, percent: heroSummary.overallBuilderPercentage })}\n` +
           (heroSummary.builderHeroes.length > 0
             ? heroLines(heroSummary.builderHeroes).join('\n')
-            : 'No Builder Base heroes unlocked yet.')
+            : words.noBuilderHeroes)
       );
     }
 
     const message = layoutMessage(
       card({
         accent: heroSummary.homeMaxed ? COLORS.GOLD : COLORS.BLUE,
-        title: `${EMOJIS.CROWN} [${account.name}] Hero Maxing Overview`,
+        title: fill(words.title, { name: account.name }),
         body: [
-          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-          `⚡ **${heroSummary.totalHomeLevelsRemaining}** home and **${heroSummary.totalBuilderLevelsRemaining}** Builder Base hero levels left`,
+          isCached ? shared.maintenance : '',
+          fill(words.levelsLeft, {
+            home: heroSummary.totalHomeLevelsRemaining,
+            builder: heroSummary.totalBuilderLevelsRemaining,
+          }),
         ]
           .filter(Boolean)
           .join('\n'),
         thumbnail: CocAssetService.getHeroUrl('Archer Queen'),
         blocks,
-        footer: `Account: ${account.name} (${account.playerTag})`,
-        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+        footer: accountFooter(account),
+        buttons: [DiscordService.openGameLinkButton()],
       })
     );
 

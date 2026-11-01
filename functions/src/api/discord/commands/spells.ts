@@ -3,6 +3,9 @@ import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { goldPassBoosts } from '../../../services/goldPass';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { itemRow } from '../ui';
 
@@ -25,6 +28,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.spells;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { sendAccountMessage, getPlayerWithFallback } = ctx;
   return forEachLinkedAccount(ctx, 'spell data', async (account, idx) => {
@@ -41,7 +46,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const darkSpells = spells.filter((s) => s.resourceType === 'darkElixir');
 
     const formatSpellList = (list: typeof spells) => {
-      if (list.length === 0) return '✅ All maxed for this Town Hall!';
+      if (list.length === 0) return words.listMaxed;
       return columnRows(list.map(itemRow)).join('\n');
     };
 
@@ -50,22 +55,22 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: totalSpellLevels === 0 ? COLORS.GREEN : COLORS.PURPLE,
-        title: `🧪 [${account.name}] Spell Laboratory Upgrades`,
+        title: fill(words.title, { name: account.name }),
         body: [
-          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
+          isCached ? `${shared.maintenance}\n` : '',
           totalSpellLevels === 0
-            ? `🎉 **All spells are maxed for TH${freshPlayer.townHallLevel}!**`
-            : `⚡ **${totalSpellLevels}** spell levels left for TH${freshPlayer.townHallLevel}`,
+            ? fill(words.allMaxed, { level: freshPlayer.townHallLevel })
+            : fill(words.levelsLeft, { levels: totalSpellLevels, level: freshPlayer.townHallLevel }),
         ]
           .filter(Boolean)
           .join('\n'),
         thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
         blocks: [
-          `**💧 Elixir Spells (${elixirSpells.length} remaining)**\n${formatSpellList(elixirSpells)}`,
-          `**⬛ Dark Elixir Spells (${darkSpells.length} remaining)**\n${formatSpellList(darkSpells)}`,
+          `${fill(words.elixirHeading, { count: elixirSpells.length })}\n${formatSpellList(elixirSpells)}`,
+          `${fill(words.darkHeading, { count: darkSpells.length })}\n${formatSpellList(darkSpells)}`,
         ],
-        footer: `Account: ${account.name} (${account.playerTag})`,
-        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+        footer: accountFooter(account),
+        buttons: [DiscordService.openGameLinkButton()],
       })
     );
 

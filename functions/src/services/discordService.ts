@@ -4,6 +4,8 @@ import { DiscordWebhookPayload } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
 import { log } from '../utils/log';
 import { card, layoutMessage, overLimits } from './discordLayout';
+import shared from '../templates/shared.json';
+import { fill } from '../templates';
 
 export const COLORS = {
   GOLD: 0xffd700,
@@ -216,11 +218,11 @@ export class DiscordService {
    */
   static warActionRow(clanTag: string, opponentTag?: string) {
     const buttons = [
-      this.createLinkButton('Open CoC', this.openGameLink(), '⚔️'),
-      this.createLinkButton('Clash of Stats', this.clashOfStatsWarLink(clanTag), '📊'),
+      this.openGameLinkButton(),
+      this.createLinkButton(shared.buttons.clashOfStats, this.clashOfStatsWarLink(clanTag), '📊'),
     ];
     if (opponentTag) {
-      buttons.push(this.createLinkButton('Enemy Clan', this.clanDeepLink(opponentTag), '🛡️'));
+      buttons.push(this.createLinkButton(shared.buttons.enemyClan, this.clanDeepLink(opponentTag), '🛡️'));
     }
     return this.createActionRow(buttons);
   }
@@ -230,8 +232,8 @@ export class DiscordService {
     return layoutMessage(
       card({
         accent: COLORS.GREEN,
-        title: '✅ Webhook works',
-        body: `This channel will get Bimgus's **${channelName}** messages.`,
+        title: shared.webhookTest.title,
+        body: fill(shared.webhookTest.body, { channel: channelName }),
       })
     );
   }
@@ -241,11 +243,11 @@ export class DiscordService {
    */
   static raidActionRow(clanTag: string, enemyClanTag?: string) {
     const buttons = [
-      this.createLinkButton('Open CoC', this.openGameLink(), '⚔️'),
-      this.createLinkButton('Clash of Stats', this.clashOfStatsClanLink(clanTag), '📊'),
+      this.openGameLinkButton(),
+      this.createLinkButton(shared.buttons.clashOfStats, this.clashOfStatsClanLink(clanTag), '📊'),
     ];
     if (enemyClanTag) {
-      buttons.push(this.createLinkButton('Enemy Clan', this.clanDeepLink(enemyClanTag), '🛡️'));
+      buttons.push(this.createLinkButton(shared.buttons.enemyClan, this.clanDeepLink(enemyClanTag), '🛡️'));
     }
     return this.createActionRow(buttons);
   }
@@ -255,16 +257,16 @@ export class DiscordService {
    */
   static clanGamesActionRow(clanTag: string) {
     return this.createActionRow([
-      this.createLinkButton('Open CoC', this.openGameLink(), '🎯'),
-      this.createLinkButton('Clash of Stats', this.clashOfStatsClanLink(clanTag), '📊'),
+      this.createLinkButton(shared.buttons.openGame, this.openGameLink(), '🎯'),
+      this.createLinkButton(shared.buttons.clashOfStats, this.clashOfStatsClanLink(clanTag), '📊'),
     ]);
   }
 
   /**
    * Standard button to open the Clash of Clans app directly.
    */
-  static openGameLinkButton(label: string = 'Open CoC') {
-    return this.createLinkButton(label, this.openGameLink(), '⚔️');
+  static openGameLinkButton() {
+    return this.createLinkButton(shared.buttons.openGame, this.openGameLink(), '⚔️');
   }
 
   /**

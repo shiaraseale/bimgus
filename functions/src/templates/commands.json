@@ -1,0 +1,390 @@
+{
+  "errors": {
+    "noAccounts": "⚠️ You have not linked any Clash of Clans accounts yet! Use `/link tag:#PLAYERTAG` first.",
+    "noAccountsFound": "No linked accounts found.",
+    "notLinked": "⚠️ Account with tag `{tag}` is not linked. Use `/accounts` to see your linked accounts.",
+    "couldNotLoad": "❌ Could not load {what} for **{name}** ({tag}): {reason}",
+    "processing": "❌ Error processing request: {reason}",
+    "unexpected": "❌ An unexpected error occurred while executing `/{command}`: {reason}",
+    "couldNotDisplay": "❌ Bimgus couldn't display this. Please try again.",
+    "apiError": "API error",
+    "dmsClosed": "📭 *Bimgus couldn't DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*",
+    "maintenanceDown": "🛠️ Clash of Clans API is currently down for maintenance by Supercell (\"API is currently in maintenance, please come back later\"). Please try again once maintenance concludes!"
+  },
+  "help": {
+    "title": "🤖 Bimgus — Clash of Clans Discord Assistant",
+    "body": "Hi! I am **Bimgus**, your automated Clash of Clans assistant. I track your accounts, keep you ready for Clan Wars, and deliver personalized insights across all your linked accounts!\n\nHere are all available slash commands:",
+    "footer": "Type / in any channel or DM Bimgus directly!",
+    "groups": [
+      [
+        {
+          "name": "🔗 `/link [tag] [dms]`",
+          "text": "Link a Clash of Clans account to your Discord profile. All linked accounts have equal status!"
+        },
+        {
+          "name": "🔔 `/dms [on|off] [account]`",
+          "text": "Turn Bimgus DMs on or off for all your accounts, or just one."
+        },
+        {
+          "name": "🗑️ `/unlink [tag]`",
+          "text": "Unlink an account from your Discord profile."
+        },
+        {
+          "name": "👥 `/accounts`",
+          "text": "View all of your linked Clash of Clans accounts (all accounts have equal status)."
+        }
+      ],
+      [
+        {
+          "name": "🏰 `/status [account]`",
+          "text": "Running timers and what is left to upgrade, in one message with menus to pick the account, village and area."
+        },
+        {
+          "name": "🛡️ `/defenses [account]`",
+          "text": "Check defense max caps, gear-ups, and Hall upgrade status for your Town Hall / Builder Hall."
+        },
+        {
+          "name": "{crown} `/heroes [account] [village]`",
+          "text": "Check your hero levels against max limits (sends a report for each linked account)."
+        },
+        {
+          "name": "🧪 `/spells [account]`",
+          "text": "Check spell laboratory research remaining to max your current Town Hall."
+        },
+        {
+          "name": "⚔️ `/troops [account] [village]`",
+          "text": "Check troop research upgrades remaining to max your current Town Hall / Builder Hall."
+        },
+        {
+          "name": "🔨 `/sixth-builder [account]`",
+          "text": "Check your real-time checklist and progress towards unlocking B.O.B (sends a report for each linked account)."
+        },
+        {
+          "name": "📥 `/import-village [file] [json_text] [account]`",
+          "text": "Import your in-game village JSON export to track exact building levels, timers and costs. One export per account; it includes both villages."
+        }
+      ],
+      [
+        {
+          "name": "🔥 `/roast [user]`",
+          "text": "Tag another member to let Bimgus deliver a witty, personalized Clash of Clans roast in the channel!"
+        }
+      ]
+    ]
+  },
+  "accounts": {
+    "none": "No accounts linked.",
+    "failed": "❌ Error loading accounts: {reason}",
+    "title": "📋 Your Linked Clash of Clans Accounts",
+    "intro": "You have **{count}** {accounts} linked (all equal status):",
+    "row": "{index}. **{name}** (`{tag}`)\n   • Town Hall {th} | Builder Hall {bh} | {dms}",
+    "dmsOn": "🔔 DMs On",
+    "dmsOff": "🔕 DMs Off",
+    "noBuilderHall": "N/A",
+    "tip": "💡 *All linked accounts are of equal status! `/status` has a menu to switch between them, and commands like `/heroes` and `/sixth-builder` send a message for each.*",
+    "dmsTip": "*To turn DMs on or off, run `/dms on` or `/dms off` (add `account:` for just one).*"
+  },
+  "link": {
+    "missingTag": "⚠️ Please provide a player tag. Example: `/link tag:#ABC123`",
+    "title": "✅ Account Successfully Linked!",
+    "intro": "**{name}** ({tag}) is now linked to your Discord profile!",
+    "townHall": "🏰 **Town Hall**: TH{level}",
+    "builderHall": "🔨 **Builder Hall**: BH{level}",
+    "noBuilderHall": "N/A",
+    "trophies": "🏆 **Trophies**: {trophies}",
+    "total": "👥 **Total Linked Accounts**: {count}",
+    "dmsOn": "🔔 **Automated DMs**: Enabled ✅ (War roster pings)",
+    "dmsOff": "🔔 **Automated DMs**: Disabled 🔕 (No DMs will be sent)",
+    "dmsTip": "*Upgrade DMs start once you run `/import-village` for this account.*",
+    "footer": "Account: {name}",
+    "unreachable": "⚠️ Bimgus couldn't reach Clash of Clans just now ({reason}). Please try `/link` again in a few minutes.",
+    "maintenance": "maintenance",
+    "connectionProblem": "connection problem",
+    "notFound": "❌ Could not find a Clash of Clans account with tag `{tag}`. Please check the tag and try again."
+  },
+  "unlink": {
+    "whichOne": "⚠️ You have {count} linked accounts, so please say which one: `/unlink tag:#TAG`. Use `/accounts` to see them.",
+    "notFound": "⚠️ Could not find linked account `{tag}` under your Discord profile. Use `/accounts` to check your accounts.",
+    "noAccounts": "⚠️ You do not have any linked Clash of Clans accounts to unlink. Use `/link` first!",
+    "title": "🗑️ Account Unlinked Successfully",
+    "body": "**{name}** (`{tag}`) has been unlinked from your Discord profile.",
+    "remaining": "You have **{count}** linked account(s) remaining. Use `/accounts` to view them.",
+    "allGone": "You have unlinked all accounts. Automatic upgrade tracking and war roster DMs have been turned off for your profile."
+  },
+  "dms": {
+    "notFound": "⚠️ Could not find linked account `{tag}`. Use `/accounts` to check your accounts.",
+    "noAccounts": "⚠️ You do not have any linked Clash of Clans accounts. Use `/link` first!",
+    "onTitle": "🔔 DMs On",
+    "offTitle": "🔕 DMs Off",
+    "onIntro": "Bimgus will DM you about finished upgrades and war rosters for:",
+    "offIntro": "Bimgus won't DM you about these accounts any more:",
+    "row": "• **{name}** (`{tag}`)",
+    "changeTip": "*Change it any time with `/dms {setting}`.*"
+  },
+  "roast": {
+    "noUser": "⚠️ Please mention a user to roast!",
+    "failed": "❌ Bimgus got too heated and fumbled the roast: {reason}",
+    "unknownError": "Unknown error"
+  },
+  "import": {
+    "instructions": "⚠️ **Please provide your village JSON export!**\n\n• **One export per account; it includes both your Home Village and Builder Base.**\n• Attach up to 6 `.json` files at once if you have several accounts, or paste one export into the `json_text` option.\n\n📖 **How to export from Clash of Clans:**\n1. Open Clash of Clans ➔ Tap **Settings** ⚙️\n2. Tap **More Settings**\n3. Scroll to the bottom to **Data Export**\n4. Tap **Copy** next to *\"Export village data in JSON format\"*",
+    "downloadFailed": "❌ Failed to read or download the provided file(s). Please check your upload and try again.",
+    "unreadable": "❌ Could not read any village exports:\n{errors}",
+    "noAccounts": "❌ No linked accounts found. Please `/link` your Clash of Clans account first!",
+    "unmatched": "❌ None of the uploaded files could be matched to your linked accounts ({tags}).\n",
+    "unmatchedFiles": "❌ None of the uploaded files could be matched to your linked accounts ({tags}).\nUnmatched: {files}",
+    "skipped": "⚠️ These exports didn't match a linked account and were skipped: {files}",
+    "couldNotRead": "⚠️ Couldn't read:\n{errors}",
+    "sinceLastImport": "🎉 Since Your Last Import ({count})",
+    "weapon": "🔥 **{name}**: Lv {level} → {max}",
+    "stale": "\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*",
+    "exportTaken": "📄 *Export taken {time}*{stale}",
+    "author": "[{name}] Imported Village",
+    "footer": "Account: {name} ({tag}) • {file}",
+    "fullList": "Full list",
+    "fullListFor": "Full list: {name}",
+    "notDisplayed": "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/status` or `/defenses`.",
+    "failed": "❌ Error importing village data: {reason}",
+    "unknownError": "Unknown error",
+    "listNoImport": "⚠️ There's no import stored for `{tag}` on your profile.",
+    "listWeapon": "🔥 Town Hall Weapon",
+    "listAllMaxed": "✨ All maxed",
+    "listNothingLeft": "Nothing left to upgrade.",
+    "listAuthor": "[{name}] Left to Upgrade",
+    "listFooter": "Account: {name} ({tag}) • Heroes and the lab are in /status",
+    "summaryAllMaxed": "✨ All maxed",
+    "maxed": "Maxed ✨",
+    "more": "…and {hidden} more (see `/status`)",
+    "notInGameData": "❔ Not in the game data yet",
+    "running": "• {count}**{name}** → Lv {level} · {time}",
+    "sections": {
+      "defenses": "🛡️ Defenses",
+      "traps": "💣 Traps",
+      "resourceArmy": "🏛️ Resource & Army",
+      "walls": "🧱 Walls",
+      "guardians": "🗿 Guardians",
+      "crafted": "🕯️ Crafted Defenses",
+      "helpers": "🛠️ Helpers"
+    },
+    "twoExports": "ℹ️ Two exports for **{name}**: used **{kept}** (newer) and skipped **{dropped}**."
+  },
+  "heroes": {
+    "title": "{crown} [{name}] Hero Maxing Overview",
+    "levelsLeft": "⚡ **{home}** home and **{builder}** Builder Base hero levels left",
+    "homeHeading": "**🏰 Home Village Heroes (TH{level}) — {percent}% Maxed**",
+    "builderHeading": "**🔨 Builder Base Heroes (BH{level}) — {percent}% Maxed**",
+    "noBuilderHall": "N/A",
+    "noHomeHeroes": "No Home Village heroes unlocked yet.",
+    "noBuilderHeroes": "No Builder Base heroes unlocked yet."
+  },
+  "troops": {
+    "title": "⚔️ [{name}] Laboratory & Barracks Troop Research",
+    "allMaxed": "🎉 **All troops are maxed for your hall level!**",
+    "levelsLeft": "⚡ **{levels}** troop levels left",
+    "homeHeading": "🏰 Home Village Troops (TH{level}) — {count} Upgrades Remaining",
+    "builderHeading": "🔨 Builder Base Troops (BH{level}) — {count} Upgrades Remaining",
+    "homeMaxed": "🎉 All Home Village troops maxed for TH{level}!",
+    "builderMaxed": "🎉 All Builder Base troops maxed for BH{level}!",
+    "more": "... and {hidden} more"
+  },
+  "spells": {
+    "title": "🧪 [{name}] Spell Laboratory Upgrades",
+    "allMaxed": "🎉 **All spells are maxed for TH{level}!**",
+    "levelsLeft": "⚡ **{levels}** spell levels left for TH{level}",
+    "listMaxed": "✅ All maxed for this Town Hall!",
+    "elixirHeading": "**💧 Elixir Spells ({count} remaining)**",
+    "darkHeading": "**⬛ Dark Elixir Spells ({count} remaining)**"
+  },
+  "sixthBuilder": {
+    "title": "🛠️ [{name}] 6th Builder (B.O.B) Tracker",
+    "unlocked": "🎉 **Congratulations! You have unlocked the 6th Builder (B.O.B)!**",
+    "progress": "⏳ **Overall Progress**: {bar}",
+    "exportPrefix": "Builder Base defenses based on the export taken",
+    "done": "✅",
+    "todo": "🔄",
+    "gearUps": "{mark} **1. Gear Up 3 Buildings** ({current}/{target})",
+    "troop": "{mark} **2. Upgrade BB Troop to Level 18** (Lv {current}/{target})",
+    "defense": "{mark} **3. Upgrade BB Defense to Level 9** ({current}/{target})",
+    "heroes": "{mark} **4. Total BB Hero Level 45** ({current}/{target})",
+    "markDone": "Mark Defense Lv 9 Completed",
+    "markUndone": "Mark Defense Lv 9 Incomplete",
+    "markDoneShort": "Mark BB Def Lv 9 Done",
+    "markUndoneShort": "Mark BB Def Lv 9 Incomplete",
+    "markedDone": "✅ Builder Base Defense Lv 9 has been marked as **completed** for `{tag}`! Run `/sixth-builder` to view your updated progress.",
+    "markedUndone": "🔄 Builder Base Defense Lv 9 has been marked as **incomplete** for `{tag}`. Run `/sixth-builder` to view your updated progress.",
+    "markFailed": "⚠️ Could not find linked account `{tag}` under your profile.",
+    "tasks": {
+      "gearUps": "Gear up Cannon, Archer Tower, and Mortar in Home Village",
+      "troop": "Highest: {troop} (Lv {level}/18)",
+      "defenseDone": "Completed (BB defense upgraded to Lv 9)",
+      "defenseNeedsHall": "Requires Builder Hall 9+ (Current: BH{level})",
+      "defense": "Upgrade any BB defense to Lv 9 (e.g. Mega Tesla, Multi Mortar)",
+      "heroes": "Battle Machine Lv {machine} + Battle Copter Lv {copter} = {total}/45"
+    }
+  },
+  "defenses": {
+    "authorImported": "[{name}] Defense Levels & Upgrades",
+    "authorCaps": "[{name}] Defense & Hall Maxing Targets",
+    "capLevel": "Max Lv {max}",
+    "townHallSection": "🏰 Town Hall & Gear-Ups",
+    "townHallMaxed": "🏆 **Town Hall**: Maxed (TH{level})",
+    "townHallNext": "• **Town Hall**: Lv {level}/{next}",
+    "townHallNextCost": "• **Town Hall**: Lv {level}/{next} — {cost}",
+    "gearUpsDone": "✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)",
+    "gearUps": "• **Defense Gear-Ups**: {count}/3 (Cannon, Archer Tower, Mortar)",
+    "importedSection": "🛡️ Current Defenses & Next Upgrades",
+    "homeCapsSection": "🛡️ Defense Upgrades to Max TH{level}",
+    "builderCapsSection": "🛡️ Defense Upgrades to Max BH{level}",
+    "noDefenses": "No defenses recorded.",
+    "noBuilderDefenses": "No builder defenses recorded.",
+    "otherBuildings": "🏛️ Other Buildings & Storages",
+    "builderSection": "🔨 Builder Hall & B.O.B",
+    "builderHallMaxed": "🏆 **Builder Hall**: Maxed (BH{level})",
+    "builderHallNext": "• **Builder Hall**: Lv {level}/{next}",
+    "builderHallNextCost": "• **Builder Hall**: Lv {level}/{next} — {cost}",
+    "bobDone": "✅ **B.O.B Defense Lv 9**: Completed",
+    "bobLeft": "🔄 **B.O.B Defense Lv 9**: 0/1 (Upgrade any BB defense to Lv 9)",
+    "exactHome": "Exact defenses for **Town Hall {th}**.",
+    "exactBoth": "Exact defenses for **Town Hall {th}** and **Builder Hall {bh}**.",
+    "capsHome": "Defense level limits and Hall upgrade requirements for **Town Hall {th}**.\n*(The Supercell API doesn't include building levels.)*\n{noImport}",
+    "capsBoth": "Defense level limits and Hall upgrade requirements for **Town Hall {th}** and **Builder Hall {bh}**.\n*(The Supercell API doesn't include building levels.)*\n{noImport}"
+  },
+  "status": {
+    "author": "[{name}] Status",
+    "authorArea": "[{name}] Status: {area}",
+    "levelsLeft": "**{levels}** levels left. Pick an area below for the full list.",
+    "exportPrefix": "Defenses & buildings based on the export taken",
+    "more": "…and {hidden} more",
+    "couldNotLoad": "❌ Could not load **{name}** ({tag}): {reason}",
+    "noLongerLinked": "⚠️ `{tag}` isn't linked to your profile any more.",
+    "couldNotRedraw": "⚠️ Couldn't redraw this message. Run `/status` again.",
+    "failed": "❌ Couldn't load that: {reason}",
+    "summary": {
+      "line": "{emoji} **{name}**: {status}",
+      "needsImport": "needs `/import-village`",
+      "maxed": "✅ maxed",
+      "left": "{count} to upgrade · {levels}"
+    },
+    "bob": {
+      "overviewUnlocked": "🤖 **B.O.B**: 🎉 unlocked",
+      "overview": "🤖 **B.O.B**: {bar}",
+      "section": "🤖 6th Builder (B.O.B)",
+      "unlocked": "🎉 **B.O.B Unlocked! (6th Builder Active)**",
+      "progress": "⏳ **Progress ({percent}%)**: {bar}",
+      "done": "✅",
+      "todo": "🔄",
+      "gearUps": "{mark} **Gear-Ups**: {current}/3",
+      "troop": "{mark} **Troop Lv 18**: {troop} ({current}/18)",
+      "defenseDone": "{mark} **Defense Lv 9**: 1/1",
+      "defense": "{mark} **Defense Lv 9**: 0/1 (e.g. Mega Tesla)",
+      "heroes": "{mark} **Heroes Lv 45**: {current}/45"
+    },
+    "sections": {
+      "buildings": {
+        "emoji": "🏛️",
+        "name": "Buildings & Storages",
+        "done": "✅ All buildings, storages & gear-ups maxed!"
+      },
+      "walls": {
+        "emoji": "🧱",
+        "name": "Walls",
+        "done": "✅ All walls maxed for TH{th}!"
+      },
+      "defenses": {
+        "emoji": "🛡️",
+        "name": "Defenses",
+        "done": "✅ All home defenses maxed for TH{th}!"
+      },
+      "heroes": {
+        "emoji": "{crown}",
+        "name": "Heroes",
+        "done": "✅ All heroes maxed for TH{th}!"
+      },
+      "equipment": {
+        "emoji": "{anvil}",
+        "name": "Hero Equipment",
+        "done": "✅ All equipment maxed for TH{th}!"
+      },
+      "troops": {
+        "emoji": "⚔️",
+        "name": "Troops",
+        "done": "✅ All troops maxed for TH{th}!"
+      },
+      "spells": {
+        "emoji": "🧪",
+        "name": "Spells",
+        "done": "✅ All spells maxed for TH{th}!"
+      },
+      "bbBuildings": {
+        "emoji": "🏛️",
+        "name": "Buildings",
+        "done": "✅ All BB buildings maxed for BH{bh}!"
+      },
+      "bbWalls": {
+        "emoji": "🧱",
+        "name": "Walls",
+        "done": "✅ All BB walls maxed for BH{bh}!"
+      },
+      "bbDefenses": {
+        "emoji": "🛡️",
+        "name": "Defenses",
+        "done": "✅ All BB defenses maxed for BH{bh}!"
+      },
+      "bbHeroes": {
+        "emoji": "{crown}",
+        "name": "Heroes",
+        "done": "✅ All BB heroes maxed for BH{bh}!"
+      },
+      "bbTroops": {
+        "emoji": "⚔️",
+        "name": "Troops",
+        "done": "✅ All BB troops maxed for BH{bh}!"
+      }
+    },
+    "areas": {
+      "overview": {
+        "label": "Overview",
+        "home": "Timers and what is left, in short",
+        "builder": "Timers and what is left, in short"
+      },
+      "buildings": {
+        "label": "Buildings",
+        "home": "Halls, resources, army and walls",
+        "builder": "Halls, resources, army and walls"
+      },
+      "defenses": {
+        "label": "Defenses",
+        "home": "Defenses, traps, guardians and crafted",
+        "builder": "Defenses and traps"
+      },
+      "heroes": {
+        "label": "Heroes",
+        "home": "Heroes and hero equipment",
+        "builder": "Battle Machine and Battle Copter"
+      },
+      "lab": {
+        "label": "Lab",
+        "home": "Troops and spells",
+        "builder": "Troops"
+      },
+      "bob": {
+        "label": "6th Builder (B.O.B)",
+        "builder": "Progress to the 6th builder"
+      }
+    },
+    "menus": {
+      "account": "Account",
+      "accountRow": "{tag} · TH{level}",
+      "village": "Village",
+      "home": "Home Village (TH{level})",
+      "builder": "Builder Base (BH{level})",
+      "area": "Area"
+    },
+    "boosts": {
+      "builder": "Builder Boost",
+      "research": "Research Boost",
+      "label": "{boost}: {percent}%",
+      "off": "{boost}: Off"
+    }
+  }
+}

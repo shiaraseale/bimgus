@@ -9,6 +9,8 @@ import { handleDmToggleButton, isDmToggleButton } from './components/dmToggle';
 import { handleImportListButton, isImportListButton } from './components/importList';
 import { isStatusMenu, showStatusView } from './commands/status';
 import { log } from '../../utils/log';
+import commandWords from '../../templates/commands.json';
+import { fill } from '../../templates';
 
 export const discordInteractionsRouter = Router();
 
@@ -73,7 +75,7 @@ export async function handleInteraction(req: Request, res: Response): Promise<an
     } catch (cmdErr: any) {
       log.error(`[Discord Command] Error executing /${ctx.name}: ${cmdErr.message}`);
       return ctx.respondPersonal({
-        content: `❌ An unexpected error occurred while executing \`/${ctx.name}\`: ${cmdErr.message}`,
+        content: fill(commandWords.errors.unexpected, { command: ctx.name, reason: cmdErr.message }),
       });
     }
   }

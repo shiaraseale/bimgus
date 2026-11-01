@@ -1,6 +1,8 @@
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -31,6 +33,8 @@ export const definition = {
 
 export const runsAsTask = false;
 
+const words = commandWords.dms;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, discordUserId, respondPersonal } = ctx;
   const enabled = optionsMap['setting'] !== 'off';
@@ -39,9 +43,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
   const changed = await FirestoreService.setDmsEnabled(discordUserId, enabled, account);
   if (!changed) {
     return respondPersonal({
-      content: account
-        ? `⚠️ Could not find linked account \`${account}\`. Use \`/accounts\` to check your accounts.`
-        : '⚠️ You do not have any linked Clash of Clans accounts. Use `/link` first!',
+      content: account ? fill(words.notFound, { tag: account }) : words.noAccounts,
     });
   }
 
@@ -49,14 +51,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
     layoutMessage(
       card({
         accent: enabled ? COLORS.GREEN : COLORS.RED,
-        title: enabled ? '🔔 DMs On' : '🔕 DMs Off',
+        title: enabled ? words.onTitle : words.offTitle,
         body: [
-          enabled
-            ? 'Bimgus will DM you about finished upgrades and war rosters for:'
-            : "Bimgus won't DM you about these accounts any more:",
-          ...changed.map((a) => `• **${a.name}** (\`${a.playerTag}\`)`),
+          enabled ? words.onIntro : words.offIntro,
+          ...changed.map((a) => fill(words.row, { name: a.name, tag: a.playerTag })),
           '',
-          `*Change it any time with \`/dms ${enabled ? 'off' : 'on'}\`.*`,
+          fill(words.changeTip, { setting: enabled ? 'off' : 'on' }),
         ].join('\n'),
       })
     )

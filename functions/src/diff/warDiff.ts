@@ -3,7 +3,8 @@ import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
 import { card, codeSafe, fitLines, layoutMessage } from '../services/discordLayout';
-import { EMOJIS } from '../constants/emojis';
+import words from '../templates/war.json';
+import { fill } from '../templates';
 import { discordTime } from '../utils/discordTime';
 import type { WarAudit } from '../types/api';
 
@@ -60,12 +61,18 @@ export function lineupBlock(ours: WarClan, theirs: WarClan): string {
     (p, i) =>
       `\`${String(p).padStart(2, ' ')} ${who(us.get(p)).padEnd(ourWidth)} vs ${mirrors[i].padEnd(mirrorWidth)}\``
   );
-  return [`**${ours.name}** vs **${theirs.name}**`, ...fitLines(lines, LINEUP_BUDGET)].join('\n');
+  const heading = fill(words.lineupHeading, { ours: ours.name, theirs: theirs.name });
+  return [heading, ...fitLines(lines, LINEUP_BUDGET)].join('\n');
 }
 
 /** "12–10 ⭐ · 45.0% vs 38.2%", ours first. */
 export function scoreLine(ours: ClanScore, theirs: ClanScore): string {
-  return `${ours.stars}–${theirs.stars} ${EMOJIS.STAR} · ${ours.destructionPercentage.toFixed(1)}% vs ${theirs.destructionPercentage.toFixed(1)}%`;
+  return fill(words.score, {
+    ourStars: ours.stars,
+    theirStars: theirs.stars,
+    ourPercent: ours.destructionPercentage.toFixed(1),
+    theirPercent: theirs.destructionPercentage.toFixed(1),
+  });
 }
 
 /** One attack in a war or CWL round, ours or theirs: the result, who hit whom, then the live score. */
@@ -80,9 +87,21 @@ export function buildAttackCard(
   const isThreeStar = attack.stars === 3;
   return card({
     accent: isClanAttack ? (isThreeStar ? COLORS.GOLD : COLORS.GREEN) : isThreeStar ? COLORS.RED : COLORS.BLUE,
-    title: `${isClanAttack ? '💥 Clan attack' : '🛡️ Enemy attack'}: ${DiscordService.formatStars(attack.stars)} ${attack.destructionPercentage}%`,
-    body: `**#${attacker.mapPosition} ${attacker.name}** (TH${attacker.townhallLevel}) → **#${defender.mapPosition} ${defender.name}** (TH${defender.townhallLevel})`,
-    footer: [`Score ${scoreLine(ours, theirs)}`, context].filter(Boolean).join(' · '),
+    title: fill(isClanAttack ? words.attack.clanTitle : words.attack.enemyTitle, {
+      stars: DiscordService.formatStars(attack.stars),
+      percent: attack.destructionPercentage,
+    }),
+    body: fill(words.attack.body, {
+      attackerPosition: attacker.mapPosition,
+      attacker: attacker.name,
+      attackerTh: attacker.townhallLevel,
+      defenderPosition: defender.mapPosition,
+      defender: defender.name,
+      defenderTh: defender.townhallLevel,
+    }),
+    footer: context
+      ? fill(words.attack.footerWithContext, { score: scoreLine(ours, theirs), context })
+      : fill(words.attack.footer, { score: scoreLine(ours, theirs) }),
     buttons,
   });
 }
@@ -250,11 +269,11 @@ function buildWarMatchupCard(currentWar: CurrentWarResponse): DiscordContainerCo
 
   return card({
     accent: isPrep ? COLORS.PURPLE : COLORS.GOLD,
-    title: `${isPrep ? '⚔️ War declared' : '🔥 Battle day'}: vs ${opponent.name}`,
+    title: fill(isPrep ? words.matchup.declared : words.matchup.battleDay, { enemy: opponent.name }),
     body: [
-      `${teamSize}v${teamSize} · clan level ${opponent.clanLevel}`,
-      isPrep && startMs ? `Battle day ${discordTime(startMs)}` : '',
-      endMs ? `Ends ${discordTime(endMs)}` : '',
+      fill(words.matchup.size, { size: teamSize, clanLevel: opponent.clanLevel }),
+      isPrep && startMs ? fill(words.matchup.starts, { time: discordTime(startMs) }) : '',
+      endMs ? fill(words.matchup.ends, { time: discordTime(endMs) }) : '',
     ]
       .filter(Boolean)
       .join('\n'),
@@ -404,28 +423,44 @@ export function buildWarEndSummary(currentWar: CurrentWarResponse): WarEndSummar
     currentWar.clan.stars === currentWar.opponent.stars &&
     currentWar.clan.destructionPercentage === currentWar.opponent.destructionPercentage;
 
-  const outcome = won ? '🏆 War won' : tied ? '🤝 War tied' : '💀 War lost';
+  const outcome = won ? words.summary.won : tied ? words.summary.tied : words.summary.lost;
   const outcomeColor = won ? COLORS.GOLD : tied ? COLORS.BLUE : COLORS.RED;
 
   // The audit: one line per kind of finding, naming the members
   const auditLines: string[] = [];
-  if (zeroAttacks.length > 0) auditLines.push(`🚨 **No attacks**: ${positionList(zeroAttacks)}`);
+  if (zeroAttacks.length > 0) auditLines.push(fill(words.summary.noAttacks, { names: positionList(zeroAttacks) }));
   if (partialAttacks.length > 0) {
-    auditLines.push(`⚠️ **1 of ${attacksPerMember} attacks**: ${positionList(partialAttacks)}`);
+    auditLines.push(
+      fill(words.summary.partialAttacks, { limit: attacksPerMember, names: positionList(partialAttacks) })
+    );
   }
-  if (zeroAttacks.length === 0 && partialAttacks.length === 0) auditLines.push('✅ Everyone used every attack');
+  if (zeroAttacks.length === 0 && partialAttacks.length === 0) auditLines.push(words.summary.everyoneAttacked);
   if (wastedAttacks.length > 0) {
-    const wasted = wastedAttacks.map((w) => `#${w.attackerPos} ${w.attackerName} on #${w.defenderPos}`).join(', ');
-    auditLines.push(`🎯 **Hit a base already at 3 ${EMOJIS.STAR}**: ${wasted}`);
+    const hits = wastedAttacks
+      .map((w) =>
+        fill(words.summary.wastedHit, {
+          attackerPosition: w.attackerPos,
+          attacker: w.attackerName,
+          defenderPosition: w.defenderPos,
+        })
+      )
+      .join(', ');
+    auditLines.push(fill(words.summary.wastedAttacks, { hits }));
   }
-  if (mvps.length > 0) auditLines.push(`${EMOJIS.STAR} **All ${attacksPerMember * 3} stars**: ${positionList(mvps)}`);
+  if (mvps.length > 0) {
+    auditLines.push(fill(words.summary.allStars, { stars: attacksPerMember * 3, names: positionList(mvps) }));
+  }
 
   const summaryCard = card({
     accent: outcomeColor,
-    title: `${outcome} vs ${currentWar.opponent.name}`,
+    title: fill(outcome, { enemy: currentWar.opponent.name }),
     body: [
       scoreLine(currentWar.clan, currentWar.opponent),
-      `🗡️ Attacks used: ${currentWar.clan.attacks}/${currentWar.teamSize * attacksPerMember} vs ${currentWar.opponent.attacks}/${currentWar.teamSize * attacksPerMember}`,
+      fill(words.summary.attacksUsed, {
+        ours: currentWar.clan.attacks,
+        theirs: currentWar.opponent.attacks,
+        total: currentWar.teamSize * attacksPerMember,
+      }),
     ].join('\n'),
     // A big war's lists are trimmed to fit the message
     blocks: [fitLines(auditLines, AUDIT_BUDGET).join('\n')],

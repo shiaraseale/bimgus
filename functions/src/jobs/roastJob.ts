@@ -10,6 +10,8 @@ import { FirestoreService } from '../services/firestoreService';
 import { GeminiRoastService, PlayerRoastData } from '../services/geminiRoastService';
 import { LinkedAccount } from '../types/user';
 import { log } from '../utils/log';
+import commandWords from '../templates/commands.json';
+import { fill } from '../templates';
 
 export interface RoastTaskData {
   targetUserId: string;
@@ -158,7 +160,7 @@ export async function runRoastTask(task: RoastTaskData, now: number = Date.now()
     await time('discordEdit', () => editReply(task, roast.includes(mention) ? roast : `${mention} ${roast}`));
   } catch (err: any) {
     log.error('[Roast] Error executing roast:', err);
-    await editReply(task, `❌ Bimgus got too heated and fumbled the roast: ${err.message || 'Unknown error'}`);
+    await editReply(task, fill(commandWords.roast.failed, { reason: err.message || commandWords.roast.unknownError }));
   } finally {
     // One structured line per roast (2.7 step 1), to see which stage is slow
     log.info('[Roast] timings', { cold, liveCalls, totalMs: Date.now() - started, ...timings });

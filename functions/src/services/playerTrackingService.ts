@@ -1,4 +1,6 @@
 import type { PlayerLike, PlayerUnit } from '../types/coc';
+import commandWords from '../templates/commands.json';
+import { fill } from '../templates';
 import {
   HeroesProgressSummary,
   HeroProgressItem,
@@ -194,7 +196,7 @@ export class PlayerTrackingService {
           completed: gearUpsDone,
           current: gearUpsCount,
           target: 3,
-          description: 'Gear up Cannon, Archer Tower, and Mortar in Home Village',
+          description: commandWords.sixthBuilder.tasks.gearUps,
         },
         bbTroopLv18: {
           name: 'Upgrade BB Troop to Level 18',
@@ -202,7 +204,7 @@ export class PlayerTrackingService {
           current: highestTroopLvl,
           target: 18,
           highestTroopName,
-          description: `Highest: ${highestTroopName} (Lv ${highestTroopLvl}/18)`,
+          description: fill(commandWords.sixthBuilder.tasks.troop, { troop: highestTroopName, level: highestTroopLvl }),
         },
         bbDefenseLv9: {
           name: 'Upgrade BB Defense to Level 9',
@@ -210,10 +212,10 @@ export class PlayerTrackingService {
           current: defenseDone ? 1 : 0,
           target: 1,
           description: defenseDone
-            ? 'Completed (BB defense upgraded to Lv 9)'
+            ? commandWords.sixthBuilder.tasks.defenseDone
             : bhLevel < 9
-              ? `Requires Builder Hall 9+ (Current: BH${bhLevel})`
-              : 'Upgrade any BB defense to Lv 9 (e.g. Mega Tesla, Multi Mortar)',
+              ? fill(commandWords.sixthBuilder.tasks.defenseNeedsHall, { level: bhLevel })
+              : commandWords.sixthBuilder.tasks.defense,
         },
         bbHeroesLv45: {
           name: 'BB Heroes Total Level 45',
@@ -222,7 +224,11 @@ export class PlayerTrackingService {
           target: 45,
           battleMachineLevel: bmLevel,
           battleCopterLevel: bcLevel,
-          description: `Battle Machine Lv ${bmLevel} + Battle Copter Lv ${bcLevel} = ${combinedHeroLevel}/45`,
+          description: fill(commandWords.sixthBuilder.tasks.heroes, {
+            machine: bmLevel,
+            copter: bcLevel,
+            total: combinedHeroLevel,
+          }),
         },
       },
     };

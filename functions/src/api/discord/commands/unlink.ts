@@ -1,6 +1,8 @@
 import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -21,6 +23,8 @@ export const definition = {
 
 export const runsAsTask = false;
 
+const words = commandWords.unlink;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, discordUserId, respondPersonal } = ctx;
   const tagInput = optionsMap['tag'];
@@ -29,25 +33,23 @@ export async function execute(ctx: CommandContext): Promise<any> {
   if (!result.success) {
     return respondPersonal({
       content: result.needsTag
-        ? `⚠️ You have ${result.remainingAccounts} linked accounts, so please say which one: \`/unlink tag:#TAG\`. Use \`/accounts\` to see them.`
+        ? fill(words.whichOne, { count: result.remainingAccounts })
         : tagInput
-          ? `⚠️ Could not find linked account \`${tagInput}\` under your Discord profile. Use \`/accounts\` to check your accounts.`
-          : `⚠️ You do not have any linked Clash of Clans accounts to unlink. Use \`/link\` first!`,
+          ? fill(words.notFound, { tag: tagInput })
+          : words.noAccounts,
     });
   }
 
   const remainingMsg =
-    result.remainingAccounts > 0
-      ? `You have **${result.remainingAccounts}** linked account(s) remaining. Use \`/accounts\` to view them.`
-      : `You have unlinked all accounts. Automatic upgrade tracking and war roster DMs have been turned off for your profile.`;
+    result.remainingAccounts > 0 ? fill(words.remaining, { count: result.remainingAccounts }) : words.allGone;
 
   return respondPersonal(
     layoutMessage(
       card({
         accent: COLORS.RED,
-        title: '🗑️ Account Unlinked Successfully',
+        title: words.title,
         body: [
-          `**${result.removedName || result.removedTag}** (\`${result.removedTag}\`) has been unlinked from your Discord profile.`,
+          fill(words.body, { name: result.removedName || result.removedTag || '', tag: result.removedTag || '' }),
           '',
           remainingMsg,
         ].join('\n'),

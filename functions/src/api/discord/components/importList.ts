@@ -1,16 +1,19 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
 import { columnRows, layoutMessage, withFlags } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 import { Village } from '../../../services/gameDataService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { getVillageJsonTimestampNotice, VillageCard, villageCards } from '../ui';
 
+const words = commandWords.import;
 const PREFIX = 'import_list:';
 // Room for the text across both cards (Discord allows 4,000 characters per message)
 const LIST_BUDGET = 3700;
 
 /** The "Full list" button on an import reply: every item still to upgrade in that account's import. */
-export function importListButton(playerTag: string, label: string = 'Full list') {
+export function importListButton(playerTag: string, label: string = words.fullList) {
   return {
     type: 2 as const,
     style: 2 as const,
@@ -33,7 +36,7 @@ export async function handleImportListButton(customId: string, discordUserId: st
   if (!account || !village) {
     return {
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: { content: `⚠️ There's no import stored for \`${tag}\` on your profile.`, flags: 64 },
+      data: { content: fill(words.listNoImport, { tag }), flags: 64 },
     };
   }
 
@@ -45,7 +48,7 @@ export async function handleImportListButton(customId: string, discordUserId: st
       ...(v === 'home' && weapon && weapon.level < weapon.maxLevel
         ? [
             {
-              title: '🔥 Town Hall Weapon',
+              title: words.listWeapon,
               lines: columnRows([{ label: weapon.name, value: `Lv ${weapon.level} → ${weapon.maxLevel}` }]),
             },
           ]
@@ -55,13 +58,13 @@ export async function handleImportListButton(customId: string, discordUserId: st
     return {
       village: v,
       hallLevel: v === 'home' ? village.townHallLevel : village.builderHallLevel,
-      sections: sections.length > 0 ? sections : [{ title: '✨ All maxed', lines: ['Nothing left to upgrade.'] }],
+      sections: sections.length > 0 ? sections : [{ title: words.listAllMaxed, lines: [words.listNothingLeft] }],
     };
   });
   cards[0].intro = getVillageJsonTimestampNotice(village) ?? undefined;
   const shownCards = villageCards(cards, LIST_BUDGET, {
-    author: `[${account.name}] Left to Upgrade`,
-    footer: `Account: ${account.name} (${account.playerTag}) • Heroes and the lab are in /status`,
+    author: fill(words.listAuthor, { name: account.name }),
+    footer: fill(words.listFooter, { name: account.name, tag: account.playerTag }),
   });
 
   return {

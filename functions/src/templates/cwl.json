@@ -1,0 +1,42 @@
+{
+  "group": {
+    "title": "🛡️ CWL {season} has started",
+    "body": "7 rounds, 1 attack each. Our group: {clans}"
+  },
+  "matchup": {
+    "title": "⚔️ CWL round {round}: vs {enemy}",
+    "size": "{size}v{size} · clan level {clanLevel}",
+    "starts": "Battle day {time}",
+    "ends": "Ends {time}"
+  },
+  "battleDay": {
+    "title": "🔥 CWL round {round} battle day: vs {enemy}",
+    "body": "1 attack each · ends {time}",
+    "bodyNoEnd": "1 attack each · ends in 24 hours"
+  },
+  "attackContext": "CWL round {round} · {used}/{total} attacks",
+  "round": {
+    "won": "🏆 CWL round {round}: won vs {enemy}",
+    "tied": "🤝 CWL round {round}: tied vs {enemy}",
+    "lost": "💀 CWL round {round}: lost vs {enemy}",
+    "attacksUsed": "🗡️ Attacks used: {ours}/{total} vs {theirs}/{total}",
+    "noAttack": "🚨 **No attack**: {names}",
+    "everyoneAttacked": "✅ Everyone attacked",
+    "threeStars": "⭐ **3 stars**: {names}"
+  },
+  "season": {
+    "title": "🏆 CWL {season}: {wins}W {losses}L",
+    "titleWithTies": "🏆 CWL {season}: {wins}W {losses}L {ties}T",
+    "body": "⭐ {stars} stars ({bonusStars} from wins) · 💥 {destruction}% average",
+    "flawless": "👑 **Flawless**: {name} (TH{th}), {stars}/{stars} ⭐",
+    "biggestUpset": "🎯 **Biggest upset**: {attacker} (TH{attackerTh}) took {stars} ⭐ {destruction}% off {defender} (TH{defenderTh}) in round {round}",
+    "anchor": "🛡️ **Anchor**: {name} (TH{th}), {stars} ⭐ with {perfectHits}× 3★",
+    "underdogsHeading": "🥊 **Underdogs** (stars on higher Town Halls)",
+    "underdog": "{medal} {name} (TH{th}): {stars} ⭐ in {hits}, up to +{gap} TH",
+    "missedAttacks": "🚨 **Missed attacks**: {names}",
+    "missedPlayer": "{name} ({missed} of {rounds})",
+    "noMissedAttacks": "✅ No missed attacks",
+    "leaderboardTitle": "⭐ Stars leaderboard",
+    "leaderboardFooter": "{count} members took part · stars · attacks · average"
+  }
+}

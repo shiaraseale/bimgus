@@ -14,6 +14,9 @@ import { LinkedAccount, OutstandingUpgradeItem } from '../../../types/user';
 import type { PlayerLike } from '../../../types/coc';
 import { log } from '../../../utils/log';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext } from '../context';
@@ -51,6 +54,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.status;
+
 export type StatusArea = 'overview' | 'buildings' | 'defenses' | 'heroes' | 'lab' | 'bob';
 
 /** What one /status message shows for its account: a village, and an area of it. */
@@ -76,34 +81,34 @@ const AREAS: Array<{
 }> = [
   {
     value: 'overview',
-    label: 'Overview',
+    label: words.areas.overview.label,
     emoji: { name: '📋' },
-    covers: { home: 'Timers and what is left, in short', builder: 'Timers and what is left, in short' },
+    covers: words.areas.overview,
   },
   {
     value: 'buildings',
-    label: 'Buildings',
+    label: words.areas.buildings.label,
     emoji: { name: '🏛️' },
-    covers: { home: 'Halls, resources, army and walls', builder: 'Halls, resources, army and walls' },
+    covers: words.areas.buildings,
   },
   {
     value: 'defenses',
-    label: 'Defenses',
+    label: words.areas.defenses.label,
     emoji: { name: '🛡️' },
-    covers: { home: 'Defenses, traps, guardians and crafted', builder: 'Defenses and traps' },
+    covers: words.areas.defenses,
   },
   {
     value: 'heroes',
-    label: 'Heroes',
+    label: words.areas.heroes.label,
     emoji: customEmoji(EMOJIS.CROWN),
-    covers: { home: 'Heroes and hero equipment', builder: 'Battle Machine and Battle Copter' },
+    covers: words.areas.heroes,
   },
-  { value: 'lab', label: 'Lab', emoji: { name: '🧪' }, covers: { home: 'Troops and spells', builder: 'Troops' } },
+  { value: 'lab', label: words.areas.lab.label, emoji: { name: '🧪' }, covers: words.areas.lab },
   {
     value: 'bob',
-    label: '6th Builder (B.O.B)',
+    label: words.areas.bob.label,
     emoji: { name: '🤖' },
-    covers: { builder: 'Progress to the 6th builder' },
+    covers: words.areas.bob,
   },
 ];
 
@@ -111,7 +116,10 @@ const AREAS: Array<{
 const MENU = 'status:';
 type StatusMenu = 'account' | 'village' | 'area';
 // The Gold Pass buttons: their custom_ids carry the same state, "status:<boost>:<tag>:<village>:<area>"
-const BOOST_LABELS: Record<keyof CostBoosts, string> = { builder: 'Builder Boost', research: 'Research Boost' };
+const BOOST_LABELS: Record<keyof CostBoosts, string> = {
+  builder: words.boosts.builder,
+  research: words.boosts.research,
+};
 // The single menu on /upgrades messages from before /status: "upgrades_view:<tag>"
 const OLD_MENU = 'upgrades_view:';
 // Walls get their own line: hundreds of segments would swamp the building counts
@@ -131,11 +139,12 @@ interface Section {
   importedLevels: number; // the part of `levels` that comes from the import
 }
 
-function itemSection(emoji: string, name: string, items: OutstandingUpgradeItem[], done: string): Section {
+// A section's emoji, name and "all maxed" line, from the templates
+type SectionWording = Pick<Section, 'emoji' | 'name' | 'done'>;
+
+function itemSection(wording: SectionWording, items: OutstandingUpgradeItem[]): Section {
   return {
-    emoji,
-    name,
-    done,
+    ...wording,
     importedLevels: 0,
     count: items.length,
     levels: items.reduce((n, i) => n + i.levelsRemaining, 0),
@@ -145,13 +154,11 @@ function itemSection(emoji: string, name: string, items: OutstandingUpgradeItem[
 
 /** A section from the import (null groups: no import yet), with any items from the live API first. */
 function importSection(
-  emoji: string,
-  name: string,
+  wording: SectionWording,
   groups: ParsedDefenseGroup[] | null,
-  done: string,
   items: OutstandingUpgradeItem[] = []
 ): Section {
-  const fromItems = itemSection(emoji, name, items, done);
+  const fromItems = itemSection(wording, items);
   if (!groups) return { ...fromItems, needsImport: true };
   const importedLevels = groups.reduce((n, g) => n + g.count * Math.max(0, g.maxLevel - g.currentLevel), 0);
   return {
@@ -186,41 +193,31 @@ function upgradeData(account: LinkedAccount, player: PlayerLike, village: Villag
     village ? VillageImportService.groupsFor(village, v, categories, halls, boosts).filter((g) => !g.isMaxed) : null;
 
   // Builder Base sections drop the "BB" from their names: they're on the Builder Base card
+  const wording = (key: keyof typeof words.sections): SectionWording => {
+    const { emoji, name, done } = words.sections[key];
+    return { emoji: fill(emoji), name, done: fill(done, { th, bh }) };
+  };
   const sections = {
     buildings: importSection(
-      '🏛️',
-      'Buildings & Storages',
+      wording('buildings'),
       unmaxed('home', NON_WALL_BUILDINGS),
-      '✅ All buildings, storages & gear-ups maxed!',
       withHallLevels(home.buildings, th)
     ),
-    walls: importSection('🧱', 'Walls', unmaxed('home', ['wall']), `✅ All walls maxed for TH${th}!`),
-    defenses: importSection(
-      '🛡️',
-      'Defenses',
-      unmaxed('home', HOME_DEFENSE_CATEGORIES),
-      `✅ All home defenses maxed for TH${th}!`
-    ),
-    heroes: itemSection(EMOJIS.CROWN, 'Heroes', home.heroes, `✅ All heroes maxed for TH${th}!`),
-    equipment: itemSection(EMOJIS.ANVIL, 'Hero Equipment', home.equipment, `✅ All equipment maxed for TH${th}!`),
-    troops: itemSection('⚔️', 'Troops', home.troops, `✅ All troops maxed for TH${th}!`),
-    spells: itemSection('🧪', 'Spells', home.spells, `✅ All spells maxed for TH${th}!`),
+    walls: importSection(wording('walls'), unmaxed('home', ['wall'])),
+    defenses: importSection(wording('defenses'), unmaxed('home', HOME_DEFENSE_CATEGORIES)),
+    heroes: itemSection(wording('heroes'), home.heroes),
+    equipment: itemSection(wording('equipment'), home.equipment),
+    troops: itemSection(wording('troops'), home.troops),
+    spells: itemSection(wording('spells'), home.spells),
     bbBuildings: importSection(
-      '🏛️',
-      'Buildings',
+      wording('bbBuildings'),
       unmaxed('builder', NON_WALL_BUILDINGS),
-      `✅ All BB buildings maxed for BH${bh}!`,
       withHallLevels(bb.buildings, bh)
     ),
-    bbWalls: importSection('🧱', 'Walls', unmaxed('builder', ['wall']), `✅ All BB walls maxed for BH${bh}!`),
-    bbDefenses: importSection(
-      '🛡️',
-      'Defenses',
-      unmaxed('builder', BB_DEFENSE_CATEGORIES),
-      `✅ All BB defenses maxed for BH${bh}!`
-    ),
-    bbHeroes: itemSection(EMOJIS.CROWN, 'Heroes', bb.heroes, `✅ All BB heroes maxed for BH${bh}!`),
-    bbTroops: itemSection('⚔️', 'Troops', bb.troops, `✅ All BB troops maxed for BH${bh}!`),
+    bbWalls: importSection(wording('bbWalls'), unmaxed('builder', ['wall'])),
+    bbDefenses: importSection(wording('bbDefenses'), unmaxed('builder', BB_DEFENSE_CATEGORIES)),
+    bbHeroes: itemSection(wording('bbHeroes'), bb.heroes),
+    bbTroops: itemSection(wording('bbTroops'), bb.troops),
   };
 
   return { th, bh, bob: bb.sixthBuilder, sections, timers: activeInProgress(village) };
@@ -232,11 +229,11 @@ const wallsLeft = (walls: Section) => (walls.count > 0 ? [walls] : []);
 /** "🛡️ **Defenses**: 32 to upgrade · 64 levels", for the overview. */
 function summaryLine(s: Section): string {
   const status = s.needsImport
-    ? 'needs `/import-village`'
+    ? words.summary.needsImport
     : s.count === 0
-      ? '✅ maxed'
-      : `${s.count} to upgrade · ${s.levels} level${s.levels === 1 ? '' : 's'}`;
-  return `${s.emoji} **${s.name}**: ${status}`;
+      ? words.summary.maxed
+      : fill(words.summary.left, { count: s.count, levels: `${s.levels} level${s.levels === 1 ? '' : 's'}` });
+  return fill(words.summary.line, { emoji: s.emoji, name: s.name, status });
 }
 
 /** A section's full list under its heading, or the "all maxed" / "import first" line. */
@@ -248,15 +245,23 @@ function cardSection(s: Section): CardSection {
 }
 
 function bobText(bob: ReturnType<typeof upgradeData>['bob']): string[] {
-  const mark = (done: boolean) => (done ? '✅' : '🔄');
+  const mark = (done: boolean) => (done ? words.bob.done : words.bob.todo);
+  const { gearUps, bbTroopLv18: troop, bbDefenseLv9: defense, bbHeroesLv45: heroes } = bob.tasks;
   return [
     bob.unlocked
-      ? '🎉 **B.O.B Unlocked! (6th Builder Active)**'
-      : `⏳ **Progress (${bob.overallPercentage}%)**: ${formatProgressBar(bob.overallPercentage, 6)}`,
-    `${mark(bob.tasks.gearUps.completed)} **Gear-Ups**: ${bob.tasks.gearUps.current}/3`,
-    `${mark(bob.tasks.bbTroopLv18.completed)} **Troop Lv 18**: ${bob.tasks.bbTroopLv18.highestTroopName} (${bob.tasks.bbTroopLv18.current}/18)`,
-    `${mark(bob.tasks.bbDefenseLv9.completed)} **Defense Lv 9**: ${bob.tasks.bbDefenseLv9.completed ? '1/1' : '0/1 (e.g. Mega Tesla)'}`,
-    `${mark(bob.tasks.bbHeroesLv45.completed)} **Heroes Lv 45**: ${bob.tasks.bbHeroesLv45.current}/45`,
+      ? words.bob.unlocked
+      : fill(words.bob.progress, {
+          percent: bob.overallPercentage,
+          bar: formatProgressBar(bob.overallPercentage, 6),
+        }),
+    fill(words.bob.gearUps, { mark: mark(gearUps.completed), current: gearUps.current }),
+    fill(words.bob.troop, {
+      mark: mark(troop.completed),
+      troop: troop.highestTroopName,
+      current: troop.current,
+    }),
+    fill(defense.completed ? words.bob.defenseDone : words.bob.defense, { mark: mark(defense.completed) }),
+    fill(words.bob.heroes, { mark: mark(heroes.completed), current: heroes.current }),
   ];
 }
 
@@ -276,7 +281,7 @@ function boostButton(account: LinkedAccount, view: StatusView, boost: keyof Cost
   return {
     type: 2,
     style: 2,
-    label: `${BOOST_LABELS[boost]}: ${percent ? `${percent}%` : 'Off'}`,
+    label: fill(percent ? words.boosts.label : words.boosts.off, { boost: BOOST_LABELS[boost], percent }),
     custom_id: menuId(boost, account.playerTag, view),
   };
 }
@@ -296,12 +301,12 @@ function statusMenus(
     menus.push({
       type: 3,
       custom_id: menuId('account', account.playerTag, view),
-      placeholder: 'Account',
+      placeholder: words.menus.account,
       // Discord allows 25 options
       options: accounts.slice(0, 25).map((a) => ({
         label: a.name,
         value: a.playerTag,
-        description: `${a.playerTag} · TH${a.townHallLevel}`,
+        description: fill(words.menus.accountRow, { tag: a.playerTag, level: a.townHallLevel }),
         default: a.playerTag === account.playerTag,
       })),
     });
@@ -310,16 +315,16 @@ function statusMenus(
     menus.push({
       type: 3,
       custom_id: menuId('village', account.playerTag, view),
-      placeholder: 'Village',
+      placeholder: words.menus.village,
       options: [
         {
-          label: `Home Village (TH${halls.th})`,
+          label: fill(words.menus.home, { level: halls.th }),
           value: 'home',
           emoji: { name: '🏰' },
           default: view.village === 'home',
         },
         {
-          label: `Builder Base (BH${halls.bh})`,
+          label: fill(words.menus.builder, { level: halls.bh }),
           value: 'builder',
           emoji: { name: '🔨' },
           default: view.village === 'builder',
@@ -330,7 +335,7 @@ function statusMenus(
   menus.push({
     type: 3,
     custom_id: menuId('area', account.playerTag, view),
-    placeholder: 'Area',
+    placeholder: words.menus.area,
     options: AREAS.filter((a) => a.covers[view.village]).map((a) => ({
       label: a.label,
       value: a.value,
@@ -362,7 +367,10 @@ export function buildStatusMessage(
     const own = timers.filter((u) => u.village === view.village);
     if (own.length === 0) return [];
     return [
-      { title: `⏳ Upgrading (${own.length})`, lines: VillageImportService.formatInProgressUpgrades(own).split('\n') },
+      {
+        title: fill(shared.upgrading, { count: own.length }),
+        lines: VillageImportService.formatInProgressUpgrades(own).split('\n'),
+      },
     ];
   })();
 
@@ -374,14 +382,14 @@ export function buildStatusMessage(
   let sections: CardSection[];
   if (view.area === 'overview') {
     const bobLine = bob.unlocked
-      ? '🤖 **B.O.B**: 🎉 unlocked'
-      : `🤖 **B.O.B**: ${formatProgressBar(bob.overallPercentage, 6)}`;
+      ? words.bob.overviewUnlocked
+      : fill(words.bob.overview, { bar: formatProgressBar(bob.overallPercentage, 6) });
     sections = [
       ...upgrading,
-      { title: '📋 Left to Upgrade', lines: [...(isHome ? [] : [bobLine]), ...overviewSections.map(summaryLine)] },
+      { title: shared.leftToUpgrade, lines: [...(isHome ? [] : [bobLine]), ...overviewSections.map(summaryLine)] },
     ];
   } else if (view.area === 'bob') {
-    sections = [{ title: '🤖 6th Builder (B.O.B)', lines: bobText(bob) }];
+    sections = [{ title: words.bob.section, lines: bobText(bob) }];
   } else {
     const shown: Record<Exclude<StatusArea, 'overview' | 'bob'>, [Section[], Section[]]> = {
       buildings: [
@@ -399,9 +407,9 @@ export function buildStatusMessage(
   const levelsLeft = overviewSections.reduce((n, sec) => n + sec.levels, 0);
   const usesImport = ['overview', 'buildings', 'defenses'].includes(view.area);
   const intro = [
-    isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-    usesImport ? getVillageJsonTimestampNotice(village, 'Defenses & buildings based on the export taken') : '',
-    view.area === 'overview' ? `**${levelsLeft}** levels left. Pick an area below for the full list.` : '',
+    isCached ? shared.maintenance : '',
+    usesImport ? getVillageJsonTimestampNotice(village, words.exportPrefix) : '',
+    view.area === 'overview' ? fill(words.levelsLeft, { levels: levelsLeft }) : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -410,19 +418,22 @@ export function buildStatusMessage(
   if (view.area === 'bob') buttons.push(bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true));
   // The boosts only change Home Village costs
   if (isHome) buttons.push(boostButton(account, view, 'builder'), boostButton(account, view, 'research'));
-  buttons.push(DiscordService.openGameLinkButton('Open CoC'));
+  buttons.push(DiscordService.openGameLinkButton());
 
   const label = AREAS.find((a) => a.value === view.area)!.label;
   const shownCards = villageCards(
     [{ village: view.village, hallLevel: isHome ? th : bh, intro: intro || undefined, sections }],
     VIEW_BUDGET,
     {
-      author: `[${account.name}] Status${view.area === 'overview' ? '' : `: ${label}`}`,
+      author:
+        view.area === 'overview'
+          ? fill(words.author, { name: account.name })
+          : fill(words.authorArea, { name: account.name, area: label }),
       thumbnail: isHome ? CocAssetService.getTownHallUrl(th) : CocAssetService.getBuilderHallUrl(bh),
-      footer: `Account: ${account.name} (${account.playerTag})`,
+      footer: accountFooter(account),
       menus: statusMenus(accounts, account, view, { th, bh }),
       buttons,
-      more: (hidden) => `…and ${hidden} more`,
+      more: (hidden) => fill(words.more, { hidden }),
     }
   );
 
@@ -437,9 +448,13 @@ function statusErrorMessage(accounts: LinkedAccount[], account: LinkedAccount, v
   return layoutMessage(
     card({
       accent: VILLAGE_COLORS[fitted.village],
-      author: `[${account.name}] Status`,
+      author: fill(words.author, { name: account.name }),
       title: villageHeading(fitted.village, fitted.village === 'home' ? account.townHallLevel : bh),
-      body: `❌ Could not load **${account.name}** (${account.playerTag}): ${err?.message || 'API error'}`,
+      body: fill(words.couldNotLoad, {
+        name: account.name,
+        tag: account.playerTag,
+        reason: err?.message || commandWords.errors.apiError,
+      }),
       menus: statusMenus(accounts, account, fitted, { th: account.townHallLevel, bh }),
     })
   );
@@ -468,15 +483,13 @@ export async function execute(ctx: CommandContext): Promise<any> {
       // Every linked account goes in the account menu; the option only picks the one it opens on
       const { accounts, error } = await ctx.getTargetAccounts();
       if (error || accounts.length === 0) {
-        await ctx.editDeferredReply({ content: error || 'No linked accounts found.' });
+        await ctx.editDeferredReply({ content: error || commandWords.errors.noAccountsFound });
         return;
       }
       const wanted = ctx.optionsMap['account'] ? config.formatTag(ctx.optionsMap['account']) : null;
       const account = wanted ? accounts.find((a) => a.playerTag.toUpperCase() === wanted.toUpperCase()) : accounts[0];
       if (!account) {
-        await ctx.editDeferredReply({
-          content: `⚠️ Account with tag \`${wanted}\` is not linked. Use \`/accounts\` to see your linked accounts.`,
-        });
+        await ctx.editDeferredReply({ content: fill(commandWords.errors.notLinked, { tag: wanted ?? '' }) });
         return;
       }
       await ctx.sendAccountMessage(
@@ -485,7 +498,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       );
     } catch (cmdErr: any) {
       log.error(`Failed to execute /${ctx.name}:`, cmdErr);
-      await ctx.editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
+      await ctx.editDeferredReply({ content: fill(commandWords.errors.processing, { reason: cmdErr.message }) });
     }
   });
 }
@@ -532,7 +545,7 @@ export async function showStatusView(interaction: any): Promise<void> {
     const user = discordUserId ? await FirestoreService.getUser(discordUserId) : null;
     const account = user?.accounts.find((a) => a.playerTag.toUpperCase() === tag.toUpperCase());
     if (!user || !account) {
-      await reply.followup({ content: `⚠️ \`${tag}\` isn't linked to your profile any more.`, flags: 64 });
+      await reply.followup({ content: fill(words.noLongerLinked, { tag }), flags: 64 });
       return;
     }
     if (boost) {
@@ -544,10 +557,13 @@ export async function showStatusView(interaction: any): Promise<void> {
     );
     // A message sent before the new layouts still has embeds, which Discord wants cleared to switch it
     if (!(await reply.edit(message)) && !(await reply.edit({ ...message, content: null, embeds: [] }))) {
-      await reply.followup({ content: "⚠️ Couldn't redraw this message. Run `/status` again.", flags: 64 });
+      await reply.followup({ content: words.couldNotRedraw, flags: 64 });
     }
   } catch (err: any) {
     log.error(`[Discord] Could not show ${view.village}/${view.area} of /status for ${tag}:`, err);
-    await reply.followup({ content: `❌ Couldn't load that: ${err.message || 'API error'}`, flags: 64 });
+    await reply.followup({
+      content: fill(words.failed, { reason: err.message || commandWords.errors.apiError }),
+      flags: 64,
+    });
   }
 }

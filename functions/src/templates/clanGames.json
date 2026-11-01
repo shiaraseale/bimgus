@@ -1,0 +1,15 @@
+{
+  "started": {
+    "title": "🎪 Clan Games have started",
+    "body": "Up to {maxPoints} points each · tier 6 at {tier6Points} · ends on the 28th"
+  },
+  "maxed": {
+    "title": "🌟 {name} maxed Clan Games",
+    "body": "All {maxPoints} points"
+  },
+  "tier": {
+    "title": "🎉 Clan Games tier {tier} unlocked",
+    "body": "**{points}** points · tier {nextTier} at {nextPoints}",
+    "bodyAllTiers": "**{points}** points · every tier unlocked 🏆"
+  }
+}

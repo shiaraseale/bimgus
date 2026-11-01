@@ -1,0 +1,25 @@
+{
+  "buttons": {
+    "openGame": "Open CoC",
+    "clashOfStats": "Clash of Stats",
+    "enemyClan": "Enemy Clan"
+  },
+  "accountFooter": "Account: {name} ({tag})",
+  "maintenance": "⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*",
+  "villages": {
+    "home": "🏰 Home Village",
+    "builder": "🔨 Builder Base"
+  },
+  "upgrading": "⏳ Upgrading ({count})",
+  "leftToUpgrade": "📋 Left to Upgrade",
+  "noImport": "💡 *Run `/import-village` to load your exact building levels and upgrade costs. (Imports from before the one-file update are no longer used; one export now covers both villages.)*",
+  "exportNotice": {
+    "line": "📄 *{prefix} {time}*{stale}",
+    "prefix": "Based on the export taken",
+    "stale": " ⚠️ *over a day old, so timers may be out of date*"
+  },
+  "webhookTest": {
+    "title": "✅ Webhook works",
+    "body": "This channel will get Bimgus's **{channel}** messages."
+  }
+}

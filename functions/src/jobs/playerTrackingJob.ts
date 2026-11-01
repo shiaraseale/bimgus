@@ -19,6 +19,8 @@ import {
 import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { log } from '../utils/log';
 import { card, layoutMessage } from '../services/discordLayout';
+import dmWords from '../templates/dms.json';
+import { accountFooter, fill } from '../templates';
 import { DiscordWebhookPayload } from '../types/discord';
 import { LinkedAccount } from '../types/user';
 
@@ -36,13 +38,13 @@ export function buildRosterDm(
   return layoutMessage(
     card({
       accent: COLORS.GOLD,
-      title: `⚔️ [${account.name}] You're in the war vs ${opponentName}`,
+      title: fill(dmWords.roster.title, { account: account.name, enemy: opponentName }),
       body: [
-        `#${warMember.mapPosition} on the map · TH${warMember.townhallLevel} · ${teamSize}v${teamSize}`,
-        `Battle day ${discordTime(warStartTimeMs)}`,
+        fill(dmWords.roster.position, { position: warMember.mapPosition, th: warMember.townhallLevel, size: teamSize }),
+        fill(dmWords.roster.battleDay, { time: discordTime(warStartTimeMs) }),
       ].join('\n'),
       thumbnail: CocAssetService.getTownHallUrl(warMember.townhallLevel),
-      footer: `Account: ${account.name} (${account.playerTag})`,
+      footer: accountFooter(account),
       buttons: [dmToggleButton(account.playerTag)],
     })
   );

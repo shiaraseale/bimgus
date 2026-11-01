@@ -1,0 +1,41 @@
+{
+  "score": "{ourStars}–{theirStars} {star} · {ourPercent}% vs {theirPercent}%",
+  "lineupHeading": "**{ours}** vs **{theirs}**",
+  "matchup": {
+    "declared": "⚔️ War declared: vs {enemy}",
+    "battleDay": "🔥 Battle day: vs {enemy}",
+    "size": "{size}v{size} · clan level {clanLevel}",
+    "starts": "Battle day {time}",
+    "ends": "Ends {time}"
+  },
+  "attack": {
+    "clanTitle": "💥 Clan attack: {stars} {percent}%",
+    "enemyTitle": "🛡️ Enemy attack: {stars} {percent}%",
+    "body": "**#{attackerPosition} {attacker}** (TH{attackerTh}) → **#{defenderPosition} {defender}** (TH{defenderTh})",
+    "footer": "Score {score}",
+    "footerWithContext": "Score {score} · {context}"
+  },
+  "summary": {
+    "won": "🏆 War won vs {enemy}",
+    "tied": "🤝 War tied vs {enemy}",
+    "lost": "💀 War lost vs {enemy}",
+    "attacksUsed": "🗡️ Attacks used: {ours}/{total} vs {theirs}/{total}",
+    "noAttacks": "🚨 **No attacks**: {names}",
+    "partialAttacks": "⚠️ **1 of {limit} attacks**: {names}",
+    "everyoneAttacked": "✅ Everyone used every attack",
+    "wastedAttacks": "🎯 **Hit a base already at 3 {star}**: {hits}",
+    "wastedHit": "#{attackerPosition} {attacker} on #{defenderPosition}",
+    "allStars": "{star} **All {stars} stars**: {names}"
+  },
+  "reminder": {
+    "warTitle": "⚠️ {timeLeft} left in the war vs {enemy}",
+    "cwlTitle": "⚠️ {timeLeft} left in CWL round {round} vs {enemy}",
+    "underAnHour": "Under an hour",
+    "hours": "~{hours}h",
+    "waiting": "**Still to attack**: {names}",
+    "waitingMember": "#{position} {name}",
+    "waitingMemberStarted": "#{position} {name} ({left} left)",
+    "ends": "Ends {time}",
+    "footer": "Score {score} · {used}/{total} attacks"
+  }
+}

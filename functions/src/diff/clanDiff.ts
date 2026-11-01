@@ -4,7 +4,9 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordContainerComponent } from '../types/discord';
 import { card, packMessages } from '../services/discordLayout';
 import { CocAssetService } from '../services/cocAssetService';
-import { EMOJIS } from '../constants/emojis';
+import words from '../templates/clan.json';
+import shared from '../templates/shared.json';
+import { fill } from '../templates';
 
 export async function processClanDiff(
   currentClan: ClanResponse,
@@ -43,11 +45,14 @@ export async function processClanDiff(
         const joined = currentMembersMap[tag];
         cards.push(
           card({
-            title: `📥 ${joined.name} joined`,
-            body: `🏆 ${joined.trophies.toLocaleString()} · ${formatRole(joined.role)}`,
+            title: fill(words.joined.title, { name: joined.name }),
+            body: fill(words.joined.body, {
+              trophies: joined.trophies.toLocaleString(),
+              role: formatRole(joined.role),
+            }),
             accent: COLORS.GREEN,
             thumbnail: joined.league?.iconUrls?.small,
-            footer: `${joined.tag} · ${currentClan.members}/50 members`,
+            footer: fill(words.joined.footer, { tag: joined.tag, members: currentClan.members }),
           })
         );
       }
@@ -59,10 +64,10 @@ export async function processClanDiff(
         const left = prevMap[prevTag];
         cards.push(
           card({
-            title: `📤 ${left.name} left`,
-            body: `Was ${formatRole(left.role)} · 🏆 ${left.trophies.toLocaleString()}`,
+            title: fill(words.left.title, { name: left.name }),
+            body: fill(words.left.body, { role: formatRole(left.role), trophies: left.trophies.toLocaleString() }),
             accent: COLORS.RED,
-            footer: `${left.tag} · ${currentClan.members}/50 members`,
+            footer: fill(words.left.footer, { tag: left.tag, members: currentClan.members }),
           })
         );
       }
@@ -76,10 +81,11 @@ export async function processClanDiff(
       const curr = currentMembersMap[tag];
       if (prev && curr && prev.role !== curr.role) {
         const isPromotion = getRoleWeight(curr.role) > getRoleWeight(prev.role);
+        const change = isPromotion ? words.promoted : words.demoted;
         cards.push(
           card({
-            title: isPromotion ? `${EMOJIS.CROWN} ${curr.name} promoted` : `🔻 ${curr.name} demoted`,
-            body: `${formatRole(prev.role)} → ${formatRole(curr.role)}`,
+            title: fill(change.title, { name: curr.name }),
+            body: fill(change.body, { from: formatRole(prev.role), to: formatRole(curr.role) }),
             accent: isPromotion ? COLORS.GOLD : COLORS.BLUE,
             footer: curr.tag,
           })
@@ -96,8 +102,8 @@ export async function processClanDiff(
       if (prev && curr && prev.townHallLevel && curr.townHallLevel && curr.townHallLevel > prev.townHallLevel) {
         cards.push(
           card({
-            title: `🏛️ ${curr.name} reached TH${curr.townHallLevel}`,
-            body: '🎉 Well done!',
+            title: fill(words.townHall.title, { name: curr.name, level: curr.townHallLevel }),
+            body: words.townHall.body,
             accent: COLORS.GOLD,
             thumbnail: CocAssetService.getTownHallUrl(curr.townHallLevel),
             footer: curr.tag,
@@ -110,8 +116,12 @@ export async function processClanDiff(
   // Send the poll's events together, as few messages as Discord's limits allow
   if (webhookUrl && cards.length > 0) {
     const links = [
-      DiscordService.createLinkButton('Open CoC', DiscordService.openGameLink(), '⚔️'),
-      DiscordService.createLinkButton('Clash of Stats', DiscordService.clashOfStatsClanLink(currentClan.tag), '📊'),
+      DiscordService.openGameLinkButton(),
+      DiscordService.createLinkButton(
+        shared.buttons.clashOfStats,
+        DiscordService.clashOfStatsClanLink(currentClan.tag),
+        '📊'
+      ),
     ];
     for (const message of packMessages(cards, links)) {
       await DiscordService.sendWebhook(webhookUrl, message);
@@ -131,17 +141,7 @@ export async function processClanDiff(
 }
 
 function formatRole(role: string): string {
-  switch (role) {
-    case 'admin':
-      return 'Elder';
-    case 'coLeader':
-      return 'Co-Leader';
-    case 'leader':
-      return 'Leader';
-    case 'member':
-    default:
-      return 'Member';
-  }
+  return words.roles[role as keyof typeof words.roles] ?? words.roles.member;
 }
 
 function getRoleWeight(role: string): number {

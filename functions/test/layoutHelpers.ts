@@ -56,6 +56,8 @@ export function expectLayout(msg: any, label = '') {
     (msg.components ?? []).filter((c: any) => c.type === 1),
     label
   ).toEqual([]);
+  // Every template placeholder has been filled in
+  expect(texts(msg), label).not.toMatch(/\{\w+\}/);
   const size = layoutSize(msg);
   expect(size.components, label).toBeLessThanOrEqual(LAYOUT_LIMITS.components);
   expect(size.chars, label).toBeLessThanOrEqual(LAYOUT_LIMITS.chars);

@@ -4,6 +4,9 @@ import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { goldPassBoosts } from '../../../services/goldPass';
 import { VillageImportService } from '../../../services/villageImportService';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { CardSection, itemRow } from '../ui';
 
@@ -37,6 +40,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.troops;
+
 // Room for the troop lists (Discord allows 4,000 characters per message)
 const LISTS_BUDGET = 3500;
 
@@ -59,21 +64,21 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     if (villageFilter === 'home' || villageFilter === 'both') {
       sections.push({
-        title: `🏰 Home Village Troops (TH${freshPlayer.townHallLevel}) — ${homeTroops.length} Upgrades Remaining`,
+        title: fill(words.homeHeading, { level: freshPlayer.townHallLevel, count: homeTroops.length }),
         lines:
           homeTroops.length > 0
             ? columnRows(homeTroops.map(itemRow))
-            : [`🎉 All Home Village troops maxed for TH${freshPlayer.townHallLevel}!`],
+            : [fill(words.homeMaxed, { level: freshPlayer.townHallLevel })],
       });
     }
 
     if ((villageFilter === 'builder' || villageFilter === 'both') && freshPlayer.builderHallLevel) {
       sections.push({
-        title: `🔨 Builder Base Troops (BH${freshPlayer.builderHallLevel}) — ${builderTroops.length} Upgrades Remaining`,
+        title: fill(words.builderHeading, { level: freshPlayer.builderHallLevel, count: builderTroops.length }),
         lines:
           builderTroops.length > 0
             ? columnRows(builderTroops.map(itemRow))
-            : [`🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`],
+            : [fill(words.builderMaxed, { level: freshPlayer.builderHallLevel })],
       });
     }
 
@@ -84,22 +89,20 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: totalTroopLevels === 0 ? COLORS.GREEN : COLORS.BLUE,
-        title: `⚔️ [${account.name}] Laboratory & Barracks Troop Research`,
+        title: fill(words.title, { name: account.name }),
         body: [
-          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*\n' : '',
-          totalTroopLevels === 0
-            ? '🎉 **All troops are maxed for your hall level!**'
-            : `⚡ **${totalTroopLevels}** troop levels left`,
+          isCached ? `${shared.maintenance}\n` : '',
+          totalTroopLevels === 0 ? words.allMaxed : fill(words.levelsLeft, { levels: totalTroopLevels }),
         ]
           .filter(Boolean)
           .join('\n'),
         thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
         // Long lists are trimmed to fit the message, ending "... and N more"
-        blocks: VillageImportService.fitSections(sections, LISTS_BUDGET, (hidden) => `... and ${hidden} more`).map(
+        blocks: VillageImportService.fitSections(sections, LISTS_BUDGET, (hidden) => fill(words.more, { hidden })).map(
           (sec) => `**${sec.title}**\n${sec.lines.join('\n')}`
         ),
-        footer: `Account: ${account.name} (${account.playerTag})`,
-        buttons: [DiscordService.openGameLinkButton('Open CoC')],
+        footer: accountFooter(account),
+        buttons: [DiscordService.openGameLinkButton()],
       })
     );
 

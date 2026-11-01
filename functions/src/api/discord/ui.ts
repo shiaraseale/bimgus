@@ -8,6 +8,8 @@ import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../type
 import { Village } from '../../services/gameDataService';
 import { OutstandingUpgradeItem } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
+import shared from '../../templates/shared.json';
+import { fill } from '../../templates';
 
 /** An upgrade list's row for an item the live API reports: "Barbarian", "8/9", then its cost. */
 export function itemRow(i: OutstandingUpgradeItem): ColumnRow {
@@ -20,9 +22,7 @@ export const BB_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap'];
 export const BUILDING_CATEGORIES: GameCategory[] = ['resource', 'army', 'other', 'wall'];
 
 // Shown where imported data would be, for accounts with no import in the current format
-export const NO_IMPORT_TEXT =
-  '💡 *Run `/import-village` to load your exact building levels and upgrade costs. ' +
-  '(Imports from before the one-file update are no longer used; one export now covers both villages.)*';
+export const NO_IMPORT_TEXT = shared.noImport;
 
 export function formatProgressBar(percent: number, length: number = 10): string {
   const filled = Math.max(0, Math.min(length, Math.round((percent / 100) * length)));
@@ -33,11 +33,11 @@ export function formatProgressBar(percent: number, length: number = 10): string 
 /** "Based on the export taken 2 days ago (…)", with a warning when the export is over a day old. */
 export function getVillageJsonTimestampNotice(
   village: VillageDataV2 | null,
-  prefix: string = 'Based on the export taken'
+  prefix: string = shared.exportNotice.prefix
 ): string | null {
   if (!village) return null;
-  const stale = VillageImportService.isStale(village) ? ' ⚠️ *over a day old, so timers may be out of date*' : '';
-  return `📄 *${prefix} ${discordTime(village.exportTimestamp)}*${stale}`;
+  const stale = VillageImportService.isStale(village) ? shared.exportNotice.stale : '';
+  return fill(shared.exportNotice.line, { prefix, time: discordTime(village.exportTimestamp), stale });
 }
 
 /** "🏰 Home Village (TH13)" or "🔨 Builder Base (BH9)", the heading of a village's card. */

@@ -13,6 +13,8 @@ import {
 } from './gameDataService';
 import type { InProgressUpgrade, VillageDataV2, VillageItem } from '../types/village';
 import { ColumnRow, columnRows } from './discordLayout';
+import commandWords from '../templates/commands.json';
+import { fill } from '../templates';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -44,22 +46,24 @@ export interface ImportChange {
   count: number;
 }
 
+const words = commandWords.import;
+
 // What an import lists as left to upgrade, per village: title, categories, and what one item is called
 const IMPORT_SECTIONS: Record<Village, Array<[string, GameCategory[], string]>> = {
   home: [
-    ['🛡️ Defenses', ['defense'], 'defense'],
-    ['💣 Traps', ['trap'], 'trap'],
-    ['🏛️ Resource & Army', ['resource', 'army', 'other'], 'building'],
-    ['🧱 Walls', ['wall'], 'wall'],
-    ['🗿 Guardians', ['guardian'], 'guardian'],
-    ['🕯️ Crafted Defenses', ['craftedModule'], 'module'],
-    ['🛠️ Helpers', ['helper'], 'helper'],
+    [words.sections.defenses, ['defense'], 'defense'],
+    [words.sections.traps, ['trap'], 'trap'],
+    [words.sections.resourceArmy, ['resource', 'army', 'other'], 'building'],
+    [words.sections.walls, ['wall'], 'wall'],
+    [words.sections.guardians, ['guardian'], 'guardian'],
+    [words.sections.crafted, ['craftedModule'], 'module'],
+    [words.sections.helpers, ['helper'], 'helper'],
   ],
   builder: [
-    ['🛡️ Defenses', ['defense'], 'defense'],
-    ['💣 Traps', ['trap'], 'trap'],
-    ['🏛️ Resource & Army', ['resource', 'army', 'other'], 'building'],
-    ['🧱 Walls', ['wall'], 'wall'],
+    [words.sections.defenses, ['defense'], 'defense'],
+    [words.sections.traps, ['trap'], 'trap'],
+    [words.sections.resourceArmy, ['resource', 'army', 'other'], 'building'],
+    [words.sections.walls, ['wall'], 'wall'],
   ],
 };
 
@@ -386,9 +390,7 @@ export class VillageImportService {
       }
       const keepNew = exp.village.exportTimestamp > existing.village.exportTimestamp;
       const [kept, dropped] = keepNew ? [exp, existing] : [existing, exp];
-      notices.push(
-        `ℹ️ Two exports for **${account.name}**: used **${kept.fileName}** (newer) and skipped **${dropped.fileName}**.`
-      );
+      notices.push(fill(words.twoExports, { name: account.name, kept: kept.fileName, dropped: dropped.fileName }));
       if (keepNew) byAccount.set(key, { account, ...exp });
     }
 
@@ -482,7 +484,7 @@ export class VillageImportService {
     return {
       label: `${d.count > 1 ? `${d.count}x ` : ''}${d.name}`,
       value: `${d.currentLevel}/${d.maxLevel}`,
-      after: d.isMaxed ? 'Maxed ✨' : d.nextCost,
+      after: d.isMaxed ? words.maxed : d.nextCost,
     };
   }
 
@@ -546,7 +548,7 @@ export class VillageImportService {
     const unknown = VillageImportService.unknownItems(data).filter((u) => u.village === village);
     if (unknown.length > 0) {
       sections.push({
-        title: '❔ Not in the game data yet',
+        title: words.notInGameData,
         lines: columnRows(
           unknown.map((u) => ({ label: `${u.count}x ${nameForCode(u.code)}`, value: `Lv ${u.level}` }))
         ),
@@ -561,7 +563,7 @@ export class VillageImportService {
     const parts = VillageImportService.importSections(data, village)
       .filter((s) => s.noun)
       .map((s) => `${s.count} ${s.noun}${s.count === 1 ? '' : 's'}`);
-    return parts.length > 0 ? parts.join(' · ') : '✨ All maxed';
+    return parts.length > 0 ? parts.join(' · ') : words.summaryAllMaxed;
   }
 
   /**
@@ -571,7 +573,7 @@ export class VillageImportService {
   static fitSections(
     sections: Array<{ title: string; lines: string[] }>,
     budget: number,
-    more: (hidden: number) => string = (hidden) => `…and ${hidden} more (see \`/status\`)`
+    more: (hidden: number) => string = (hidden) => fill(words.more, { hidden })
   ) {
     const out = sections.map((s) => ({ title: s.title, lines: [...s.lines], hidden: 0 }));
     const MORE_LINE = 45; // room for the "…and N more" line
@@ -615,7 +617,12 @@ export class VillageImportService {
     return rows
       .map(({ up, count }) => {
         const name = up.code ? nameForCode(up.code) : up.name;
-        return `• ${count > 1 ? `${count}x ` : ''}**${name}** → Lv ${up.targetLevel} · ${discordTime(up.finishesAtMs)}`;
+        return fill(words.running, {
+          count: count > 1 ? `${count}x ` : '',
+          name,
+          level: up.targetLevel,
+          time: discordTime(up.finishesAtMs),
+        });
       })
       .join('\n');
   }

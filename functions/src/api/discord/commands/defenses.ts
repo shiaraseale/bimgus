@@ -15,6 +15,9 @@ import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { goldPassBoosts } from '../../../services/goldPass';
 import { columnRows, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -49,6 +52,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.defenses;
+
 // Room for the text across both cards (Discord allows 4,000 characters per message)
 const CARDS_BUDGET = 3700;
 
@@ -71,7 +76,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
             const last = getLevel(d.item, d.max);
             return {
               label: `${d.count}x ${d.item.displayName}`,
-              value: `Max Lv ${d.max}`,
+              value: fill(words.capLevel, { max: d.max }),
               after: last ? formatLevelCost(d.item, last) : undefined,
             };
           })
@@ -84,7 +89,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       if (own.length === 0) return [];
       return [
         {
-          title: `⏳ Upgrading (${own.length})`,
+          title: fill(shared.upgrading, { count: own.length }),
           lines: VillageImportService.formatInProgressUpgrades(own).split('\n'),
         },
       ];
@@ -95,16 +100,17 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const thUpgradeCost = townHall ? formatNextCost(townHall, th, boosts) : '';
     const thUpgradeStr =
       th >= MAX_TOWN_HALL
-        ? `🏆 **Town Hall**: Maxed (TH${MAX_TOWN_HALL})`
-        : `• **Town Hall**: Lv ${th}/${th + 1}${thUpgradeCost ? ` — ${thUpgradeCost}` : ''}`;
+        ? fill(words.townHallMaxed, { level: MAX_TOWN_HALL })
+        : fill(thUpgradeCost ? words.townHallNextCost : words.townHallNext, {
+            level: th,
+            next: th + 1,
+            cost: thUpgradeCost,
+          });
 
     // High Gear achievement
     const highGear = (freshPlayer.achievements || []).find((a: any) => a.name === 'High Gear');
     const gearUpsCount = highGear ? Math.min(3, highGear.value || 0) : 0;
-    const gearUpsStr =
-      gearUpsCount >= 3
-        ? '✅ **Home Defense Gear-Ups**: 3/3 (Cannon, Archer Tower, Mortar)'
-        : `• **Defense Gear-Ups**: ${gearUpsCount}/3 (Cannon, Archer Tower, Mortar)`;
+    const gearUpsStr = gearUpsCount >= 3 ? words.gearUpsDone : fill(words.gearUps, { count: gearUpsCount });
 
     // Defense lines: use imported village data if available, otherwise show target caps
     const importedHome = village
@@ -122,15 +128,15 @@ export async function execute(ctx: CommandContext): Promise<any> {
         hallLevel: th,
         sections: [
           ...upgrading('home'),
-          { title: '🏰 Town Hall & Gear-Ups', lines: [thUpgradeStr, gearUpsStr] },
+          { title: words.townHallSection, lines: [thUpgradeStr, gearUpsStr] },
           {
-            title: `🛡️ ${importedHome.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max TH${th}`}`,
-            lines: homeCapLines.length > 0 ? homeCapLines : ['No defenses recorded.'],
+            title: importedHome.length > 0 ? words.importedSection : fill(words.homeCapsSection, { level: th }),
+            lines: homeCapLines.length > 0 ? homeCapLines : [words.noDefenses],
           },
           ...(importedBuildings.length > 0
             ? [
                 {
-                  title: '🏛️ Other Buildings & Storages',
+                  title: words.otherBuildings,
                   lines: columnRows(importedBuildings.map(VillageImportService.groupRow)),
                 },
               ]
@@ -145,17 +151,19 @@ export async function execute(ctx: CommandContext): Promise<any> {
       const bhUpgradeCost = builderHall ? formatNextCost(builderHall, bh) : '';
       const bhUpgradeStr =
         bh >= MAX_BUILDER_HALL
-          ? `🏆 **Builder Hall**: Maxed (BH${MAX_BUILDER_HALL})`
-          : `• **Builder Hall**: Lv ${bh}/${bh + 1}${bhUpgradeCost ? ` — ${bhUpgradeCost}` : ''}`;
+          ? fill(words.builderHallMaxed, { level: MAX_BUILDER_HALL })
+          : fill(bhUpgradeCost ? words.builderHallNextCost : words.builderHallNext, {
+              level: bh,
+              next: bh + 1,
+              cost: bhUpgradeCost,
+            });
 
       bob = PlayerTrackingService.calculateSixthBuilderProgress(
         freshPlayer,
         village,
         account.bobDefenseCompleted || false
       );
-      const bobDefStr = bob.tasks.bbDefenseLv9.completed
-        ? '✅ **B.O.B Defense Lv 9**: Completed'
-        : `🔄 **B.O.B Defense Lv 9**: 0/1 (Upgrade any BB defense to Lv 9)`;
+      const bobDefStr = bob.tasks.bbDefenseLv9.completed ? words.bobDone : words.bobLeft;
 
       const importedBb = village
         ? VillageImportService.groupsFor(village, 'builder', BB_DEFENSE_CATEGORIES, halls)
@@ -168,10 +176,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
         hallLevel: bh,
         sections: [
           ...upgrading('builder'),
-          { title: '🔨 Builder Hall & B.O.B', lines: [bhUpgradeStr, bobDefStr] },
+          { title: words.builderSection, lines: [bhUpgradeStr, bobDefStr] },
           {
-            title: `🛡️ ${importedBb.length > 0 ? 'Current Defenses & Next Upgrades' : `Defense Upgrades to Max BH${bh}`}`,
-            lines: bbCapLines.length > 0 ? bbCapLines : ['No builder defenses recorded.'],
+            title: importedBb.length > 0 ? words.importedSection : fill(words.builderCapsSection, { level: bh }),
+            lines: bbCapLines.length > 0 ? bbCapLines : [words.noBuilderDefenses],
           },
         ],
       });
@@ -182,12 +190,12 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const hasImported = Boolean(village);
     const jsonNotice = getVillageJsonTimestampNotice(village);
     cards[0].intro = [
-      isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
+      isCached ? shared.maintenance : '',
       hasImportedHome
         ? hasImportedBb
-          ? `Exact defenses for **Town Hall ${th}** and **Builder Hall ${bh}**.`
-          : `Exact defenses for **Town Hall ${th}**.`
-        : `Defense level limits and Hall upgrade requirements for **Town Hall ${th}**${bh > 0 ? ` and **Builder Hall ${bh}**` : ''}.\n*(The Supercell API doesn't include building levels.)*\n${NO_IMPORT_TEXT}`,
+          ? fill(words.exactBoth, { th, bh })
+          : fill(words.exactHome, { th })
+        : fill(bh > 0 ? words.capsBoth : words.capsHome, { th, bh, noImport: NO_IMPORT_TEXT }),
       jsonNotice || '',
     ]
       .filter(Boolean)
@@ -198,13 +206,13 @@ export async function execute(ctx: CommandContext): Promise<any> {
       const toggleBtn = bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed, true);
       defButtons.push(toggleBtn);
     }
-    defButtons.push(DiscordService.openGameLinkButton('Open CoC'));
+    defButtons.push(DiscordService.openGameLinkButton());
 
     // A card per village, each list in full
     const shownCards = villageCards(cards, CARDS_BUDGET, {
-      author: `[${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
+      author: fill(hasImported ? words.authorImported : words.authorCaps, { name: account.name }),
       thumbnail: CocAssetService.getTownHallUrl(th),
-      footer: `Account: ${account.name} (${account.playerTag})`,
+      footer: accountFooter(account),
       buttons: defButtons,
     });
     await sendAccountMessage(idx, layoutMessage(...shownCards));

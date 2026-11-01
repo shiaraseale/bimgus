@@ -3,6 +3,9 @@ import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { card, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import shared from '../../../templates/shared.json';
+import { accountFooter, fill } from '../../../templates';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -27,6 +30,8 @@ export const definition = {
 // Runs as a Cloud Task (3.7): its work happens after the "thinking…" reply
 export const runsAsTask = true;
 
+const words = commandWords.sixthBuilder;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { sendAccountMessage, getPlayerWithFallback } = ctx;
   return forEachLinkedAccount(ctx, '6th Builder data', async (account, idx) => {
@@ -38,57 +43,47 @@ export async function execute(ctx: CommandContext): Promise<any> {
       account.bobDefenseCompleted || false
     );
 
-    const gearUpEmoji = bob.tasks.gearUps.completed ? '✅' : '🔄';
-    const troopEmoji = bob.tasks.bbTroopLv18.completed ? '✅' : '🔄';
-    const defEmoji = bob.tasks.bbDefenseLv9.completed ? '✅' : '🔄';
-    const heroEmoji = bob.tasks.bbHeroesLv45.completed ? '✅' : '🔄';
+    const task = (template: string, t: { completed: boolean; current: number; target: number }) =>
+      fill(template, { mark: t.completed ? words.done : words.todo, current: t.current, target: t.target });
 
     const statusBanner = bob.unlocked
-      ? '🎉 **Congratulations! You have unlocked the 6th Builder (B.O.B)!**'
-      : `⏳ **Overall Progress**: ${formatProgressBar(bob.overallPercentage)}`;
+      ? words.unlocked
+      : fill(words.progress, { bar: formatProgressBar(bob.overallPercentage) });
 
     const bbJsonNotice =
-      village && village.builderHallLevel > 0
-        ? getVillageJsonTimestampNotice(village, 'Builder Base defenses based on the export taken')
-        : null;
+      village && village.builderHallLevel > 0 ? getVillageJsonTimestampNotice(village, words.exportPrefix) : null;
 
     const bobButtons: DiscordButtonComponent[] = [];
     if ((freshPlayer.builderHallLevel || 0) >= 1) {
       const toggleBtn = bobDefenseButton(account.playerTag, bob.tasks.bbDefenseLv9.completed);
       bobButtons.push(toggleBtn);
     }
-    bobButtons.push(DiscordService.openGameLinkButton('Open CoC'));
+    bobButtons.push(DiscordService.openGameLinkButton());
 
     const message = layoutMessage(
       card({
         accent: bob.unlocked ? COLORS.GOLD : COLORS.BLUE,
-        title: `🛠️ [${account.name}] 6th Builder (B.O.B) Tracker`,
-        body: [
-          isCached ? '⚠️ *CoC API is currently under maintenance. Displaying your last saved snapshot.*' : '',
-          statusBanner,
-          bbJsonNotice ?? '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        title: fill(words.title, { name: account.name }),
+        body: [isCached ? shared.maintenance : '', statusBanner, bbJsonNotice ?? ''].filter(Boolean).join('\n'),
         thumbnail: CocAssetService.getBobUrl(
           bob.unlocked ? 4 : Object.values(bob.tasks).filter((t: any) => t.completed).length
         ),
         blocks: [
           [
-            `${gearUpEmoji} **1. Gear Up 3 Buildings** (${bob.tasks.gearUps.current}/${bob.tasks.gearUps.target})`,
+            task(words.gearUps, bob.tasks.gearUps),
             `   ${bob.tasks.gearUps.description}`,
             '',
-            `${troopEmoji} **2. Upgrade BB Troop to Level 18** (Lv ${bob.tasks.bbTroopLv18.current}/${bob.tasks.bbTroopLv18.target})`,
+            task(words.troop, bob.tasks.bbTroopLv18),
             `   ${bob.tasks.bbTroopLv18.description}`,
             '',
-            `${defEmoji} **3. Upgrade BB Defense to Level 9** (${bob.tasks.bbDefenseLv9.current}/${bob.tasks.bbDefenseLv9.target})`,
+            task(words.defense, bob.tasks.bbDefenseLv9),
             `   ${bob.tasks.bbDefenseLv9.description}`,
             '',
-            `${heroEmoji} **4. Total BB Hero Level 45** (${bob.tasks.bbHeroesLv45.current}/${bob.tasks.bbHeroesLv45.target})`,
+            task(words.heroes, bob.tasks.bbHeroesLv45),
             `   ${bob.tasks.bbHeroesLv45.description}`,
           ].join('\n'),
         ],
-        footer: `Account: ${account.name} (${account.playerTag})`,
+        footer: accountFooter(account),
         buttons: bobButtons,
       })
     );

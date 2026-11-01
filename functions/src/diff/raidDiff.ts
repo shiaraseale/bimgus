@@ -12,6 +12,8 @@ import {
   packMessages,
   splitLines,
 } from '../services/discordLayout';
+import words from '../templates/raids.json';
+import { fill } from '../templates';
 import { formatCoCTime } from './warDiff';
 import { discordTime } from '../utils/discordTime';
 
@@ -64,19 +66,26 @@ function buildCapitalCard(
 
   const totals = [
     count(weekendTotals.districtsDestroyed, 'district'),
-    `${weekendTotals.capitalTotalLoot.toLocaleString()} capital gold`,
+    fill(words.capital.totalGold, { gold: weekendTotals.capitalTotalLoot.toLocaleString() }),
     weekendTotals.raidsCompleted ? count(weekendTotals.raidsCompleted, 'capital') : '',
   ].filter(Boolean);
 
   return card({
     accent: isPartialWeekendEnd ? COLORS.PURPLE : COLORS.GOLD,
     title: isPartialWeekendEnd
-      ? `${EMOJIS.RAID} ${raid.defender.name}: ${percentCleared}% when the weekend ended`
-      : `${EMOJIS.RAID} Conquered ${raid.defender.name}`,
-    body: `🏰 ${raid.districtsDestroyed}/${raid.districtCount} districts · ⚔️ ${raid.attackCount} attacks · ${totalLoot.toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`,
+      ? fill(words.capital.unfinished, { enemy: raid.defender.name, percent: percentCleared })
+      : fill(words.capital.conquered, { enemy: raid.defender.name }),
+    body: fill(words.capital.body, {
+      destroyed: raid.districtsDestroyed,
+      total: raid.districtCount,
+      attacks: raid.attackCount,
+      loot: totalLoot.toLocaleString(),
+    }),
     thumbnail: raid.defender.badgeUrls?.large || raid.defender.badgeUrls?.medium || raid.defender.badgeUrls?.small,
     blocks: [fitLines(districts, DISTRICTS_BUDGET).join('\n')],
-    footer: `${isPartialWeekendEnd ? 'Weekend total' : 'Weekend so far'}: ${totals.join(' · ')}`,
+    footer: fill(isPartialWeekendEnd ? words.capital.weekendTotal : words.capital.weekendSoFar, {
+      totals: totals.join(' · '),
+    }),
     buttons,
   });
 }
@@ -110,7 +119,9 @@ function buildWeekendRecapCards(
     .map((m) => m.name)
     .sort((a, b) => a.localeCompare(b));
   const missedLine =
-    missed.length > 0 ? `🚨 **No attacks (${missed.length})**: ${missed.join(', ')}` : '✅ Everyone raided';
+    missed.length > 0
+      ? fill(words.recap.noAttacks, { count: missed.length, names: missed.join(', ') })
+      : words.recap.everyoneRaided;
   const parts = splitLines(ranking, LAYOUT_LIMITS.chars - RECAP_TEXT_BUDGET - missedLine.length);
 
   return parts.map((part, i) => {
@@ -118,12 +129,17 @@ function buildWeekendRecapCards(
     const last = i === parts.length - 1;
     return card({
       accent: COLORS.GOLD,
-      title: first ? `${EMOJIS.RAID} Raid weekend has ended` : undefined,
+      title: first ? fill(words.recap.title) : undefined,
       body: first
-        ? `🏰 ${count(raid.raidsCompleted, 'capital')} · ${count(raid.enemyDistrictsDestroyed, 'district')} · ⚔️ ${count(raid.totalAttacks, 'attack')} · ${raid.capitalTotalLoot.toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`
+        ? fill(words.recap.body, {
+            capitals: count(raid.raidsCompleted, 'capital'),
+            districts: count(raid.enemyDistrictsDestroyed, 'district'),
+            attacks: count(raid.totalAttacks, 'attack'),
+            loot: raid.capitalTotalLoot.toLocaleString(),
+          })
         : undefined,
-      blocks: [part.length > 0 ? ['🏅 **Ranking**', ...part].join('\n') : '', last ? missedLine : ''],
-      footer: last ? `${count(raiders.length, 'member')} took part` : undefined,
+      blocks: [part.length > 0 ? [words.recap.ranking, ...part].join('\n') : '', last ? missedLine : ''],
+      footer: last ? fill(words.recap.footer, { members: count(raiders.length, 'member') }) : undefined,
     });
   });
 }
@@ -144,8 +160,8 @@ export async function processRaidDiff(
     const endMs = latestRaid.endTime ? new Date(formatCoCTime(latestRaid.endTime)).getTime() : null;
     const startCard = card({
       accent: COLORS.GOLD,
-      title: `${EMOJIS.RAID} Raid weekend has started`,
-      body: `5 attacks each, plus a bonus one${endMs ? ` · ends ${discordTime(endMs)}` : ''}`,
+      title: fill(words.started.title),
+      body: endMs ? fill(words.started.body, { time: discordTime(endMs) }) : words.started.bodyNoEnd,
       buttons: DiscordService.raidActionRow(clanTag).components,
     });
     await DiscordService.sendWebhook(webhookUrl, layoutMessage(startCard));

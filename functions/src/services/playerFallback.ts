@@ -1,4 +1,5 @@
 import { CocService } from './cocService';
+import commandWords from '../templates/commands.json';
 import { LinkedAccount } from '../types/user';
 import type { PlayerLike } from '../types/coc';
 
@@ -43,9 +44,7 @@ export async function getPlayerWithFallback(
     }
 
     if (isMaintenance) {
-      throw new Error(
-        '🛠️ Clash of Clans API is currently down for maintenance by Supercell ("API is currently in maintenance, please come back later"). Please try again once maintenance concludes!'
-      );
+      throw new Error(commandWords.errors.maintenanceDown);
     }
     throw err;
   }

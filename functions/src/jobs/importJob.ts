@@ -14,8 +14,13 @@ import { importListButton } from '../api/discord/components/importList';
 import { CardSection, VillageCard, villageCards } from '../api/discord/ui';
 import { Village } from '../services/gameDataService';
 import { packMessages, text } from '../services/discordLayout';
+import commandWords from '../templates/commands.json';
+import shared from '../templates/shared.json';
+import { fill } from '../templates';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
+
+const words = commandWords.import;
 
 // Room for the import summary's text in one message (Discord allows 4,000 characters per message),
 // of which the notices about skipped or unreadable files may use some
@@ -63,7 +68,7 @@ export async function runImportTask(
 
     if (rawInputs.length === 0) {
       await reply.edit({
-        content: '❌ Failed to read or download the provided file(s). Please check your upload and try again.',
+        content: words.downloadFailed,
       });
       return;
     }
@@ -82,7 +87,7 @@ export async function runImportTask(
 
     if (parsed.length === 0) {
       await reply.edit({
-        content: `❌ Could not read any village exports:\n${parseErrors.join('\n')}`,
+        content: fill(words.unreadable, { errors: parseErrors.join('\n') }),
       });
       return;
     }
@@ -92,7 +97,7 @@ export async function runImportTask(
     const userAccounts = user?.accounts || [];
     if (!user || userAccounts.length === 0) {
       await reply.edit({
-        content: '❌ No linked accounts found. Please `/link` your Clash of Clans account first!',
+        content: words.noAccounts,
       });
       return;
     }
@@ -106,18 +111,19 @@ export async function runImportTask(
 
     if (byAccount.size === 0) {
       await reply.edit({
-        content:
-          `❌ None of the uploaded files could be matched to your linked accounts (${userAccounts.map((a) => a.playerTag).join(', ')}).\n` +
-          (unmapped.length > 0 ? `Unmatched: ${unmapped.join(', ')}` : ''),
+        content: fill(unmapped.length > 0 ? words.unmatchedFiles : words.unmatched, {
+          tags: userAccounts.map((a) => a.playerTag).join(', '),
+          files: unmapped.join(', '),
+        }),
       });
       return;
     }
 
     if (unmapped.length > 0) {
-      notices.push(`⚠️ These exports didn't match a linked account and were skipped: ${unmapped.join(', ')}`);
+      notices.push(fill(words.skipped, { files: unmapped.join(', ') }));
     }
     if (parseErrors.length > 0) {
-      notices.push(`⚠️ Couldn't read:\n${parseErrors.join('\n')}`);
+      notices.push(fill(words.couldNotRead, { errors: parseErrors.join('\n') }));
     }
     const noticeText = notices.join('\n').slice(0, NOTICE_LIMIT);
 
@@ -141,23 +147,23 @@ export async function runImportTask(
         const running = village.inProgressUpgrades.filter((u) => u.village === v && u.finishesAtMs > Date.now());
         if (running.length > 0) {
           sections.push({
-            title: `⏳ Upgrading (${running.length})`,
+            title: fill(shared.upgrading, { count: running.length }),
             lines: VillageImportService.formatInProgressUpgrades(running).split('\n'),
           });
         }
         const changed = events.filter((e) => e.village === v);
         if (changed.length > 0) {
           sections.push({
-            title: `🎉 Since Your Last Import (${changed.length})`,
+            title: fill(words.sinceLastImport, { count: changed.length }),
             lines: changed.map((e) => describeEvent(e)),
           });
         }
         const weaponLine =
           v === 'home' && weapon && weapon.level < weapon.maxLevel
-            ? [`🔥 **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`]
+            ? [fill(words.weapon, { name: weapon.name, level: weapon.level, max: weapon.maxLevel })]
             : [];
         sections.push({
-          title: '📋 Left to Upgrade',
+          title: shared.leftToUpgrade,
           lines: [VillageImportService.importSummary(village, v), ...weaponLine],
         });
         return {
@@ -173,15 +179,18 @@ export async function runImportTask(
     // many for one. Each account's last card has its "Full list" button, and each message's "Open CoC"
     const perAccountBudget = Math.floor((MESSAGE_BUDGET - noticeText.length) / Math.max(1, pending.length));
     const accountCards = pending.map(({ account, village, fileName, cards }) => {
-      const staleWarning = VillageImportService.isStale(village)
-        ? '\n⚠️ *This export is over a day old, so its timers may be out of date. Export again for accurate timers.*'
-        : '';
-      cards[0].intro = `📄 *Export taken ${discordTime(village.exportTimestamp)}*${staleWarning}`;
+      const staleWarning = VillageImportService.isStale(village) ? words.stale : '';
+      cards[0].intro = fill(words.exportTaken, { time: discordTime(village.exportTimestamp), stale: staleWarning });
       return villageCards(cards, perAccountBudget, {
-        author: `[${account.name}] Imported Village`,
+        author: fill(words.author, { name: account.name }),
         thumbnail: CocAssetService.getTownHallUrl(village.townHallLevel),
-        footer: `Account: ${account.name} (${account.playerTag}) • ${fileName}`,
-        buttons: [importListButton(account.playerTag, pending.length > 1 ? `Full list: ${account.name}` : 'Full list')],
+        footer: fill(words.footer, { name: account.name, tag: account.playerTag, file: fileName }),
+        buttons: [
+          importListButton(
+            account.playerTag,
+            pending.length > 1 ? fill(words.fullListFor, { name: account.name }) : words.fullList
+          ),
+        ],
       });
     });
 
@@ -190,12 +199,12 @@ export async function runImportTask(
 
     const messages = packMessages(
       [...(noticeText ? [text(noticeText)] : []), ...accountCards],
-      [DiscordService.openGameLinkButton('Open CoC')]
+      [DiscordService.openGameLinkButton()]
     );
     const ok = await reply.edit(messages[0]);
     if (!ok) {
       await reply.edit({
-        content: "✅ Your export was imported, but Bimgus couldn't display the summary. Try `/status` or `/defenses`.",
+        content: words.notDisplayed,
       });
       return;
     }
@@ -203,7 +212,7 @@ export async function runImportTask(
   } catch (importErr: any) {
     log.error('Failed to execute /import-village:', importErr);
     await reply.edit({
-      content: `❌ Error importing village data: ${importErr.message || 'Unknown error'}`,
+      content: fill(words.failed, { reason: importErr.message || words.unknownError }),
     });
   }
 }

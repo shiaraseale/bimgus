@@ -3,6 +3,8 @@ import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { card, layoutMessage } from '../../../services/discordLayout';
+import commandWords from '../../../templates/commands.json';
+import { fill } from '../../../templates';
 import { LinkedAccount } from '../../../types/user';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { log } from '../../../utils/log';
@@ -32,6 +34,8 @@ export const definition = {
 
 export const runsAsTask = false;
 
+const words = commandWords.link;
+
 export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, discordUserId, cocService, respondPersonal } = ctx;
   const tagInput = optionsMap['tag'];
@@ -39,7 +43,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
   const dmsEnabled = dmsOption !== undefined ? Boolean(dmsOption) : true;
 
   if (!tagInput) {
-    return respondPersonal({ content: '⚠️ Please provide a player tag. Example: `/link tag:#ABC123`' });
+    return respondPersonal({ content: words.missingTag });
   }
 
   const formattedTag = config.formatTag(tagInput);
@@ -63,20 +67,20 @@ export async function execute(ctx: CommandContext): Promise<any> {
       layoutMessage(
         card({
           accent: COLORS.GREEN,
-          title: '✅ Account Successfully Linked!',
+          title: words.title,
           body: [
-            `**${freshPlayer.name}** (${freshPlayer.tag}) is now linked to your Discord profile!`,
+            fill(words.intro, { name: freshPlayer.name, tag: freshPlayer.tag }),
             '',
-            `🏰 **Town Hall**: TH${freshPlayer.townHallLevel}`,
-            `🔨 **Builder Hall**: BH${freshPlayer.builderHallLevel || 'N/A'}`,
-            `🏆 **Trophies**: ${freshPlayer.trophies.toLocaleString()}`,
-            `👥 **Total Linked Accounts**: ${updatedUser.accounts.length}`,
+            fill(words.townHall, { level: freshPlayer.townHallLevel }),
+            fill(words.builderHall, { level: freshPlayer.builderHallLevel || words.noBuilderHall }),
+            fill(words.trophies, { trophies: freshPlayer.trophies.toLocaleString() }),
+            fill(words.total, { count: updatedUser.accounts.length }),
             '',
-            `🔔 **Automated DMs**: ${dmsEnabled ? 'Enabled ✅ (War roster pings)' : 'Disabled 🔕 (No DMs will be sent)'}`,
-            ...(dmsEnabled ? ['*Upgrade DMs start once you run `/import-village` for this account.*'] : []),
+            dmsEnabled ? words.dmsOn : words.dmsOff,
+            ...(dmsEnabled ? [words.dmsTip] : []),
           ].join('\n'),
           thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
-          footer: `Account: ${linkedAccount.name}`,
+          footer: fill(words.footer, { name: linkedAccount.name }),
         })
       )
     );
@@ -84,11 +88,13 @@ export async function execute(ctx: CommandContext): Promise<any> {
     if (apiErr.response?.status !== 404) {
       log.warn(`[Link] Player lookup for ${formattedTag} failed: ${apiErr.message}`);
       return respondPersonal({
-        content: `⚠️ Bimgus couldn't reach Clash of Clans just now (${apiErr.response?.status === 503 ? 'maintenance' : 'connection problem'}). Please try \`/link\` again in a few minutes.`,
+        content: fill(words.unreachable, {
+          reason: apiErr.response?.status === 503 ? words.maintenance : words.connectionProblem,
+        }),
       });
     }
     return respondPersonal({
-      content: `❌ Could not find a Clash of Clans account with tag \`${formattedTag}\`. Please check the tag and try again.`,
+      content: fill(words.notFound, { tag: formattedTag }),
     });
   }
 }

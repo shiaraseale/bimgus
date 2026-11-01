@@ -1,3 +1,4 @@
+import commandWords from '../../../templates/commands.json';
 import { RoastTaskData, runRoastTask } from '../../../jobs/roastJob';
 import { CommandContext } from '../context';
 import { queueTask } from '../tasks';
@@ -24,7 +25,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
   const { optionsMap, data, applicationId, interactionToken, respondPersonal, deferReply } = ctx;
   const targetUserId = optionsMap['user'];
   if (!targetUserId) {
-    return respondPersonal({ content: '⚠️ Please mention a user to roast!' });
+    return respondPersonal({ content: commandWords.roast.noUser });
   }
 
   const resolvedUser = data.resolved?.users?.[targetUserId];

@@ -7,6 +7,8 @@ import { FirestoreService } from '../../services/firestoreService';
 import { getPlayerWithFallback } from '../../services/playerFallback';
 import { isDmPaused } from '../../services/upgradeNotifier';
 import { prependNotice, withFlags } from '../../services/discordLayout';
+import commandWords from '../../templates/commands.json';
+import { fill } from '../../templates';
 import { LinkedAccount, UserDoc } from '../../types/user';
 import { log } from '../../utils/log';
 
@@ -26,7 +28,7 @@ export function forEachLinkedAccount(
     try {
       const { accounts, error } = await ctx.getTargetAccounts(ctx.optionsMap['account']);
       if (error || !accounts || accounts.length === 0) {
-        await ctx.editDeferredReply({ content: error || 'No linked accounts found.' });
+        await ctx.editDeferredReply({ content: error || commandWords.errors.noAccountsFound });
         return;
       }
       for (let idx = 0; idx < accounts.length; idx++) {
@@ -36,13 +38,18 @@ export function forEachLinkedAccount(
         } catch (accountErr: any) {
           log.error(`Failed to load ${label} for ${account.playerTag}:`, accountErr);
           await ctx.sendAccountMessage(idx, {
-            content: `❌ Could not load ${label} for **${account.name}** (${account.playerTag}): ${accountErr.message || 'API error'}`,
+            content: fill(commandWords.errors.couldNotLoad, {
+              what: label,
+              name: account.name,
+              tag: account.playerTag,
+              reason: accountErr.message || commandWords.errors.apiError,
+            }),
           });
         }
       }
     } catch (cmdErr: any) {
       log.error(`Failed to execute /${ctx.name}:`, cmdErr);
-      await ctx.editDeferredReply({ content: `❌ Error processing request: ${cmdErr.message}` });
+      await ctx.editDeferredReply({ content: fill(commandWords.errors.processing, { reason: cmdErr.message }) });
     }
   });
 }
@@ -135,13 +142,11 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
         await FirestoreService.saveUser(commandUserDoc).catch((err: any) =>
           log.warn(`[Discord] Could not record that the DM-pause notice was shown: ${err.message}`)
         );
-        const notice =
-          "📭 *Bimgus couldn't DM you (your DMs from this server may be closed), so upgrade DMs are paused for 7 days.*";
-        messageData = prependNotice(messageData, notice);
+        messageData = prependNotice(messageData, commandWords.errors.dmsClosed);
       }
       // If Discord refuses the message, say so rather than leaving "thinking…" up
       if (!(await editDeferredReply(messageData))) {
-        await editDeferredReply({ content: "❌ Bimgus couldn't display this. Please try again." });
+        await editDeferredReply({ content: commandWords.errors.couldNotDisplay });
       }
     } else {
       await sendFollowup(messageData);
@@ -162,7 +167,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
       return {
         userDoc,
         accounts: [],
-        error: '⚠️ You have not linked any Clash of Clans accounts yet! Use `/link tag:#PLAYERTAG` first.',
+        error: commandWords.errors.noAccounts,
       };
     }
 
@@ -173,7 +178,7 @@ export function createCommandContext(req: Request, res: Response, fromTask: bool
         return {
           userDoc,
           accounts: [],
-          error: `⚠️ Account with tag \`${clean}\` is not linked. Use \`/accounts\` to see your linked accounts.`,
+          error: fill(commandWords.errors.notLinked, { tag: clean }),
         };
       }
       return { userDoc, accounts: [match] };
