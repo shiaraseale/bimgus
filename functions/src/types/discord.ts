@@ -78,7 +78,10 @@ export interface DiscordContainerComponent {
   components: DiscordContainerChild[];
 }
 
-export type DiscordTopLevelComponent = DiscordContainerChild | DiscordContainerComponent;
+// No action rows: a message's buttons and menus always sit inside a card
+export type DiscordTopLevelComponent =
+  | Exclude<DiscordContainerChild, DiscordActionRowComponent>
+  | DiscordContainerComponent;
 
 export interface DiscordWebhookPayload {
   username?: string;

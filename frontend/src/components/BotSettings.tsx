@@ -32,6 +32,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
         warEndSummary: true,
         warAttackReminders: true,
         raidDistricts: true,
+        raidEndSummary: true,
         cwlGroup: true,
         cwlRoundSummary: true,
         clanGamesStart: true,
@@ -445,6 +446,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({
               { key: 'cwlGroup' as const, label: 'CWL Season Start & Tier Group Draw' },
               { key: 'cwlRoundSummary' as const, label: 'CWL Daily Round Summaries & Audits' },
               { key: 'raidDistricts' as const, label: 'Clan Capital District Completions' },
+              { key: 'raidEndSummary' as const, label: 'Raid Weekend Ranking Recap' },
               { key: 'clanGamesMaxers' as const, label: '4,000 Clan Games Points Maxers' },
             ].map((item) => {
               const enabled = formData.notificationsEnabled[item.key];

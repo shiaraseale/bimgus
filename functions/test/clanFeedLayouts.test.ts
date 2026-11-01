@@ -6,7 +6,7 @@ import { DiscordService } from '../src/services/discordService';
 import { buildAttackReminder } from '../src/jobs/warPingJob';
 import { CocService } from '../src/services/cocService';
 import { CwlPlayerSummary, CwlSeasonSummary } from '../src/types/db';
-import { cards, expectLayout, headings, texts } from './layoutHelpers';
+import { buttonLabels, cards, expectLayout, headings, texts } from './layoutHelpers';
 
 // The clan feed's cards (5.5): short, and within Discord's layout limits however big the war
 const config: any = {
@@ -68,7 +68,10 @@ describe('clan diff', () => {
       '🏛️ C reached TH13',
     ]);
     expect(texts(sent[0])).toContain('Member → Elder');
-    expect(sent[0].components.at(-1).type).toBe(1); // the link buttons, after the cards
+    expect(texts(sent[0])).toContain('### 🏛️ C reached TH13\n🎉 Well done!\n');
+    // The link buttons once, inside the last card
+    expect(buttonLabels(cards(sent[0]).at(-1))).toEqual(['Open CoC', 'Clash of Stats']);
+    expect(buttonLabels(sent[0])).toHaveLength(2);
   });
 });
 
@@ -121,8 +124,43 @@ describe('war cards', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     const text = texts(sent[0]);
-    expect(text).toContain('**Us** vs **Them**\n` 1` Member 1 (TH15) vs Rival 1 (TH12)');
-    expect(text).toContain('` 3` Member 3 (TH15) vs Rival 3 (TH12)');
+    expect(text).toContain('**Us** vs **Them**\n` 1 Member 1 (TH15) vs Rival 1 (TH12)`');
+    expect(text).toContain('` 3 Member 3 (TH15) vs Rival 3 (TH12)`');
+  });
+
+  it('lines up every "vs", and copes with a missing mirror and a backtick in a name', async () => {
+    const war = prepWar(3, (i) => (i === 2 ? 'Fifteen chars15' : `M${i}`));
+    war.clan.members[0].townhallLevel = 9;
+    war.clan.members[2].name = 'Back`tick'; // a backtick would end the monospace early
+    war.opponent.members.pop(); // no mirror for #3
+    await processWarDiff(war, null, config);
+
+    const rows = texts(sent[0])
+      .split('\n')
+      .filter((l) => l.startsWith('`'));
+    expect(rows).toEqual([
+      `\` 1 ${'M1 (TH9)'.padEnd(22)} vs Rival 1 (TH12)\``,
+      '` 2 Fifteen chars15 (TH15) vs Rival 2 (TH12)`',
+      `\` 3 ${"Back'tick (TH15)".padEnd(22)} vs ${'–'.padEnd(14)}\``,
+    ]);
+  });
+
+  it("shortens a rival's name only where a row would be too wide for a phone", async () => {
+    const lineup = async (ourName: string) => {
+      sent.length = 0;
+      const war = prepWar(2, () => ourName);
+      war.opponent.members[0].name = 'Rival Longnames';
+      await processWarDiff(war, null, config);
+      return texts(sent[0])
+        .split('\n')
+        .filter((l) => l.startsWith('`'));
+    };
+
+    const widest = await lineup('Fifteen chars15');
+    expect(widest[0]).toBe('` 1 Fifteen chars15 (TH15) vs Rival Long… (TH12)`');
+    widest.forEach((row) => expect(row.length - 2).toBeLessThanOrEqual(47));
+
+    expect((await lineup('Short'))[0]).toBe('` 1 Short (TH15) vs Rival Longnames (TH12)`');
   });
 
   it("fits a 50v50 war's lineup in the matchup message", async () => {
@@ -133,7 +171,7 @@ describe('war cards', () => {
       config
     );
     expectLayout(sent[0]);
-    expect(texts(sent[0])).toContain('`50` Fifteen chars50 (TH15) vs Rival 50 (TH12)');
+    expect(texts(sent[0])).toContain('`50 Fifteen chars50 (TH15) vs Rival 50 (TH12)`');
   });
 
   it("fits a 50v50 war's summary and audit in one message", async () => {
@@ -246,6 +284,19 @@ describe('CWL cards', () => {
     const all = sent.flatMap(headings);
     expect(all).toEqual(['🏆 CWL 2026-10: 4W 3L', '⭐ Stars leaderboard']);
     expect(sent.map(texts).join('\n')).toContain('🥊 **Underdogs**');
+    sent.forEach((m) => expect(buttonLabels(cards(m).at(-1))).toEqual(['Open CoC', 'Clash of Stats']));
+
+    // The leaderboard's columns line up: each row is two runs of monospace, each run one width
+    const rows = sent
+      .map(texts)
+      .join('\n')
+      .split('\n')
+      .filter((l) => l.startsWith('`'))
+      .map((l) => l.match(/`[^`]*`/g)!);
+    expect(rows.length).toBeGreaterThan(1);
+    rows.forEach((r) => expect(r).toHaveLength(2));
+    expect(new Set(rows.map((r) => r[0].length)).size).toBe(1);
+    expect(new Set(rows.map((r) => r[1].length)).size).toBe(1);
   });
 });
 

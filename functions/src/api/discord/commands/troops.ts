@@ -3,9 +3,9 @@ import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { goldPassBoosts } from '../../../services/goldPass';
 import { VillageImportService } from '../../../services/villageImportService';
-import { card, layoutMessage } from '../../../services/discordLayout';
+import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
-import { CardSection } from '../ui';
+import { CardSection, itemRow } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
 export const definition = {
@@ -55,8 +55,6 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const homeTroops = outstanding.byCategory.home.troops;
     const builderTroops = outstanding.byCategory.builder.troops;
 
-    const troopLine = (t: (typeof homeTroops)[number]) =>
-      `• **${t.name}**: Lv ${t.currentLevel}/${t.maxLevel}${t.nextCost ? ` — ${t.nextCost}` : ''}`;
     const sections: CardSection[] = [];
 
     if (villageFilter === 'home' || villageFilter === 'both') {
@@ -64,7 +62,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
         title: `🏰 Home Village Troops (TH${freshPlayer.townHallLevel}) — ${homeTroops.length} Upgrades Remaining`,
         lines:
           homeTroops.length > 0
-            ? homeTroops.map(troopLine)
+            ? columnRows(homeTroops.map(itemRow))
             : [`🎉 All Home Village troops maxed for TH${freshPlayer.townHallLevel}!`],
       });
     }
@@ -74,7 +72,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
         title: `🔨 Builder Base Troops (BH${freshPlayer.builderHallLevel}) — ${builderTroops.length} Upgrades Remaining`,
         lines:
           builderTroops.length > 0
-            ? builderTroops.map(troopLine)
+            ? columnRows(builderTroops.map(itemRow))
             : [`🎉 All Builder Base troops maxed for BH${freshPlayer.builderHallLevel}!`],
       });
     }

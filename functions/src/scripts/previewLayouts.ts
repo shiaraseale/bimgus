@@ -50,6 +50,7 @@ const botConfig: BotConfigDoc = {
     warEndSummary: true,
     warAttackReminders: true,
     raidDistricts: true,
+    raidEndSummary: true,
     cwlGroup: true,
     cwlRoundSummary: true,
     clanGamesStart: true,
@@ -112,7 +113,8 @@ async function previewClanGames() {
 const warClan = (tag: string, name: string, size: number, attacks: (i: number) => WarAttack[]): WarClan => {
   const members = Array.from({ length: size }, (_, i) => ({
     tag: `${tag}-${i + 1}`,
-    name: tag === CLAN ? NAMES[i] : `Rival ${i + 1}`,
+    // #3 on each side has the longest name the game allows, to show the lineup at its widest
+    name: i === 2 ? (tag === CLAN ? 'Kendall Hawkins' : 'Rival Longnames') : tag === CLAN ? NAMES[i] : `Rival ${i + 1}`,
     mapPosition: i + 1,
     // The rivals' Town Halls run a little behind ours, so the lineup shows some mismatches
     townhallLevel: 15 - Math.floor((tag === CLAN ? i : i + 1) / 3),
@@ -257,6 +259,7 @@ async function previewCwl() {
 }
 
 async function previewRaids() {
+  const roster = [...NAMES, 'Morgan', 'Parker'].map((name, i) => ({ tag: `#P${i}`, name }));
   const district = (id: number, name: string, pct: number, attackers: string[]) => ({
     id,
     name,
@@ -290,17 +293,53 @@ async function previewRaids() {
     enemyDistrictsDestroyed: 4,
     offensiveReward: 0,
     defensiveReward: 0,
+    // All but the last three of the clan, one of them short of their attacks
+    members: roster.slice(0, -3).map((m, i) => ({
+      ...m,
+      attacks: i === 8 ? 3 : 6,
+      attackLimit: 5,
+      bonusAttackLimit: i === 8 ? 0 : 1,
+      capitalResourcesLooted: 3100 - i * 240,
+    })),
     attackLog,
   });
   const lastWeekend: any = { weekendId: 'W1', state: 'ended', completedCapitalTags: [], announcedWeekendEnd: true };
 
-  const started = await processRaidDiff(weekend('ongoing', []), lastWeekend, botConfig, CLAN);
-  const conquered = await processRaidDiff(weekend('ongoing', [capital('Northhold', true)]), started, botConfig, CLAN);
+  const started = await processRaidDiff(weekend('ongoing', []), lastWeekend, botConfig, CLAN, roster);
+  const conquered = await processRaidDiff(
+    weekend('ongoing', [capital('Northhold', true)]),
+    started,
+    botConfig,
+    CLAN,
+    roster
+  );
   await processRaidDiff(
     weekend('ended', [capital('Northhold', true), capital('Eastmarch', false)]),
     conquered,
     botConfig,
-    CLAN
+    CLAN,
+    roster
+  );
+
+  // A full clan's recap, with a name of the longest the game allows: its ranking carries on into a second message
+  const surnames = ['Stone', 'Hale', 'Wren', 'Frost', 'Reed', 'Vale', 'Hawkins'];
+  const fullClan = Array.from({ length: 50 }, (_, i) => ({
+    tag: `#F${i}`,
+    name: `${NAMES[i % NAMES.length]} ${surnames[i % surnames.length]}`,
+  }));
+  const members = fullClan.map((m, i) => ({
+    ...m,
+    attacks: 6,
+    attackLimit: 5,
+    bonusAttackLimit: 1,
+    capitalResourcesLooted: 30000 - i * 400,
+  }));
+  await processRaidDiff(
+    { ...weekend('ended', []), startTime: 'W3', members },
+    { ...lastWeekend, weekendId: 'W3', announcedWeekendEnd: false },
+    botConfig,
+    CLAN,
+    fullClan
   );
 }
 

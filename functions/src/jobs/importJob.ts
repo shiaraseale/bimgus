@@ -170,7 +170,7 @@ export async function runImportTask(
     }
 
     // The import's cards share one message's text, and spread over more messages if there are too
-    // many for one. Each account's last card has its "Full list" button
+    // many for one. Each account's last card has its "Full list" button, and each message's "Open CoC"
     const perAccountBudget = Math.floor((MESSAGE_BUDGET - noticeText.length) / Math.max(1, pending.length));
     const accountCards = pending.map(({ account, village, fileName, cards }) => {
       const staleWarning = VillageImportService.isStale(village)
@@ -190,7 +190,7 @@ export async function runImportTask(
 
     const messages = packMessages(
       [...(noticeText ? [text(noticeText)] : []), ...accountCards],
-      [DiscordService.createActionRow([DiscordService.openGameLinkButton('Open CoC')])]
+      [DiscordService.openGameLinkButton('Open CoC')]
     );
     const ok = await reply.edit(messages[0]);
     if (!ok) {

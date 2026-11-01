@@ -27,6 +27,14 @@ export function headings(msg: any): string[] {
   return cards(msg).map((c) => texts(c).match(/^### (.+)$/m)?.[1] ?? '');
 }
 
+/** The labels of a card's buttons, or of each of a message's cards. */
+export function buttonLabels(msgOrCard: any): string[] {
+  const out: string[] = [];
+  const roots = msgOrCard.type === 17 ? [msgOrCard] : (msgOrCard.components ?? []);
+  roots.forEach((r: any) => walk(r, (n) => n.type === 2 && out.push(n.label)));
+  return out;
+}
+
 /** The first button or menu whose custom_id starts with `prefix`. */
 export function findComponent(msg: any, prefix: string): any {
   let found: any;
@@ -43,6 +51,11 @@ export function expectLayout(msg: any, label = '') {
   expect(msg.flags & IS_COMPONENTS_V2, label).toBe(IS_COMPONENTS_V2);
   expect(msg.content, label).toBeUndefined();
   expect(msg.embeds, label).toBeUndefined();
+  // Buttons and menus sit inside a card
+  expect(
+    (msg.components ?? []).filter((c: any) => c.type === 1),
+    label
+  ).toEqual([]);
   const size = layoutSize(msg);
   expect(size.components, label).toBeLessThanOrEqual(LAYOUT_LIMITS.components);
   expect(size.chars, label).toBeLessThanOrEqual(LAYOUT_LIMITS.chars);

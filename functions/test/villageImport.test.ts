@@ -76,15 +76,15 @@ describe('parseExport (one file, both villages)', () => {
     expect(text.match(/\(\d{7,}\)/g) ?? []).toEqual([]);
     expect(text).not.toContain('Maxed');
     expect(text).toContain('Cannon (BB)');
-    expect(text).toContain('• 180x **Wall (BB)**: Lv 4–5 → 9');
-    expect(text).toContain('• **Mega Tesla**: Lv 3 → 9'); // a single item has no count
+    expect(text).toMatch(/`180x Wall \(BB\) +Lv 4–5 → 9`/);
+    expect(text).toMatch(/`Mega Tesla +Lv 3 → 9`/); // a single item has no count
     expect(text).not.toContain('**Wall**:'); // the home walls are maxed for TH12
     // Heroes, the lab and pets are left to /status, which reads them live
     expect(sections.map((s) => s.title).join(' ')).not.toMatch(/Heroes|Laboratory|Pets|Troops/);
     // One line per item: the 7 Cannons appear once, even though they're at different levels
     expect(text.match(/\*\*Cannon\*\*/g)?.length ?? 0).toBeLessThanOrEqual(1);
     // A crafted defense's three modules share a line
-    expect(text).toContain('• **Inferno Candle** (3 modules): Lv 1 → 2');
+    expect(text).toMatch(/`Inferno Candle \(3 modules\) +Lv 1 → 2`/);
     expect(text).not.toContain('Attack Module');
   });
 

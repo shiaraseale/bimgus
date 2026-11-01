@@ -1,7 +1,7 @@
 import { CwlGroupResponse, WarClanMember } from '../types/coc';
 import { CwlSnapshotDoc, BotConfigDoc, CwlSeasonSummary, CwlPlayerSummary, CwlUnderdogHit } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
-import { card, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
+import { card, codeSafe, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
 import { buildAttackCard, FlatAttack, formatCoCTime, lineupBlock, positionList, scoreLine } from './warDiff';
@@ -250,10 +250,19 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
     footer: summary.clanName,
   });
 
-  const leaderboardLines = summary.playerSummaries.map(
-    (p, idx) =>
-      `\`${String(idx + 1).padStart(2, ' ')}.\` **${p.name}** (TH${p.townhallLevel}) ${p.totalStars} ⭐ · ${p.attacksUsed}/${p.roundsRostered} · ${p.avgDestruction}%`
-  );
+  // Monospace keeps the columns in line, padded to the widest of each; the star sits between two runs
+  // of it because an emoji's width can't be relied on inside
+  const players = summary.playerSummaries.map((p) => `${codeSafe(p.name)} (TH${p.townhallLevel})`);
+  const averages = summary.playerSummaries.map((p) => `${p.avgDestruction}%`);
+  const playerWidth = Math.max(...players.map((p) => p.length));
+  const averageWidth = Math.max(...averages.map((a) => a.length));
+  const starWidth = Math.max(...summary.playerSummaries.map((p) => String(p.totalStars).length));
+  const leaderboardLines = summary.playerSummaries.map((p, idx) => {
+    const rank = `${String(idx + 1).padStart(2, ' ')}.`;
+    const stars = String(p.totalStars).padStart(starWidth);
+    const attacks = `${p.attacksUsed}/${p.roundsRostered}`;
+    return `\`${rank} ${players[idx].padEnd(playerWidth)}  ${stars}\` ⭐ \`${attacks}  ${averages[idx].padStart(averageWidth)}\``;
+  });
   const leaderboardCard = card({
     accent: COLORS.BLUE,
     title: '⭐ Stars leaderboard',
@@ -262,7 +271,8 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   });
 
   // Both cards together when they fit, otherwise one message each
-  for (const message of packMessages([overviewCard, leaderboardCard], [DiscordService.warActionRow(summary.clanTag)])) {
+  const links = DiscordService.warActionRow(summary.clanTag).components;
+  for (const message of packMessages([overviewCard, leaderboardCard], links)) {
     await DiscordService.sendWebhook(webhookUrl, message);
   }
 }

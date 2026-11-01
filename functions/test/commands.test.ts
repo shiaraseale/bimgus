@@ -12,7 +12,7 @@ import { FirestoreService } from '../src/services/firestoreService';
 import { CocService } from '../src/services/cocService';
 import { DiscordService } from '../src/services/discordService';
 import { UserDoc } from '../src/types/user';
-import { cards, expectLayout, findComponent, headings, texts } from './layoutHelpers';
+import { buttonLabels, cards, expectLayout, findComponent, headings, texts } from './layoutHelpers';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
@@ -142,11 +142,12 @@ describe('slash commands end to end (mocked services)', () => {
     const reply = await importFile();
     const button = findComponent(reply, 'import_list:');
     expect(button.custom_id).toBe('import_list:#ANON12345');
+    expect(buttonLabels(cards(reply).at(-1))).toEqual(['Full list', 'Open CoC']);
     const list = await interact(3, { custom_id: button.custom_id, component_type: 2 });
     expect(list.data.flags).toBe(64 | (1 << 15));
     const text = allText(list);
     expect(text).toContain('Cannon (BB)');
-    expect(text).toContain('• **Mega Tesla**: Lv 3 → 9');
+    expect(text).toMatch(/`Mega Tesla +Lv 3 → 9`/);
     expect(text.match(/\(\d{7,}\)/g)).toBeNull();
     expectCards(list.data);
     // Each village's lists are on its own card
@@ -239,14 +240,16 @@ describe('slash commands end to end (mocked services)', () => {
     let msg = await pick('status:area:#ANON12345:home:overview', 'heroes');
     expect(findComponent(msg, 'status:builder:').label).toBe('Builder Boost: Off');
     expect(findComponent(msg, 'status:research:').label).toBe('Research Boost: Off');
-    expect(texts(msg)).toContain('Barbarian King**: Lv 36/65 — 49K');
+    expect(texts(msg)).toMatch(/`Barbarian King +36\/65 +49K` /);
+    // Several costs: everything in monospace but the emoji
+    expect(texts(msg)).toMatch(/`Fireball +14\/18 +2400` \S+ `600` \S+ `30` \S+$/m);
 
     for (const label of ['10%', '15%', '20%']) {
       msg = await press(findComponent(msg, 'status:builder:').custom_id);
       expect(findComponent(msg, 'status:builder:').label).toBe(`Builder Boost: ${label}`);
       expect(picked(msg, 'area')).toBe('heroes');
     }
-    expect(texts(msg)).toContain('Barbarian King**: Lv 36/65 — 39K');
+    expect(texts(msg)).toMatch(/`Barbarian King +36\/65 +39K` /);
     expect(findComponent(msg, 'status:research:').label).toBe('Research Boost: Off');
     expect(user.accounts[0].goldPass).toMatchObject({ builder: 20, research: 0 });
 
@@ -256,18 +259,25 @@ describe('slash commands end to end (mocked services)', () => {
     expect(findComponent(builderBase, 'status:builder:')).toBeUndefined();
   });
 
+  it('/status shows the hall of the village on view, whatever league the player is in', async () => {
+    const home = await command('status');
+    expect(allText(home)).toContain('town_hall/level_12.webp');
+    const builder = await pick(findComponent(home, 'status:village:').custom_id, 'builder');
+    expect(allText(builder)).toContain('builder_hall/level_9.webp');
+  });
+
   it('the /status Defenses area lists the imported defenses with costs, for each village', async () => {
     await importFile();
     const home = texts(await pick('status:area:#ANON12345:home:overview', 'defenses'));
     expect(home).toContain('-# [Tester] Status: Defenses');
     // The whole list is in one piece under one heading
-    expect(home).toMatch(/\*\*🛡️ Defenses \(51\)\*\*\n• /);
-    expect(home).toMatch(/\*\*Cannon\*\*: Lv 13\/17 — /);
+    expect(home).toMatch(/\*\*🛡️ Defenses \(51\)\*\*\n`/);
+    expect(home).toMatch(/Cannon +13\/17 +[\d.]+[KM]?` /);
     expect(home).not.toContain('(BB)');
     // Switching village keeps the area
     const builder = await pick('status:village:#ANON12345:home:defenses', 'builder');
     expect(headings(builder)).toEqual([BUILDER]);
-    expect(texts(builder)).toMatch(/\*\*🛡️ Defenses \(44\)\*\*\n• /);
+    expect(texts(builder)).toMatch(/\*\*🛡️ Defenses \(44\)\*\*\n`/);
     expect(texts(builder)).toContain('Cannon (BB)');
   });
 
@@ -305,11 +315,14 @@ describe('slash commands end to end (mocked services)', () => {
     expect(allText(defenses)).toContain('Current Defenses & Next Upgrades');
     expectCards(defenses);
     expect(texts(cards(defenses)[1])).toContain('Cannon (BB)');
+    // Its buttons are at the bottom of the last card
+    expect(buttonLabels(cards(defenses)[0])).toEqual([]);
+    expect(buttonLabels(cards(defenses)[1])).toEqual(['Mark BB Def Lv 9 Incomplete', 'Open CoC']);
   });
 
   it('/defenses without an import lists hall caps and asks for one', async () => {
     const defenses = await command('defenses');
-    expect(allText(defenses)).toContain('Max Lv 17'); // TH12 Cannon cap
+    expect(allText(defenses)).toMatch(/\dx Cannon +Max Lv 17 +[\d.]+[KM]?` /); // TH12 Cannon cap
     expect(allText(defenses)).toContain('/import-village');
   });
 
@@ -432,11 +445,15 @@ describe('slash commands end to end (mocked services)', () => {
   it("the button on a DM turns that account's DMs off, with a button to turn them back on", async () => {
     const off = await interact(3, { custom_id: 'dms_off:#ANON12345', component_type: 2 });
     expect(user.accounts[0].dmsEnabled).toBe(false);
-    expect(off.data.content).toContain('off');
-    const undo = off.data.components[0].components[0];
+    expectLayout(off.data);
+    expect(off.data.flags).toBe(64 | (1 << 15));
+    expect(headings(off.data)).toEqual(['🔕 DMs Off']);
+    const undo = findComponent(cards(off.data)[0], 'dms_on:');
     expect(undo.custom_id).toBe('dms_on:#ANON12345');
 
-    await interact(3, { custom_id: undo.custom_id, component_type: 2 });
+    const on = await interact(3, { custom_id: undo.custom_id, component_type: 2 });
     expect(user.accounts[0].dmsEnabled).toBe(true);
+    expect(headings(on.data)).toEqual(['🔔 DMs On']);
+    expect(buttonLabels(on.data)).toEqual([]);
   });
 });

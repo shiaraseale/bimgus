@@ -97,7 +97,7 @@ export async function processClanDiff(
         cards.push(
           card({
             title: `🏛️ ${curr.name} reached TH${curr.townHallLevel}`,
-            body: `Up from TH${prev.townHallLevel}`,
+            body: '🎉 Well done!',
             accent: COLORS.GOLD,
             thumbnail: CocAssetService.getTownHallUrl(curr.townHallLevel),
             footer: curr.tag,
@@ -109,11 +109,11 @@ export async function processClanDiff(
 
   // Send the poll's events together, as few messages as Discord's limits allow
   if (webhookUrl && cards.length > 0) {
-    const links = DiscordService.createActionRow([
+    const links = [
       DiscordService.createLinkButton('Open CoC', DiscordService.openGameLink(), '⚔️'),
       DiscordService.createLinkButton('Clash of Stats', DiscordService.clashOfStatsClanLink(currentClan.tag), '📊'),
-    ]);
-    for (const message of packMessages(cards, [links])) {
+    ];
+    for (const message of packMessages(cards, links)) {
       await DiscordService.sendWebhook(webhookUrl, message);
     }
   }

@@ -169,6 +169,7 @@ export interface BotConfigDoc {
     warEndSummary: boolean;
     warAttackReminders: boolean;
     raidDistricts: boolean;
+    raidEndSummary: boolean;
     cwlGroup: boolean;
     cwlRoundSummary: boolean;
     clanGamesStart: boolean;

@@ -1,6 +1,6 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
-import { layoutMessage, withFlags } from '../../../services/discordLayout';
+import { columnRows, layoutMessage, withFlags } from '../../../services/discordLayout';
 import { Village } from '../../../services/gameDataService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { getVillageJsonTimestampNotice, VillageCard, villageCards } from '../ui';
@@ -43,7 +43,12 @@ export async function handleImportListButton(customId: string, discordUserId: st
   const cards = villages.map((v): VillageCard => {
     const sections = [
       ...(v === 'home' && weapon && weapon.level < weapon.maxLevel
-        ? [{ title: '🔥 Town Hall Weapon', lines: [`• **${weapon.name}**: Lv ${weapon.level} → ${weapon.maxLevel}`] }]
+        ? [
+            {
+              title: '🔥 Town Hall Weapon',
+              lines: columnRows([{ label: weapon.name, value: `Lv ${weapon.level} → ${weapon.maxLevel}` }]),
+            },
+          ]
         : []),
       ...VillageImportService.importSections(village, v),
     ];

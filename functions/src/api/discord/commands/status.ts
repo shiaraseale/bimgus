@@ -13,13 +13,14 @@ import { interactionReply } from '../../../jobs/interactionReply';
 import { LinkedAccount, OutstandingUpgradeItem } from '../../../types/user';
 import type { PlayerLike } from '../../../types/coc';
 import { log } from '../../../utils/log';
-import { card, layoutMessage } from '../../../services/discordLayout';
+import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext } from '../context';
 import {
   formatProgressBar,
   getVillageJsonTimestampNotice,
+  itemRow,
   NO_IMPORT_TEXT,
   HOME_DEFENSE_CATEGORIES,
   BB_DEFENSE_CATEGORIES,
@@ -138,9 +139,7 @@ function itemSection(emoji: string, name: string, items: OutstandingUpgradeItem[
     importedLevels: 0,
     count: items.length,
     levels: items.reduce((n, i) => n + i.levelsRemaining, 0),
-    lines: items.map(
-      (i) => `• **${i.name}**: Lv ${i.currentLevel}/${i.maxLevel}${i.nextCost ? ` — ${i.nextCost}` : ''}`
-    ),
+    lines: columnRows(items.map(itemRow)),
   };
 }
 
@@ -160,7 +159,7 @@ function importSection(
     importedLevels,
     count: fromItems.count + groups.reduce((n, g) => n + g.count, 0),
     levels: fromItems.levels + importedLevels,
-    lines: [...fromItems.lines, ...groups.map(VillageImportService.formatGroupLine)],
+    lines: columnRows([...items.map(itemRow), ...groups.map(VillageImportService.groupRow)]),
   };
 }
 
@@ -419,9 +418,7 @@ export function buildStatusMessage(
     VIEW_BUDGET,
     {
       author: `[${account.name}] Status${view.area === 'overview' ? '' : `: ${label}`}`,
-      thumbnail: isHome
-        ? CocAssetService.getPlayerLeagueUrl(player) || CocAssetService.getTownHallUrl(th)
-        : CocAssetService.getBuilderHallUrl(bh),
+      thumbnail: isHome ? CocAssetService.getTownHallUrl(th) : CocAssetService.getBuilderHallUrl(bh),
       footer: `Account: ${account.name} (${account.playerTag})`,
       menus: statusMenus(accounts, account, view, { th, bh }),
       buttons,

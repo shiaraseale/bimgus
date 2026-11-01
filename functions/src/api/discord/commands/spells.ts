@@ -2,8 +2,9 @@ import { DiscordService, COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { goldPassBoosts } from '../../../services/goldPass';
-import { card, layoutMessage } from '../../../services/discordLayout';
+import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import { CommandContext, forEachLinkedAccount } from '../context';
+import { itemRow } from '../ui';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
 export const definition = {
@@ -41,12 +42,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     const formatSpellList = (list: typeof spells) => {
       if (list.length === 0) return '✅ All maxed for this Town Hall!';
-      return list
-        .map((s) => {
-          const costStr = s.nextCost ? ` — ${s.nextCost}` : '';
-          return `• **${s.name}**: Lv ${s.currentLevel}/${s.maxLevel}${costStr}`;
-        })
-        .join('\n');
+      return columnRows(list.map(itemRow)).join('\n');
     };
 
     const totalSpellLevels = spells.reduce((acc, s) => acc + s.levelsRemaining, 0);

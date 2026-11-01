@@ -1,5 +1,3 @@
-import type { PlayerLike } from '../types/coc';
-
 /**
  * Service to resolve high-resolution transparent assets (Town Halls, Builder Halls,
  * Heroes, Troops, Spells, Equipment, Helpers, and Defenses) sourced directly from Supercell's game files.
@@ -42,21 +40,6 @@ export class CocAssetService {
   static getBobUrl(tasksCompleted: number = 4): string {
     const level = Math.max(1, Math.min(5, Math.floor(tasksCompleted) + 1));
     return `${this.BASE_URL}/buildings/builder-base/bob_control/level_${level}.webp`;
-  }
-
-  /**
-   * Official Player League Badge image URL from live profile.
-   * Checks both new ranked League Tiers and legacy multiplayer league badges.
-   */
-  static getPlayerLeagueUrl(player: PlayerLike | undefined): string | undefined {
-    if (!player) return undefined;
-    return (
-      player.leagueTier?.iconUrls?.large ||
-      player.leagueTier?.iconUrls?.small ||
-      player.league?.iconUrls?.large ||
-      player.league?.iconUrls?.medium ||
-      player.league?.iconUrls?.small
-    );
   }
 
   /**

@@ -3,10 +3,16 @@ import { GameCategory } from '../../services/gameDataService';
 import { InProgressUpgrade, VillageDataV2, VillageImportService } from '../../services/villageImportService';
 import { VILLAGE_HEADINGS } from '../../services/upgradeNotifier';
 import { COLORS } from '../../services/discordService';
-import { card } from '../../services/discordLayout';
+import { card, ColumnRow } from '../../services/discordLayout';
 import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../types/discord';
 import { Village } from '../../services/gameDataService';
+import { OutstandingUpgradeItem } from '../../types/user';
 import { discordTime } from '../../utils/discordTime';
+
+/** An upgrade list's row for an item the live API reports: "Barbarian", "8/9", then its cost. */
+export function itemRow(i: OutstandingUpgradeItem): ColumnRow {
+  return { label: i.name, value: `${i.currentLevel}/${i.maxLevel}`, after: i.nextCost };
+}
 
 // Which stored import categories each list shows
 export const HOME_DEFENSE_CATEGORIES: GameCategory[] = ['defense', 'trap', 'guardian', 'craftedModule'];

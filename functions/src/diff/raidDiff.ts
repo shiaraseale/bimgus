@@ -1,31 +1,47 @@
-import { CapitalRaidWeekend } from '../types/coc';
+import { CapitalRaidWeekend, ClanMember } from '../types/coc';
 import { RaidSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
 import { EMOJIS } from '../constants/emojis';
-import { card, fitLines, layoutMessage } from '../services/discordLayout';
+import {
+  card,
+  codeSafe,
+  fitLines,
+  LAYOUT_LIMITS,
+  layoutMessage,
+  packMessages,
+  splitLines,
+} from '../services/discordLayout';
 import { formatCoCTime } from './warDiff';
 import { discordTime } from '../utils/discordTime';
 
 // Room for a capital's district lines (Discord allows 4,000 characters per message)
 const DISTRICTS_BUDGET = 3300;
+// Room for the recap's title, totals and footer; the ranking gets the rest, after the names who didn't raid
+const RECAP_TEXT_BUDGET = 300;
 
 type RaidLogEntry = NonNullable<CapitalRaidWeekend['attackLog']>[number];
 
-/** One district: how far it got, its hits and loot, and who attacked it in order (when `withNames`). */
-function districtLine(d: RaidLogEntry['districts'][number], withNames: boolean): string {
-  const head = `${d.destructionPercent === 100 ? '✅' : '⚪'} **${d.name}** (${d.districtHallLevel})`;
-  if (!d.attacks || d.attacks.length === 0) return `${head}: not attacked`;
-  const hits = `${d.attackCount} hit${d.attackCount === 1 ? '' : 's'}`;
-  const loot = `${(d.totalLooted || 0).toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`;
-  // The API lists the latest attack first
-  const names = withNames
-    ? ` · ${[...d.attacks]
-        .reverse()
-        .map((a) => a.attacker.name)
-        .join(', ')}`
-    : '';
-  return `${head}: ${d.destructionPercent}% · ${hits} · ${loot}${names}`;
+const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+/**
+ * A row per district in the same columns as the recap's ranking: how far it got, its hits and loot, with
+ * who attacked it in order on a small line under it (when `withNames`).
+ */
+function districtLines(districts: RaidLogEntry['districts'], withNames: boolean): string[] {
+  const names = districts.map((d) => `${d.name} (${d.districtHallLevel})`);
+  const golds = districts.map((d) => (d.totalLooted || 0).toLocaleString());
+  const nameWidth = Math.max(...names.map((n) => n.length));
+  const hitWidth = Math.max(...districts.map((d) => String(d.attackCount).length));
+  const goldWidth = Math.max(...golds.map((g) => g.length));
+  return districts.map((d, i) => {
+    const percent = `${d.destructionPercent}%`.padStart(4);
+    const hits = String(d.attackCount).padStart(hitWidth);
+    const row = `\`${names[i].padEnd(nameWidth)}  ${percent}  ${hits}\` 🗡️ \`${golds[i].padStart(goldWidth)}\` ${EMOJIS.CAPITAL_GOLD}`;
+    // The API lists the latest attack first
+    const attackers = [...(d.attacks ?? [])].reverse().map((a) => a.attacker.name);
+    return withNames && attackers.length > 0 ? `${row}\n-# ${attackers.join(', ')}` : row;
+  });
 }
 
 /**
@@ -43,10 +59,9 @@ function buildCapitalCard(
     raid.districtCount > 0 ? Math.round((raid.districtsDestroyed / raid.districtCount) * 100) : 100;
 
   // A long breakdown loses the attackers' names first, then districts from the end
-  let districts = raid.districts.map((d) => districtLine(d, true));
-  if (districts.join('\n').length > DISTRICTS_BUDGET) districts = raid.districts.map((d) => districtLine(d, false));
+  let districts = districtLines(raid.districts, true);
+  if (districts.join('\n').length > DISTRICTS_BUDGET) districts = districtLines(raid.districts, false);
 
-  const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   const totals = [
     count(weekendTotals.districtsDestroyed, 'district'),
     `${weekendTotals.capitalTotalLoot.toLocaleString()} capital gold`,
@@ -66,11 +81,59 @@ function buildCapitalCard(
   });
 }
 
+/**
+ * The weekend's recap: its totals, everyone who raided ranked by the capital gold they looted (fewer
+ * attacks first when level), then the clan's current members who didn't raid. One card, or more when
+ * the ranking won't fit one message, as a nearly full clan's won't, so that nobody's left out.
+ */
+function buildWeekendRecapCards(
+  raid: CapitalRaidWeekend,
+  clanMembers: Array<Pick<ClanMember, 'tag' | 'name'>>
+): DiscordContainerComponent[] {
+  const raiders = [...(raid.members ?? [])].sort(
+    (a, b) => b.capitalResourcesLooted - a.capitalResourcesLooted || a.attacks - b.attacks
+  );
+  // Monospace text keeps the columns in line, padded to the widest name and gold. Custom emoji don't
+  // work inside it, so each row has two runs of it with the emoji around them
+  const nameWidth = Math.max(...raiders.map((m) => m.name.length));
+  const golds = raiders.map((m) => m.capitalResourcesLooted.toLocaleString());
+  const goldWidth = Math.max(...golds.map((g) => g.length));
+  const ranking = raiders.map((m, i) => {
+    const rank = `${String(i + 1).padStart(2, ' ')}.`;
+    const name = codeSafe(m.name).padEnd(nameWidth);
+    const attacks = `${m.attacks}/${m.attackLimit + m.bonusAttackLimit}`;
+    return `\`${rank} ${name}  ${attacks}\` 🗡️ \`${golds[i].padStart(goldWidth)}\` ${EMOJIS.CAPITAL_GOLD}`;
+  });
+  const raided = new Set(raiders.map((m) => m.tag));
+  const missed = clanMembers
+    .filter((m) => !raided.has(m.tag))
+    .map((m) => m.name)
+    .sort((a, b) => a.localeCompare(b));
+  const missedLine =
+    missed.length > 0 ? `🚨 **No attacks (${missed.length})**: ${missed.join(', ')}` : '✅ Everyone raided';
+  const parts = splitLines(ranking, LAYOUT_LIMITS.chars - RECAP_TEXT_BUDGET - missedLine.length);
+
+  return parts.map((part, i) => {
+    const first = i === 0;
+    const last = i === parts.length - 1;
+    return card({
+      accent: COLORS.GOLD,
+      title: first ? `${EMOJIS.RAID} Raid weekend has ended` : undefined,
+      body: first
+        ? `🏰 ${count(raid.raidsCompleted, 'capital')} · ${count(raid.enemyDistrictsDestroyed, 'district')} · ⚔️ ${count(raid.totalAttacks, 'attack')} · ${raid.capitalTotalLoot.toLocaleString()} ${EMOJIS.CAPITAL_GOLD}`
+        : undefined,
+      blocks: [part.length > 0 ? ['🏅 **Ranking**', ...part].join('\n') : '', last ? missedLine : ''],
+      footer: last ? `${count(raiders.length, 'member')} took part` : undefined,
+    });
+  });
+}
+
 export async function processRaidDiff(
   latestRaid: CapitalRaidWeekend,
   prevSnapshot: RaidSnapshotDoc | null,
   config: BotConfigDoc,
-  clanTag: string
+  clanTag: string,
+  clanMembers: Array<Pick<ClanMember, 'tag' | 'name'>>
 ): Promise<RaidSnapshotDoc> {
   const weekendId = latestRaid.startTime;
   const webhookUrl = config.webhooks.raidWeekend;
@@ -153,6 +216,13 @@ export async function processRaidDiff(
           }
           completedCapitalTags.add(raid.defender.tag);
         }
+      }
+    }
+    // The recap last, after any unfinished capital's card
+    if (!isInitialSnapshot && webhookUrl && config.notificationsEnabled.raidEndSummary) {
+      const links = DiscordService.raidActionRow(clanTag).components;
+      for (const message of packMessages(buildWeekendRecapCards(latestRaid, clanMembers), links)) {
+        await DiscordService.sendWebhook(webhookUrl, message);
       }
     }
     announcedWeekendEnd = true;

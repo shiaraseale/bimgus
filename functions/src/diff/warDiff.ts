@@ -2,7 +2,7 @@ import { CurrentWarResponse, WarAttack, WarClan, WarClanMember } from '../types/
 import { WarSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
-import { card, fitLines, layoutMessage } from '../services/discordLayout';
+import { card, codeSafe, fitLines, layoutMessage } from '../services/discordLayout';
 import { EMOJIS } from '../constants/emojis';
 import { discordTime } from '../utils/discordTime';
 import type { WarAudit } from '../types/api';
@@ -11,6 +11,8 @@ import type { WarAudit } from '../types/api';
 const AUDIT_BUDGET = 3500;
 // Room for a matchup's lineup, under its header (a 50v50 war fits)
 const LINEUP_BUDGET = 3300;
+// The widest a lineup row can be and still fit one line of a card on a phone
+const LINEUP_ROW_WIDTH = 47;
 
 export interface FlatAttack extends WarAttack {
   isClanAttack: boolean;
@@ -32,19 +34,31 @@ export function positionList(members: Array<{ mapPosition: number; name: string 
 }
 
 /**
- * The lineup, one map position a line with our player and their mirror:
- * "` 1` Avery (TH15) vs Rival 1 (TH15)". Empty when the war has no members listed.
+ * The lineup, one map position a line with our player and their mirror, in monospace with every "vs"
+ * lined up: "` 1 Avery (TH15) vs Rival 1 (TH15)`". A card on a phone holds about 48 characters and two
+ * of the game's longest names would take 51, so their names are shortened where a row would wrap.
+ * Empty when the war has no members listed.
  */
 export function lineupBlock(ours: WarClan, theirs: WarClan): string {
   const byPosition = (clan: WarClan) => new Map(clan.members.map((m) => [m.mapPosition, m]));
   const us = byPosition(ours);
   const them = byPosition(theirs);
-  const who = (m?: WarClanMember) => (m ? `${m.name} (TH${m.townhallLevel})` : '–');
   const size = Math.max(ours.members.length, theirs.members.length);
   if (size === 0) return '';
-  const lines = Array.from(
-    { length: size },
-    (_, i) => `\`${String(i + 1).padStart(2, ' ')}\` ${who(us.get(i + 1))} vs ${who(them.get(i + 1))}`
+  const positions = Array.from({ length: size }, (_, i) => i + 1);
+  const who = (m?: WarClanMember, room = Infinity) => {
+    if (!m) return '–';
+    const name = codeSafe(m.name);
+    const th = ` (TH${m.townhallLevel})`;
+    return name.length + th.length <= room ? name + th : `${name.slice(0, room - th.length - 1)}…${th}`;
+  };
+  const ourWidth = Math.max(...positions.map((p) => who(us.get(p)).length));
+  // What's left of the row after the position, our column and " vs "
+  const mirrors = positions.map((p) => who(them.get(p), LINEUP_ROW_WIDTH - 3 - ourWidth - 4));
+  const mirrorWidth = Math.max(...mirrors.map((m) => m.length));
+  const lines = positions.map(
+    (p, i) =>
+      `\`${String(p).padStart(2, ' ')} ${who(us.get(p)).padEnd(ourWidth)} vs ${mirrors[i].padEnd(mirrorWidth)}\``
   );
   return [`**${ours.name}** vs **${theirs.name}**`, ...fitLines(lines, LINEUP_BUDGET)].join('\n');
 }

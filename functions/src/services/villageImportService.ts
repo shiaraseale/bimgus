@@ -12,6 +12,7 @@ import {
   nextUpgradeRow,
 } from './gameDataService';
 import type { InProgressUpgrade, VillageDataV2, VillageItem } from '../types/village';
+import { ColumnRow, columnRows } from './discordLayout';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -476,17 +477,18 @@ export class VillageImportService {
     return data.items.filter((i) => i.category === 'unknown');
   }
 
-  /** "• 3x **Cannon**: Lv 13/17 — 1M Gold" (no count for a single item). */
-  static formatGroupLine(d: ParsedDefenseGroup): string {
-    const levelStr = `Lv ${d.currentLevel}/${d.maxLevel}`;
-    const count = d.count > 1 ? `${d.count}x ` : '';
-    if (d.isMaxed) return `• ${count}**${d.name}**: ${levelStr} — Maxed ✨`;
-    return `• ${count}**${d.name}**: ${levelStr}${d.nextCost ? ` — ${d.nextCost}` : ''}`;
+  /** A list row: "3x Cannon", "13/17", then its cost (no count for a single item). */
+  static groupRow(d: ParsedDefenseGroup): ColumnRow {
+    return {
+      label: `${d.count > 1 ? `${d.count}x ` : ''}${d.name}`,
+      value: `${d.currentLevel}/${d.maxLevel}`,
+      after: d.isMaxed ? 'Maxed ✨' : d.nextCost,
+    };
   }
 
   /**
-   * One short line per item that still has upgrades left, e.g. "3x **Cannon**: Lv 12–13 → 17" (no count
-   * for a single item), with a crafted defense's modules together: "**Inferno Candle** (3 modules): Lv 1 → 2".
+   * One short row per item that still has upgrades left, e.g. "3x Cannon  Lv 12–13 → 17" (no count for
+   * a single item), with a crafted defense's modules together: "Inferno Candle (3 modules)  Lv 1 → 2".
    * Maxed items are left out; `/status` and `/defenses` show everything, with costs. `count` is how
    * many items the lines cover.
    */
@@ -520,11 +522,14 @@ export class VillageImportService {
     const entries = [...byKey.values()];
     return {
       count: entries.reduce((n, e) => n + e.count, 0),
-      lines: entries.map((e) => {
-        const levels = `Lv ${e.lo === e.hi ? e.lo : `${e.lo}–${e.hi}`} → ${e.cap}`;
-        if (e.modules) return `• **${e.name}** (${e.count} module${e.count === 1 ? '' : 's'}): ${levels}`;
-        return `• ${e.count > 1 ? `${e.count}x ` : ''}**${e.name}**: ${levels}`;
-      }),
+      lines: columnRows(
+        entries.map((e) => ({
+          label: e.modules
+            ? `${e.name} (${e.count} module${e.count === 1 ? '' : 's'})`
+            : `${e.count > 1 ? `${e.count}x ` : ''}${e.name}`,
+          value: `Lv ${e.lo === e.hi ? e.lo : `${e.lo}–${e.hi}`} → ${e.cap}`,
+        }))
+      ),
     };
   }
 
@@ -542,7 +547,9 @@ export class VillageImportService {
     if (unknown.length > 0) {
       sections.push({
         title: '❔ Not in the game data yet',
-        lines: unknown.map((u) => `• ${u.count}x **${nameForCode(u.code)}**: Lv ${u.level}`),
+        lines: columnRows(
+          unknown.map((u) => ({ label: `${u.count}x ${nameForCode(u.code)}`, value: `Lv ${u.level}` }))
+        ),
         count: unknown.reduce((n, u) => n + u.count, 0),
       });
     }

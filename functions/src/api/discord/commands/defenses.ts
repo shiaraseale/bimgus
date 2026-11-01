@@ -14,7 +14,7 @@ import {
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { goldPassBoosts } from '../../../services/goldPass';
-import { layoutMessage } from '../../../services/discordLayout';
+import { columnRows, layoutMessage } from '../../../services/discordLayout';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -63,13 +63,19 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const boosts = goldPassBoosts(account);
     // Without an import, list every defense the hall allows with its cap and the cost of its last level
     const hallCapLines = (village: 'home' | 'builder', hallLevel: number) =>
-      itemsIn(village, ['defense'])
-        .map((item) => ({ item, count: countForHall(item, hallLevel), max: getMaxLevelForHall(item, hallLevel) }))
-        .filter((d) => d.count > 0 && d.max > 0)
-        .map((d) => {
-          const last = getLevel(d.item, d.max);
-          return `• ${d.count}x **${d.item.displayName}**: Max Lv ${d.max}${last ? ` — ${formatLevelCost(d.item, last)}` : ''}`;
-        });
+      columnRows(
+        itemsIn(village, ['defense'])
+          .map((item) => ({ item, count: countForHall(item, hallLevel), max: getMaxLevelForHall(item, hallLevel) }))
+          .filter((d) => d.count > 0 && d.max > 0)
+          .map((d) => {
+            const last = getLevel(d.item, d.max);
+            return {
+              label: `${d.count}x ${d.item.displayName}`,
+              value: `Max Lv ${d.max}`,
+              after: last ? formatLevelCost(d.item, last) : undefined,
+            };
+          })
+      );
 
     // Running timers, under each village's own card
     const timers = activeInProgress(village);
@@ -105,7 +111,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       ? VillageImportService.groupsFor(village, 'home', HOME_DEFENSE_CATEGORIES, halls, boosts)
       : [];
     const homeCapLines =
-      importedHome.length > 0 ? importedHome.map(VillageImportService.formatGroupLine) : hallCapLines('home', th);
+      importedHome.length > 0 ? columnRows(importedHome.map(VillageImportService.groupRow)) : hallCapLines('home', th);
     const importedBuildings = village
       ? VillageImportService.groupsFor(village, 'home', BUILDING_CATEGORIES, halls, boosts)
       : [];
@@ -125,7 +131,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
             ? [
                 {
                   title: '🏛️ Other Buildings & Storages',
-                  lines: importedBuildings.map(VillageImportService.formatGroupLine),
+                  lines: columnRows(importedBuildings.map(VillageImportService.groupRow)),
                 },
               ]
             : []),
@@ -155,7 +161,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
         ? VillageImportService.groupsFor(village, 'builder', BB_DEFENSE_CATEGORIES, halls)
         : [];
       const bbCapLines =
-        importedBb.length > 0 ? importedBb.map(VillageImportService.formatGroupLine) : hallCapLines('builder', bh);
+        importedBb.length > 0 ? columnRows(importedBb.map(VillageImportService.groupRow)) : hallCapLines('builder', bh);
 
       cards.push({
         village: 'builder',
@@ -199,7 +205,8 @@ export async function execute(ctx: CommandContext): Promise<any> {
       author: `[${account.name}] Defense ${hasImported ? 'Levels & Upgrades' : '& Hall Maxing Targets'}`,
       thumbnail: CocAssetService.getTownHallUrl(th),
       footer: `Account: ${account.name} (${account.playerTag})`,
+      buttons: defButtons,
     });
-    await sendAccountMessage(idx, layoutMessage(...shownCards, DiscordService.createActionRow(defButtons)));
+    await sendAccountMessage(idx, layoutMessage(...shownCards));
   });
 }

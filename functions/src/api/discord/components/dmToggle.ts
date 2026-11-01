@@ -1,5 +1,7 @@
 import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
+import { COLORS } from '../../../services/discordService';
+import { card, layoutMessage, withFlags } from '../../../services/discordLayout';
 
 const OFF = 'dms_off:';
 const ON = 'dms_on:';
@@ -31,17 +33,26 @@ export async function handleDmToggleButton(customId: string, discordUserId: stri
   const enable = customId.startsWith(ON);
   const tag = customId.slice((enable ? ON : OFF).length);
   const changed = await FirestoreService.setDmsEnabled(discordUserId, enable, tag);
-  const name = changed?.[0]?.name ?? tag;
+  if (!changed) {
+    return {
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `⚠️ \`${tag}\` isn't linked to your profile any more, so there's nothing to change.`,
+        flags: 64,
+      },
+    };
+  }
+  const name = changed[0]?.name ?? tag;
+  const reply = card({
+    accent: enable ? COLORS.GREEN : COLORS.RED,
+    title: enable ? '🔔 DMs On' : '🔕 DMs Off',
+    body: enable
+      ? `DMs are back **on** for **${name}**.`
+      : `DMs are now **off** for **${name}**. Use \`/dms on\` or the button below to turn them back on.`,
+    buttons: enable ? undefined : [dmToggleButton(tag, true)],
+  });
   return {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: !changed
-        ? `⚠️ \`${tag}\` isn't linked to your profile any more, so there's nothing to change.`
-        : enable
-          ? `🔔 DMs are back **on** for **${name}**.`
-          : `🔕 DMs are now **off** for **${name}**. Use \`/dms on\` or the button below to turn them back on.`,
-      ...(changed && !enable ? { components: [{ type: 1, components: [dmToggleButton(tag, true)] }] } : {}),
-      flags: 64,
-    },
+    data: withFlags(layoutMessage(reply), true),
   };
 }

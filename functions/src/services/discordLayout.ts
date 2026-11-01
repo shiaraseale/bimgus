@@ -132,30 +132,84 @@ function firstLine(payload: { components?: unknown[] }): string {
   return found;
 }
 
+// The card with `buttons` joining the row at its bottom, or in a row of their own after a divider
+function addButtons(c: DiscordContainerComponent, buttons: DiscordButtonComponent[]): DiscordContainerComponent {
+  const last = c.components[c.components.length - 1];
+  if (last?.type === 1 && last.components[0]?.type === 2) {
+    const row = [...(last.components as DiscordButtonComponent[]), ...buttons];
+    return { ...c, components: [...c.components.slice(0, -1), { type: 1, components: row }] };
+  }
+  return { ...c, components: [...c.components, separator('large'), { type: 1, components: buttons }] };
+}
+
+// The message's components with `buttons` at the bottom of its last card
+function onLastCard(components: DiscordTopLevelComponent[], buttons: DiscordButtonComponent[]) {
+  if (buttons.length === 0) return components;
+  const lastCard = components.map((c) => c.type).lastIndexOf(17);
+  return components.map((c, i) => (i === lastCard && c.type === 17 ? addButtons(c, buttons) : c));
+}
+
 /**
- * Cards spread over as few messages as Discord's limits allow, in order, with `trailing` (e.g. a row
- * of link buttons) at the end of each message. A group of cards (an array) stays in one message.
+ * Cards spread over as few messages as Discord's limits allow, in order, with `buttons` (e.g. link
+ * buttons) at the bottom of each message's last card. A group of cards (an array) stays in one message.
  */
 export function packMessages(
   blocks: Array<DiscordTopLevelComponent | DiscordTopLevelComponent[]>,
-  trailing: DiscordTopLevelComponent[] = []
+  buttons: DiscordButtonComponent[] = []
 ): DiscordWebhookPayload[] {
   const fits = (components: DiscordTopLevelComponent[]) => {
-    const size = layoutSize({ components });
+    const size = layoutSize({ components: onLastCard(components, buttons) });
     return size.components <= LAYOUT_LIMITS.components && size.chars <= LAYOUT_LIMITS.chars;
   };
   const messages: DiscordTopLevelComponent[][] = [];
   let current: DiscordTopLevelComponent[] = [];
   for (const block of blocks) {
     const group = Array.isArray(block) ? block : [block];
-    if (current.length > 0 && !fits([...current, ...group, ...trailing])) {
+    if (current.length > 0 && !fits([...current, ...group])) {
       messages.push(current);
       current = [];
     }
     current.push(...group);
   }
   if (current.length > 0) messages.push(current);
-  return messages.map((m) => layoutMessage(...m, ...trailing));
+  return messages.map((m) => layoutMessage(...onLastCard(m, buttons)));
+}
+
+/** Text to go inside `monospace`, used for columns, where a backtick in a player's name would end it. */
+export function codeSafe(s: string): string {
+  return s.replaceAll('`', "'");
+}
+
+// A custom emoji or a plain one. Neither works in monospace, so a row's emoji sit between runs of it
+const EMOJI = /(<a?:\w+:\d+>|\p{Extended_Pictographic}️?)/u;
+
+export interface ColumnRow {
+  label: string; // lined up on the left
+  value: string; // lined up on the right
+  after?: string; // e.g. a cost: the text before any emoji is a third column, lined up on the right
+}
+
+/**
+ * Rows in monospace columns, each as wide as its widest entry, with only the emoji outside them:
+ * "`Cannon  13/17  1M` <gold>", or "`Fireball  14/18  2400` <shiny> `600` <glowy>" for several costs.
+ */
+export function columnRows(rows: ColumnRow[]): string[] {
+  const afters = rows.map((r) => (r.after ?? '').split(EMOJI));
+  const labelWidth = Math.max(...rows.map((r) => r.label.length));
+  const valueWidth = Math.max(...rows.map((r) => r.value.length));
+  const afterWidth = Math.max(...afters.map(([first]) => first.trim().length));
+  return rows.map((r, i) => {
+    const [first, ...rest] = afters[i];
+    const columns = [r.label.padEnd(labelWidth), r.value.padStart(valueWidth)];
+    if (first) columns.push(first.trim().padStart(afterWidth));
+    // The rest alternates emoji and text, the text still holding the ", " between costs
+    const tail = rest.map((part, j) => {
+      if (j % 2 === 0) return part;
+      const text = part.replace(/^[,\s]+|\s+$/g, '');
+      return text ? `\`${text}\`` : '';
+    });
+    return [`\`${columns.join('  ')}\``, ...tail].filter(Boolean).join(' ');
+  });
 }
 
 /** As many lines as fit `budget` characters, ending "…and N more" when some don't. */
@@ -170,6 +224,23 @@ export function fitLines(
   let kept = 0;
   while (kept < lines.length && used + lines[kept].length + 1 <= room) used += lines[kept++].length + 1;
   return [...lines.slice(0, kept), more(lines.length - kept)];
+}
+
+/** All the lines, in order, in as many parts as it takes for each to fit `budget` characters. */
+export function splitLines(lines: string[], budget: number): string[][] {
+  let part: string[] = [];
+  const parts = [part];
+  let used = 0;
+  for (const line of lines) {
+    if (part.length > 0 && used + line.length > budget) {
+      part = [];
+      parts.push(part);
+      used = 0;
+    }
+    part.push(line);
+    used += line.length + 1;
+  }
+  return parts;
 }
 
 /** Adds a line of text at the top of a message, whether it's a layout or plain content. */

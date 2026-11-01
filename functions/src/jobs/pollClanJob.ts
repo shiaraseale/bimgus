@@ -159,7 +159,13 @@ export async function runPollClanJob(
           const raidData = await cocService.getCapitalRaidSeasons(targetTag, 1);
           if (raidData.items && raidData.items.length > 0) {
             const prevRaidSnapshot = await FirestoreService.getRaidSnapshot(targetTag);
-            const newRaidSnapshot = await processRaidDiff(raidData.items[0], prevRaidSnapshot, botConfig, targetTag);
+            const newRaidSnapshot = await processRaidDiff(
+              raidData.items[0],
+              prevRaidSnapshot,
+              botConfig,
+              targetTag,
+              clanData.memberList
+            );
             if (changedIgnoringUpdatedAt(prevRaidSnapshot, newRaidSnapshot))
               await FirestoreService.saveRaidSnapshot(targetTag, newRaidSnapshot);
           }

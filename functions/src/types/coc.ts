@@ -109,6 +109,16 @@ export interface CapitalDistrict {
   attacks?: CapitalDistrictAttack[];
 }
 
+/** Someone who raided that weekend; the API lists no one else. */
+export interface CapitalRaidMember {
+  tag: string;
+  name: string;
+  attacks: number;
+  attackLimit: number;
+  bonusAttackLimit: number;
+  capitalResourcesLooted: number;
+}
+
 export interface CapitalRaidWeekend {
   state: 'ongoing' | 'ended';
   startTime: string;
@@ -119,6 +129,7 @@ export interface CapitalRaidWeekend {
   enemyDistrictsDestroyed: number;
   offensiveReward: number;
   defensiveReward: number;
+  members?: CapitalRaidMember[];
   attackLog?: Array<{
     defender: { tag: string; name: string; level: number; badgeUrls: any };
     attackCount: number;
