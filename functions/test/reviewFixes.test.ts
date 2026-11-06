@@ -52,7 +52,7 @@ describe('clan diff', () => {
     };
     const clan: any = { tag: '#C', name: 'C', clanLevel: 1, members: 2, memberList: [member('#A'), member('#B')] };
     await processClanDiff(clan, prev, config);
-    expect(sent.flatMap(headings)).toEqual(['📥 #B joined']);
+    expect(sent.flatMap(headings)).toEqual(['📥 \u2068#B\u2069 joined']);
   });
 });
 
@@ -74,7 +74,7 @@ describe('war diff', () => {
     const tracked = await processWarDiff(war('inWar'), null, config);
     sent = [];
     await processWarDiff(war('warEnded'), tracked, config);
-    expect(headings(sent[0])).toEqual(['🏆 War won vs O']);
+    expect(headings(sent[0])).toEqual(['🏆 War won vs \u2068O\u2069']);
     expect(texts(sent[0])).toContain('✅ Everyone used every attack');
   });
 });
@@ -117,7 +117,7 @@ describe('raid diff', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     // The API lists the latest attack first
-    expect(texts(sent[0])).toContain('A very long attacker name 5, A very long attacker name 4');
+    expect(texts(sent[0])).toContain('\u2068A very long attacker name 5\u2069, \u2068A very long attacker name 4\u2069');
   });
 
   it('puts the districts in columns, with the attackers on a small line under each', async () => {
@@ -135,7 +135,7 @@ describe('raid diff', () => {
       `\`Capital Peak (10)  100%  12\` 🗡️ \`12,500\` ${EMOJIS.CAPITAL_GOLD}`,
       `\`Golem Quarry (2)    40%   6\` 🗡️ \`   900\` ${EMOJIS.CAPITAL_GOLD}`,
     ]);
-    expect(lines[lines.indexOf(rows[0]) + 1]).toMatch(/^-# A very long attacker name 5, /);
+    expect(lines[lines.indexOf(rows[0]) + 1]).toMatch(/^-# \u2068A very long attacker name 5\u2069, /);
     expect(lines[lines.indexOf(rows[1]) + 1]).not.toMatch(/^-# /); // nobody attacked it
   });
 
@@ -179,20 +179,20 @@ describe('raid diff', () => {
       const lines = texts(sent[0]).split('\n');
       // Level on gold: the one with fewer attacks goes first
       expect(lines.filter((l) => l.startsWith('`'))).toEqual([
-        `\` 1. Cy     3/5\` 🗡️ \`2,500\` ${EMOJIS.CAPITAL_GOLD}`,
-        `\` 2. Blake  5/5\` 🗡️ \`  900\` ${EMOJIS.CAPITAL_GOLD}`,
-        `\` 3. Ana    6/6\` 🗡️ \`  900\` ${EMOJIS.CAPITAL_GOLD}`,
+        `\` 1. \u2068Cy\u2069     3/5\` 🗡️ \`2,500\` ${EMOJIS.CAPITAL_GOLD}`,
+        `\` 2. \u2068Blake\u2069  5/5\` 🗡️ \`  900\` ${EMOJIS.CAPITAL_GOLD}`,
+        `\` 3. \u2068Ana\u2069    6/6\` 🗡️ \`  900\` ${EMOJIS.CAPITAL_GOLD}`,
       ]);
       expect(lines).toContain('🏅 **Ranking**');
-      expect(texts(sent[0])).toContain('🚨 **No attacks (1)**: Zed');
+      expect(texts(sent[0])).toContain('🚨 **No attacks (1)**: \u2068Zed\u2069');
       expect(texts(sent[0])).toContain('-# 3 members took part');
       expect(buttonLabels(sent[0])).toEqual(['Open CoC', 'Clash of Stats']);
     });
 
     it('keeps someone who left since raiding in the ranking, and sorts the names', async () => {
       await processRaidDiff(ended([raider('Gone', 1000)]), prev, config, '#C', roster);
-      expect(texts(sent[0])).toContain(`\` 1. Gone  6/6\` 🗡️ \`1,000\` ${EMOJIS.CAPITAL_GOLD}`);
-      expect(texts(sent[0])).toContain('🚨 **No attacks (4)**: Ana, Blake, Cy, Zed');
+      expect(texts(sent[0])).toContain(`\` 1. \u2068Gone\u2069  6/6\` 🗡️ \`1,000\` ${EMOJIS.CAPITAL_GOLD}`);
+      expect(texts(sent[0])).toContain('🚨 **No attacks (4)**: \u2068Ana\u2069, \u2068Blake\u2069, \u2068Cy\u2069, \u2068Zed\u2069');
     });
 
     it('lines the columns up, and a backtick in a name cannot break its row', async () => {
@@ -254,7 +254,7 @@ describe('raid diff', () => {
       const raid: any = { ...ended([raider('Ana', 900)]), attackLog: [unfinished] };
       const after = await processRaidDiff(raid, prev, config, '#C', roster);
       expect(sent.flatMap(headings)).toEqual([
-        expect.stringMatching(/Enemy: 50% when the weekend ended$/),
+        expect.stringMatching(/\u2068Enemy\u2069: 50% when the weekend ended$/),
         expect.stringMatching(/Raid weekend has ended$/),
       ]);
 

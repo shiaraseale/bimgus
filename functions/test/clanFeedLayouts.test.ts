@@ -62,13 +62,13 @@ describe('clan diff', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     expect(headings(sent[0])).toEqual([
-      '📥 D joined',
-      '📤 B left',
-      expect.stringMatching(/ A promoted$/),
-      '🏛️ C reached TH13',
+      '📥 \u2068D\u2069 joined',
+      '📤 \u2068B\u2069 left',
+      expect.stringMatching(/ \u2068A\u2069 promoted$/),
+      '🏛️ \u2068C\u2069 reached TH13',
     ]);
     expect(texts(sent[0])).toContain('Member → Elder');
-    expect(texts(sent[0])).toContain('### 🏛️ C reached TH13\n🎉 Well done!\n');
+    expect(texts(sent[0])).toContain('### 🏛️ \u2068C\u2069 reached TH13\n🎉 Well done!\n');
     // The link buttons once, inside the last card
     expect(buttonLabels(cards(sent[0]).at(-1))).toEqual(['Open CoC', 'Clash of Stats']);
     expect(buttonLabels(sent[0])).toHaveLength(2);
@@ -93,7 +93,7 @@ describe('war cards', () => {
     );
     const text = texts(c);
     expect(text).toMatch(/^### 🛡️ Enemy attack: .* 85%$/m);
-    expect(text).toContain('**#4 Them 4** (TH13) → **#2 Member 2** (TH12)');
+    expect(text).toContain('**#4 \u2068Them 4\u2069** (TH13) → **#2 \u2068Member 2\u2069** (TH12)');
     expect(text).toMatch(/^-# Score 12–10 .* · 45\.0% vs 38\.2% · CWL round 3$/m);
   });
 
@@ -124,8 +124,8 @@ describe('war cards', () => {
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
     const text = texts(sent[0]);
-    expect(text).toContain('**Us** vs **Them**\n` 1 Member 1 (TH15) vs Rival 1 (TH12)`');
-    expect(text).toContain('` 3 Member 3 (TH15) vs Rival 3 (TH12)`');
+    expect(text).toContain('**\u2068Us\u2069** vs **\u2068Them\u2069**\n` 1 \u2068Member 1\u2069 (TH15) vs \u2068Rival 1\u2069 (TH12)`');
+    expect(text).toContain('` 3 \u2068Member 3\u2069 (TH15) vs \u2068Rival 3\u2069 (TH12)`');
   });
 
   it('lines up every "vs", and copes with a missing mirror and a backtick in a name', async () => {
@@ -139,10 +139,22 @@ describe('war cards', () => {
       .split('\n')
       .filter((l) => l.startsWith('`'));
     expect(rows).toEqual([
-      `\` 1 ${'M1 (TH9)'.padEnd(22)} vs Rival 1 (TH12)\``,
-      '` 2 Fifteen chars15 (TH15) vs Rival 2 (TH12)`',
-      `\` 3 ${"Back'tick (TH15)".padEnd(22)} vs ${'–'.padEnd(14)}\``,
+      `\` 1 \u2068M1\u2069${' (TH9)'.padEnd(20)} vs \u2068Rival 1\u2069 (TH12)\``,
+      '` 2 \u2068Fifteen chars15\u2069 (TH15) vs \u2068Rival 2\u2069 (TH12)`',
+      `\` 3 \u2068Back'tick\u2069${' (TH15)'.padEnd(13)} vs ${'–'.padEnd(14)}\``,
     ]);
+  });
+
+  it('isolates an Arabic name in the lineup without pushing the columns out', async () => {
+    const war = prepWar(2, (i) => (i === 1 ? 'البرق' : 'Member 2'));
+    await processWarDiff(war, null, config);
+    const rows = texts(sent[0])
+      .split('\n')
+      .filter((l) => l.startsWith('`'));
+    expect(rows[0]).toBe('` 1 \u2068البرق\u2069 (TH15)    vs \u2068Rival 1\u2069 (TH12)`');
+    // On screen the marks take no room, so the "vs" lines up once they're gone
+    const visible = rows.map((r) => r.replace(/[\u2068\u2069]/g, ''));
+    expect(new Set(visible.map((r) => r.indexOf(' vs '))).size).toBe(1);
   });
 
   it("shortens a rival's name only where a row would be too wide for a phone", async () => {
@@ -157,10 +169,11 @@ describe('war cards', () => {
     };
 
     const widest = await lineup('Fifteen chars15');
-    expect(widest[0]).toBe('` 1 Fifteen chars15 (TH15) vs Rival Long… (TH12)`');
-    widest.forEach((row) => expect(row.length - 2).toBeLessThanOrEqual(47));
+    expect(widest[0]).toBe('` 1 \u2068Fifteen chars15\u2069 (TH15) vs \u2068Rival Long…\u2069 (TH12)`');
+    // The isolate marks take no room on screen
+    widest.forEach((row) => expect(row.replace(/[\u2068\u2069]/g, '').length - 2).toBeLessThanOrEqual(47));
 
-    expect((await lineup('Short'))[0]).toBe('` 1 Short (TH15) vs Rival Longnames (TH12)`');
+    expect((await lineup('Short'))[0]).toBe('` 1 \u2068Short\u2069 (TH15) vs \u2068Rival Longnames\u2069 (TH12)`');
   });
 
   it("fits a 50v50 war's lineup in the matchup message", async () => {
@@ -171,7 +184,7 @@ describe('war cards', () => {
       config
     );
     expectLayout(sent[0]);
-    expect(texts(sent[0])).toContain('`50 Fifteen chars50 (TH15) vs Rival 50 (TH12)`');
+    expect(texts(sent[0])).toContain('`50 \u2068Fifteen chars50\u2069 (TH15) vs \u2068Rival 50\u2069 (TH12)`');
   });
 
   it("fits a 50v50 war's summary and audit in one message", async () => {
@@ -190,9 +203,9 @@ describe('war cards', () => {
 
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
-    expect(headings(sent[0])).toEqual(['💀 War lost vs Them']);
+    expect(headings(sent[0])).toEqual(['💀 War lost vs \u2068Them\u2069']);
     expect(texts(sent[0])).toContain('🗡️ Attacks used: 2/100 vs 90/100');
-    expect(texts(sent[0])).toContain('🚨 **No attacks**: #2 Member 2, #3 Member 3');
+    expect(texts(sent[0])).toContain('🚨 **No attacks**: #2 \u2068Member 2\u2069, #3 \u2068Member 3\u2069');
     expect(texts(sent[0])).toContain('**Hit a base already at 3');
   });
 });
@@ -228,10 +241,10 @@ describe('CWL cards', () => {
 
     expect(sent).toHaveLength(1);
     expectLayout(sent[0]);
-    expect(headings(sent[0])).toEqual(['🏆 CWL round 1: won vs Them']);
+    expect(headings(sent[0])).toEqual(['🏆 CWL round 1: won vs \u2068Them\u2069']);
     expect(texts(sent[0])).toContain('🗡️ Attacks used: 1/2 vs 2/2');
-    expect(texts(sent[0])).toContain('🚨 **No attack**: #2 Member 2');
-    expect(texts(sent[0])).toContain('⭐ **3 stars**: #1 Member 1');
+    expect(texts(sent[0])).toContain('🚨 **No attack**: #2 \u2068Member 2\u2069');
+    expect(texts(sent[0])).toContain('⭐ **3 stars**: #1 \u2068Member 1\u2069');
   });
 
   it("keeps a big season's recap within Discord's limits", async () => {
@@ -319,20 +332,20 @@ describe('attack reminders', () => {
     const msg = reminder([warMember(2, [hit, hit]), warMember(3), warMember(1, [hit])])!;
     expectLayout(msg);
     // 2.6 hours: rounded down, as Discord's "in 2 hours" is
-    expect(headings(msg)).toEqual(['⚠️ ~2h left in the war vs Them']);
+    expect(headings(msg)).toEqual(['⚠️ ~2h left in the war vs \u2068Them\u2069']);
     const labels = cards(msg)[0]
       .components.filter((c: any) => c.type === 1)
       .flatMap((r: any) => r.components.map((b: any) => b.label));
     expect(labels).toEqual(['Open CoC', 'Clash of Stats']);
-    expect(texts(msg)).toContain('**Still to attack**: #1 Member 1 (1 left), #3 Member 3');
+    expect(texts(msg)).toContain('**Still to attack**: #1 \u2068Member 1\u2069 (1 left), #3 \u2068Member 3\u2069');
     expect(texts(msg)).toMatch(/^Ends <t:\d+:R> \(<t:\d+:s>\)$/m);
   });
 
   it('says which CWL round', () => {
     const msg = reminder([warMember(1)], { attacksPerMember: 1, roundNum: 4 })!;
-    expect(headings(msg)).toEqual(['⚠️ ~2h left in CWL round 4 vs Them']);
+    expect(headings(msg)).toEqual(['⚠️ ~2h left in CWL round 4 vs \u2068Them\u2069']);
     expect(headings(reminder([warMember(1)], { hoursLeft: 0.4 })!)).toEqual([
-      '⚠️ Under an hour left in the war vs Them',
+      '⚠️ Under an hour left in the war vs \u2068Them\u2069',
     ]);
   });
 

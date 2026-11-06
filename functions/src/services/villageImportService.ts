@@ -14,7 +14,7 @@ import {
 import type { InProgressUpgrade, VillageDataV2, VillageItem } from '../types/village';
 import { ColumnRow, columnRows } from './discordLayout';
 import commandWords from '../templates/commands.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -390,7 +390,7 @@ export class VillageImportService {
       }
       const keepNew = exp.village.exportTimestamp > existing.village.exportTimestamp;
       const [kept, dropped] = keepNew ? [exp, existing] : [existing, exp];
-      notices.push(fill(words.twoExports, { name: account.name, kept: kept.fileName, dropped: dropped.fileName }));
+      notices.push(fill(words.twoExports, { name: isolate(account.name), kept: kept.fileName, dropped: dropped.fileName }));
       if (keepNew) byAccount.set(key, { account, ...exp });
     }
 

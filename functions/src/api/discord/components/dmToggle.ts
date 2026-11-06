@@ -3,7 +3,7 @@ import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage, withFlags } from '../../../services/discordLayout';
 import dmWords from '../../../templates/dms.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 
 const words = dmWords.toggle;
 const OFF = 'dms_off:';
@@ -45,7 +45,7 @@ export async function handleDmToggleButton(customId: string, discordUserId: stri
       },
     };
   }
-  const name = changed[0]?.name ?? tag;
+  const name = changed[0]?.name ? isolate(changed[0].name) : tag;
   const reply = card({
     accent: enable ? COLORS.GREEN : COLORS.RED,
     title: enable ? words.onTitle : words.offTitle,

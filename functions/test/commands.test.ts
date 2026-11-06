@@ -269,7 +269,7 @@ describe('slash commands end to end (mocked services)', () => {
   it('the /status Defenses area lists the imported defenses with costs, for each village', async () => {
     await importFile();
     const home = texts(await pick('status:area:#ANON12345:home:overview', 'defenses'));
-    expect(home).toContain('-# [Tester] Status: Defenses');
+    expect(home).toContain('-# [\u2068Tester\u2069] Status: Defenses');
     // The whole list is in one piece under one heading
     expect(home).toMatch(/\*\*🛡️ Defenses \(51\)\*\*\n`/);
     expect(home).toMatch(/Cannon +13\/17 +[\d.]+[KM]?` /);
@@ -295,18 +295,18 @@ describe('slash commands end to end (mocked services)', () => {
   it('with several accounts, /status has an account menu, and switching keeps the village and area', async () => {
     user.accounts.push({ playerTag: '#ANON67890', name: 'Second', townHallLevel: 12, builderHallLevel: 9 } as any);
     const overview = await command('status');
-    expect(texts(overview)).toContain('-# [Tester] Status');
-    expect(findComponent(overview, 'status:account:').options.map((o: any) => o.label)).toEqual(['Tester', 'Second']);
+    expect(texts(overview)).toContain('-# [\u2068Tester\u2069] Status');
+    expect(findComponent(overview, 'status:account:').options.map((o: any) => o.label)).toEqual(['\u2068Tester\u2069', '\u2068Second\u2069']);
 
     const second = await pick('status:account:#ANON12345:builder:lab', '#ANON67890');
     expect(headings(second)).toEqual([BUILDER]);
-    expect(texts(second)).toContain('-# [Second] Status: Lab');
+    expect(texts(second)).toContain('-# [\u2068Second\u2069] Status: Lab');
     expect(picked(second, 'account')).toBe('#ANON67890');
     expect(findComponent(second, 'status:area:').custom_id).toBe('status:area:#ANON67890:builder:lab');
 
     patches = [];
     const opened = await command('status', [{ name: 'account', value: 'anon67890' }]);
-    expect(texts(opened)).toContain('-# [Second] Status');
+    expect(texts(opened)).toContain('-# [\u2068Second\u2069] Status');
   });
 
   it('/upgrades still answers, as /status, until the commands are re-registered', async () => {
@@ -363,7 +363,7 @@ describe('slash commands end to end (mocked services)', () => {
       data: { custom_id: 'status:area:#ANON12345:home:overview', component_type: 3, values: ['lab'] },
     });
     expect(patches).toHaveLength(1);
-    expect(texts(patches[0])).toContain('-# [Tester] Status: Lab');
+    expect(texts(patches[0])).toContain('-# [\u2068Tester\u2069] Status: Lab');
   });
 
   it('the menu on an old /upgrades message from before the new layouts clears its embeds to redraw it', async () => {
@@ -381,7 +381,7 @@ describe('slash commands end to end (mocked services)', () => {
     expect(patches[1]).toMatchObject({ content: null, embeds: [], flags: 1 << 15 });
     // It becomes a /status message on the Home Village
     expect(headings(patches[1])).toEqual([HOME]);
-    expect(texts(patches[1])).toContain('-# [Tester] Status: Lab');
+    expect(texts(patches[1])).toContain('-# [\u2068Tester\u2069] Status: Lab');
     expect(followups).toHaveLength(0);
   });
 

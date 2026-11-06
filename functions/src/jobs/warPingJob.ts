@@ -3,7 +3,7 @@ import { FirestoreService } from '../services/firestoreService';
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, layoutMessage } from '../services/discordLayout';
 import warWords from '../templates/war.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { config } from '../config';
 import { CurrentWarResponse, WarClan } from '../types/coc';
 import { DiscordWebhookPayload } from '../types/discord';
@@ -37,7 +37,7 @@ export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | n
   // "(1 left)" only for someone who has attacked but not used them all
   const names = waiting.map((m) => {
     const used = m.attacks?.length ?? 0;
-    const member = { position: m.mapPosition, name: m.name };
+    const member = { position: m.mapPosition, name: isolate(m.name) };
     return used > 0
       ? fill(words.waitingMemberStarted, { ...member, left: r.attacksPerMember - used })
       : fill(words.waitingMember, member);
@@ -48,7 +48,7 @@ export function buildAttackReminder(r: ReminderInput): DiscordWebhookPayload | n
       title: fill(r.roundNum ? words.cwlTitle : words.warTitle, {
         timeLeft: timeLeft(r.hoursLeft),
         round: r.roundNum ?? '',
-        enemy: r.enemyClan.name,
+        enemy: isolate(r.enemyClan.name),
       }),
       body: [fill(words.waiting, { names: names.join(', ') }), fill(words.ends, { time: discordTime(r.endMs) })].join(
         '\n'

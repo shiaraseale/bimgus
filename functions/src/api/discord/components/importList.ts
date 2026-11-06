@@ -2,7 +2,7 @@ import { InteractionResponseType } from 'discord-interactions';
 import { FirestoreService } from '../../../services/firestoreService';
 import { columnRows, layoutMessage, withFlags } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 import { Village } from '../../../services/gameDataService';
 import { VillageImportService } from '../../../services/villageImportService';
 import { getVillageJsonTimestampNotice, VillageCard, villageCards } from '../ui';
@@ -63,8 +63,8 @@ export async function handleImportListButton(customId: string, discordUserId: st
   });
   cards[0].intro = getVillageJsonTimestampNotice(village) ?? undefined;
   const shownCards = villageCards(cards, LIST_BUDGET, {
-    author: fill(words.listAuthor, { name: account.name }),
-    footer: fill(words.listFooter, { name: account.name, tag: account.playerTag }),
+    author: fill(words.listAuthor, { name: isolate(account.name) }),
+    footer: fill(words.listFooter, { name: isolate(account.name), tag: account.playerTag }),
   });
 
   return {

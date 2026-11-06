@@ -6,7 +6,7 @@ import { VillageImportService } from '../../../services/villageImportService';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { CardSection, itemRow } from '../ui';
 
@@ -89,7 +89,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: totalTroopLevels === 0 ? COLORS.GREEN : COLORS.BLUE,
-        title: fill(words.title, { name: account.name }),
+        title: fill(words.title, { name: isolate(account.name) }),
         body: [
           isCached ? `${shared.maintenance}\n` : '',
           totalTroopLevels === 0 ? words.allMaxed : fill(words.levelsLeft, { levels: totalTroopLevels }),

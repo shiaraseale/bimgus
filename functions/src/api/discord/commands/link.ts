@@ -4,7 +4,7 @@ import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 import { LinkedAccount } from '../../../types/user';
 import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { log } from '../../../utils/log';
@@ -69,7 +69,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
           accent: COLORS.GREEN,
           title: words.title,
           body: [
-            fill(words.intro, { name: freshPlayer.name, tag: freshPlayer.tag }),
+            fill(words.intro, { name: isolate(freshPlayer.name), tag: freshPlayer.tag }),
             '',
             fill(words.townHall, { level: freshPlayer.townHallLevel }),
             fill(words.builderHall, { level: freshPlayer.builderHallLevel || words.noBuilderHall }),
@@ -80,7 +80,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
             ...(dmsEnabled ? [words.dmsTip] : []),
           ].join('\n'),
           thumbnail: CocAssetService.getTownHallUrl(freshPlayer.townHallLevel),
-          footer: fill(words.footer, { name: linkedAccount.name }),
+          footer: fill(words.footer, { name: isolate(linkedAccount.name) }),
         })
       )
     );

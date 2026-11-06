@@ -17,7 +17,7 @@ import { goldPassBoosts } from '../../../services/goldPass';
 import { columnRows, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -210,7 +210,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
 
     // A card per village, each list in full
     const shownCards = villageCards(cards, CARDS_BUDGET, {
-      author: fill(hasImported ? words.authorImported : words.authorCaps, { name: account.name }),
+      author: fill(hasImported ? words.authorImported : words.authorCaps, { name: isolate(account.name) }),
       thumbnail: CocAssetService.getTownHallUrl(th),
       footer: accountFooter(account),
       buttons: defButtons,

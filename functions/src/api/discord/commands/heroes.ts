@@ -4,7 +4,7 @@ import { PlayerTrackingService } from '../../../services/playerTrackingService';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { formatProgressBar } from '../ui';
 
@@ -80,7 +80,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: heroSummary.homeMaxed ? COLORS.GOLD : COLORS.BLUE,
-        title: fill(words.title, { name: account.name }),
+        title: fill(words.title, { name: isolate(account.name) }),
         body: [
           isCached ? shared.maintenance : '',
           fill(words.levelsLeft, {

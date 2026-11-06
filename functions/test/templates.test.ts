@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { EMOJIS } from '../src/constants/emojis';
-import { accountFooter, fill } from '../src/templates';
+import { accountFooter, fill, isolate, isolatePadded } from '../src/templates';
+import warWords from '../src/templates/war.json';
 
 const src = join(__dirname, '../src');
 const templateFiles = readdirSync(join(src, 'templates')).filter((f) => f.endsWith('.json'));
@@ -38,7 +39,34 @@ describe('fill', () => {
 
 describe('accountFooter', () => {
   it('names the account and its tag', () => {
-    expect(accountFooter({ name: 'Avery', playerTag: '#P0' })).toBe('Account: Avery (#P0)');
+    expect(accountFooter({ name: 'Avery', playerTag: '#P0' })).toBe('Account: \u2068Avery\u2069 (#P0)');
+  });
+});
+
+describe('isolate', () => {
+  it('wraps text in FIRST STRONG ISOLATE and POP DIRECTIONAL ISOLATE', () => {
+    expect(isolate('البرق')).toBe('\u2068البرق\u2069');
+  });
+
+  it('keeps the attack body intact while isolating an Arabic attacker name', () => {
+    const arabicName = 'البرق';
+    const defenderName = 'paka';
+    const body = fill(warWords.attack.body, {
+      attackerPosition: 6,
+      attacker: isolate(arabicName),
+      attackerTh: 15,
+      defenderPosition: 6,
+      defender: isolate(defenderName),
+      defenderTh: 12,
+    });
+    expect(body).toBe('**#6 \u2068البرق\u2069** (TH15) → **#6 \u2068paka\u2069** (TH12)');
+    expect(body.includes('\u2068' + arabicName + '\u2069')).toBe(true);
+    expect(body.replace(/[\u2068\u2069]/g, '')).toBe('**#6 البرق** (TH15) → **#6 paka** (TH12)');
+  });
+
+  it('pads outside the marks, by the width of the text alone', () => {
+    expect(isolatePadded('البرق', 8)).toBe('\u2068البرق\u2069   ');
+    expect(isolatePadded('A longer name', 4)).toBe('\u2068A longer name\u2069');
   });
 });
 

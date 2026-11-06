@@ -2,7 +2,7 @@ import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -49,7 +49,10 @@ export async function execute(ctx: CommandContext): Promise<any> {
         accent: COLORS.RED,
         title: words.title,
         body: [
-          fill(words.body, { name: result.removedName || result.removedTag || '', tag: result.removedTag || '' }),
+          fill(words.body, {
+            name: result.removedName ? isolate(result.removedName) : (result.removedTag || ''),
+            tag: result.removedTag || '',
+          }),
           '',
           remainingMsg,
         ].join('\n'),

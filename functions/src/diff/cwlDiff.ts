@@ -3,7 +3,7 @@ import { CwlSnapshotDoc, BotConfigDoc, CwlSeasonSummary, CwlPlayerSummary, CwlUn
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, codeSafe, fitLines, layoutMessage, packMessages } from '../services/discordLayout';
 import words from '../templates/cwl.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { CocService } from '../services/cocService';
 import { findOurCwlWar } from './cwlWars';
 import { buildAttackCard, FlatAttack, formatCoCTime, lineupBlock, positionList, scoreLine } from './warDiff';
@@ -199,7 +199,7 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   );
   if (flawless) {
     highlightLines.push(
-      fill(words.season.flawless, { name: flawless.name, th: flawless.townhallLevel, stars: flawless.totalStars })
+      fill(words.season.flawless, { name: isolate(flawless.name), th: flawless.townhallLevel, stars: flawless.totalStars })
     );
   }
 
@@ -208,11 +208,11 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   if (goliathHit && goliathHit.thDiff >= 2) {
     highlightLines.push(
       fill(words.season.biggestUpset, {
-        attacker: goliathHit.attackerName,
+        attacker: isolate(goliathHit.attackerName),
         attackerTh: goliathHit.attackerTh,
         stars: goliathHit.stars,
         destruction: goliathHit.destruction,
-        defender: goliathHit.defenderName,
+        defender: isolate(goliathHit.defenderName),
         defenderTh: goliathHit.defenderTh,
         round: goliathHit.round,
       })
@@ -225,7 +225,7 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   if (anchor) {
     highlightLines.push(
       fill(words.season.anchor, {
-        name: anchor.name,
+        name: isolate(anchor.name),
         th: anchor.townhallLevel,
         stars: anchor.totalStars,
         perfectHits: anchor.perfectHits,
@@ -247,7 +247,7 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   const underdogLines = underdogs.slice(0, 5).map((p, idx) =>
     fill(words.season.underdog, {
       medal: medals[idx],
-      name: p.name,
+      name: isolate(p.name),
       th: p.townhallLevel,
       stars: p.uStars,
       hits: `${p.underdogHits.length} hit${p.underdogHits.length === 1 ? '' : 's'}`,
@@ -256,7 +256,7 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
   );
 
   const missed = summary.missedAttacksList.map((m) =>
-    fill(words.season.missedPlayer, { name: m.name, missed: m.missedAttacks, rounds: m.roundsRostered })
+    fill(words.season.missedPlayer, { name: isolate(m.name), missed: m.missedAttacks, rounds: m.roundsRostered })
   );
 
   const overviewCard = card({
@@ -277,21 +277,22 @@ export async function sendCwlSeasonSummaryDiscord(summary: CwlSeasonSummary, web
       underdogLines.length > 0 ? [words.season.underdogsHeading, ...underdogLines].join('\n') : '',
       missed.length > 0 ? fill(words.season.missedAttacks, { names: missed.join(', ') }) : words.season.noMissedAttacks,
     ],
-    footer: summary.clanName,
+    footer: isolate(summary.clanName),
   });
 
   // Monospace keeps the columns in line, padded to the widest of each; the star sits between two runs
   // of it because an emoji's width can't be relied on inside
-  const players = summary.playerSummaries.map((p) => `${codeSafe(p.name)} (TH${p.townhallLevel})`);
+  // Widths come from the text alone: the isolate marks around each name take no room on screen
+  const players = summary.playerSummaries.map((p) => ({ name: codeSafe(p.name), th: ` (TH${p.townhallLevel})` }));
   const averages = summary.playerSummaries.map((p) => `${p.avgDestruction}%`);
-  const playerWidth = Math.max(...players.map((p) => p.length));
+  const playerWidth = Math.max(...players.map((p) => p.name.length + p.th.length));
   const averageWidth = Math.max(...averages.map((a) => a.length));
   const starWidth = Math.max(...summary.playerSummaries.map((p) => String(p.totalStars).length));
   const leaderboardLines = summary.playerSummaries.map((p, idx) => {
     const rank = `${String(idx + 1).padStart(2, ' ')}.`;
     const stars = String(p.totalStars).padStart(starWidth);
     const attacks = `${p.attacksUsed}/${p.roundsRostered}`;
-    return `\`${rank} ${players[idx].padEnd(playerWidth)}  ${stars}\` ⭐ \`${attacks}  ${averages[idx].padStart(averageWidth)}\``;
+    return `\`${rank} ${isolate(players[idx].name)}${players[idx].th.padEnd(playerWidth - players[idx].name.length)}  ${stars}\` ⭐ \`${attacks}  ${averages[idx].padStart(averageWidth)}\``;
   });
   const leaderboardCard = card({
     accent: COLORS.BLUE,
@@ -332,7 +333,7 @@ export async function processCwlDiff(
 
   // 1. Announce CWL Group Draw
   if (!announcedGroup && webhookUrl && config.notificationsEnabled.cwlGroup) {
-    const others = cwlGroup.clans.filter((c) => c.tag.toUpperCase() !== clanTag.toUpperCase()).map((c) => c.name);
+    const others = cwlGroup.clans.filter((c) => c.tag.toUpperCase() !== clanTag.toUpperCase()).map((c) => isolate(c.name));
 
     const groupCard = card({
       title: fill(words.group.title, { season: cwlGroup.season }),
@@ -378,7 +379,7 @@ export async function processCwlDiff(
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const matchupCard = card({
-              title: fill(words.matchup.title, { round: roundNum, enemy: enemyClan.name }),
+              title: fill(words.matchup.title, { round: roundNum, enemy: isolate(enemyClan.name) }),
               body: [
                 fill(words.matchup.size, { size: war.teamSize, clanLevel: enemyClan.clanLevel }),
                 war.state === 'preparation' && startMs
@@ -403,7 +404,7 @@ export async function processCwlDiff(
             const endMs = war.endTime ? new Date(formatCoCTime(war.endTime)).getTime() : null;
 
             const battleCard = card({
-              title: fill(words.battleDay.title, { round: roundNum, enemy: enemyClan.name }),
+              title: fill(words.battleDay.title, { round: roundNum, enemy: isolate(enemyClan.name) }),
               body: endMs ? fill(words.battleDay.body, { time: discordTime(endMs) }) : words.battleDay.bodyNoEnd,
               accent: COLORS.GOLD,
               thumbnail: ourClan.badgeUrls?.large,
@@ -516,7 +517,7 @@ export async function processCwlDiff(
             ].filter(Boolean);
 
             const roundCard = card({
-              title: fill(outcome, { round: roundNum, enemy: enemyClan.name }),
+              title: fill(outcome, { round: roundNum, enemy: isolate(enemyClan.name) }),
               body: [
                 scoreLine(ourClan, enemyClan),
                 fill(words.round.attacksUsed, {

@@ -4,7 +4,7 @@ import { DiscordService, COLORS } from '../services/discordService';
 import { DiscordButtonComponent, DiscordContainerComponent } from '../types/discord';
 import { card, codeSafe, fitLines, layoutMessage } from '../services/discordLayout';
 import words from '../templates/war.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { discordTime } from '../utils/discordTime';
 import type { WarAudit } from '../types/api';
 
@@ -30,7 +30,7 @@ interface ClanScore {
 export function positionList(members: Array<{ mapPosition: number; name: string }>): string {
   return [...members]
     .sort((a, b) => a.mapPosition - b.mapPosition)
-    .map((m) => `#${m.mapPosition} ${m.name}`)
+    .map((m) => `#${m.mapPosition} ${isolate(m.name)}`)
     .join(', ');
 }
 
@@ -47,21 +47,26 @@ export function lineupBlock(ours: WarClan, theirs: WarClan): string {
   const size = Math.max(ours.members.length, theirs.members.length);
   if (size === 0) return '';
   const positions = Array.from({ length: size }, (_, i) => i + 1);
-  const who = (m?: WarClanMember, room = Infinity) => {
-    if (!m) return '–';
+  // A cell is the name and its "(TH15)", kept apart so only the name is isolated
+  type Cell = { name: string; th: string };
+  const who = (m?: WarClanMember, room = Infinity): Cell => {
+    if (!m) return { name: '', th: '–' };
     const name = codeSafe(m.name);
     const th = ` (TH${m.townhallLevel})`;
-    return name.length + th.length <= room ? name + th : `${name.slice(0, room - th.length - 1)}…${th}`;
+    return name.length + th.length <= room ? { name, th } : { name: `${name.slice(0, room - th.length - 1)}…`, th };
   };
-  const ourWidth = Math.max(...positions.map((p) => who(us.get(p)).length));
+  const width = (c: Cell) => c.name.length + c.th.length;
+  const show = (c: Cell, w: number) => (c.name ? isolate(c.name) : '') + c.th.padEnd(w - c.name.length);
+  const ourCells = positions.map((p) => who(us.get(p)));
+  const ourWidth = Math.max(...ourCells.map(width));
   // What's left of the row after the position, our column and " vs "
   const mirrors = positions.map((p) => who(them.get(p), LINEUP_ROW_WIDTH - 3 - ourWidth - 4));
-  const mirrorWidth = Math.max(...mirrors.map((m) => m.length));
+  const mirrorWidth = Math.max(...mirrors.map(width));
   const lines = positions.map(
     (p, i) =>
-      `\`${String(p).padStart(2, ' ')} ${who(us.get(p)).padEnd(ourWidth)} vs ${mirrors[i].padEnd(mirrorWidth)}\``
+      `\`${String(p).padStart(2, ' ')} ${show(ourCells[i], ourWidth)} vs ${show(mirrors[i], mirrorWidth)}\``
   );
-  const heading = fill(words.lineupHeading, { ours: ours.name, theirs: theirs.name });
+  const heading = fill(words.lineupHeading, { ours: isolate(ours.name), theirs: isolate(theirs.name) });
   return [heading, ...fitLines(lines, LINEUP_BUDGET)].join('\n');
 }
 
@@ -93,10 +98,10 @@ export function buildAttackCard(
     }),
     body: fill(words.attack.body, {
       attackerPosition: attacker.mapPosition,
-      attacker: attacker.name,
+      attacker: isolate(attacker.name),
       attackerTh: attacker.townhallLevel,
       defenderPosition: defender.mapPosition,
-      defender: defender.name,
+      defender: isolate(defender.name),
       defenderTh: defender.townhallLevel,
     }),
     footer: context
@@ -269,7 +274,7 @@ function buildWarMatchupCard(currentWar: CurrentWarResponse): DiscordContainerCo
 
   return card({
     accent: isPrep ? COLORS.PURPLE : COLORS.GOLD,
-    title: fill(isPrep ? words.matchup.declared : words.matchup.battleDay, { enemy: opponent.name }),
+    title: fill(isPrep ? words.matchup.declared : words.matchup.battleDay, { enemy: isolate(opponent.name) }),
     body: [
       fill(words.matchup.size, { size: teamSize, clanLevel: opponent.clanLevel }),
       isPrep && startMs ? fill(words.matchup.starts, { time: discordTime(startMs) }) : '',
@@ -440,7 +445,7 @@ export function buildWarEndSummary(currentWar: CurrentWarResponse): WarEndSummar
       .map((w) =>
         fill(words.summary.wastedHit, {
           attackerPosition: w.attackerPos,
-          attacker: w.attackerName,
+          attacker: isolate(w.attackerName),
           defenderPosition: w.defenderPos,
         })
       )
@@ -453,7 +458,7 @@ export function buildWarEndSummary(currentWar: CurrentWarResponse): WarEndSummar
 
   const summaryCard = card({
     accent: outcomeColor,
-    title: fill(outcome, { enemy: currentWar.opponent.name }),
+    title: fill(outcome, { enemy: isolate(currentWar.opponent.name) }),
     body: [
       scoreLine(currentWar.clan, currentWar.opponent),
       fill(words.summary.attacksUsed, {

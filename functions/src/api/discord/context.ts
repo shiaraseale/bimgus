@@ -8,7 +8,7 @@ import { getPlayerWithFallback } from '../../services/playerFallback';
 import { isDmPaused } from '../../services/upgradeNotifier';
 import { prependNotice, withFlags } from '../../services/discordLayout';
 import commandWords from '../../templates/commands.json';
-import { fill } from '../../templates';
+import { fill, isolate } from '../../templates';
 import { LinkedAccount, UserDoc } from '../../types/user';
 import { log } from '../../utils/log';
 
@@ -40,7 +40,7 @@ export function forEachLinkedAccount(
           await ctx.sendAccountMessage(idx, {
             content: fill(commandWords.errors.couldNotLoad, {
               what: label,
-              name: account.name,
+              name: isolate(account.name),
               tag: account.playerTag,
               reason: accountErr.message || commandWords.errors.apiError,
             }),

@@ -20,7 +20,7 @@ import { dmToggleButton } from '../api/discord/components/dmToggle';
 import { log } from '../utils/log';
 import { card, layoutMessage } from '../services/discordLayout';
 import dmWords from '../templates/dms.json';
-import { accountFooter, fill } from '../templates';
+import { accountFooter, fill, isolate } from '../templates';
 import { DiscordWebhookPayload } from '../types/discord';
 import { LinkedAccount } from '../types/user';
 
@@ -38,7 +38,7 @@ export function buildRosterDm(
   return layoutMessage(
     card({
       accent: COLORS.GOLD,
-      title: fill(dmWords.roster.title, { account: account.name, enemy: opponentName }),
+      title: fill(dmWords.roster.title, { account: isolate(account.name), enemy: isolate(opponentName) }),
       body: [
         fill(dmWords.roster.position, { position: warMember.mapPosition, th: warMember.townhallLevel, size: teamSize }),
         fill(dmWords.roster.battleDay, { time: discordTime(warStartTimeMs) }),

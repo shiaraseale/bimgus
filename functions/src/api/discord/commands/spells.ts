@@ -5,7 +5,7 @@ import { goldPassBoosts } from '../../../services/goldPass';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { CommandContext, forEachLinkedAccount } from '../context';
 import { itemRow } from '../ui';
 
@@ -55,7 +55,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: totalSpellLevels === 0 ? COLORS.GREEN : COLORS.PURPLE,
-        title: fill(words.title, { name: account.name }),
+        title: fill(words.title, { name: isolate(account.name) }),
         body: [
           isCached ? `${shared.maintenance}\n` : '',
           totalSpellLevels === 0

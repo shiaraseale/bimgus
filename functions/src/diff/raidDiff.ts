@@ -13,7 +13,7 @@ import {
   splitLines,
 } from '../services/discordLayout';
 import words from '../templates/raids.json';
-import { fill } from '../templates';
+import { fill, isolate, isolatePadded } from '../templates';
 import { formatCoCTime } from './warDiff';
 import { discordTime } from '../utils/discordTime';
 
@@ -41,7 +41,7 @@ function districtLines(districts: RaidLogEntry['districts'], withNames: boolean)
     const hits = String(d.attackCount).padStart(hitWidth);
     const row = `\`${names[i].padEnd(nameWidth)}  ${percent}  ${hits}\` 🗡️ \`${golds[i].padStart(goldWidth)}\` ${EMOJIS.CAPITAL_GOLD}`;
     // The API lists the latest attack first
-    const attackers = [...(d.attacks ?? [])].reverse().map((a) => a.attacker.name);
+    const attackers = [...(d.attacks ?? [])].reverse().map((a) => isolate(a.attacker.name));
     return withNames && attackers.length > 0 ? `${row}\n-# ${attackers.join(', ')}` : row;
   });
 }
@@ -73,8 +73,8 @@ function buildCapitalCard(
   return card({
     accent: isPartialWeekendEnd ? COLORS.PURPLE : COLORS.GOLD,
     title: isPartialWeekendEnd
-      ? fill(words.capital.unfinished, { enemy: raid.defender.name, percent: percentCleared })
-      : fill(words.capital.conquered, { enemy: raid.defender.name }),
+      ? fill(words.capital.unfinished, { enemy: isolate(raid.defender.name), percent: percentCleared })
+      : fill(words.capital.conquered, { enemy: isolate(raid.defender.name) }),
     body: fill(words.capital.body, {
       destroyed: raid.districtsDestroyed,
       total: raid.districtCount,
@@ -109,14 +109,14 @@ function buildWeekendRecapCards(
   const goldWidth = Math.max(...golds.map((g) => g.length));
   const ranking = raiders.map((m, i) => {
     const rank = `${String(i + 1).padStart(2, ' ')}.`;
-    const name = codeSafe(m.name).padEnd(nameWidth);
+    const name = isolatePadded(codeSafe(m.name), nameWidth);
     const attacks = `${m.attacks}/${m.attackLimit + m.bonusAttackLimit}`;
     return `\`${rank} ${name}  ${attacks}\` 🗡️ \`${golds[i].padStart(goldWidth)}\` ${EMOJIS.CAPITAL_GOLD}`;
   });
   const raided = new Set(raiders.map((m) => m.tag));
   const missed = clanMembers
     .filter((m) => !raided.has(m.tag))
-    .map((m) => m.name)
+    .map((m) => isolate(m.name))
     .sort((a, b) => a.localeCompare(b));
   const missedLine =
     missed.length > 0

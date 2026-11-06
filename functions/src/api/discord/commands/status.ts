@@ -16,7 +16,7 @@ import { log } from '../../../utils/log';
 import { card, columnRows, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { DiscordButtonComponent, DiscordStringSelectComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext } from '../context';
@@ -304,7 +304,7 @@ function statusMenus(
       placeholder: words.menus.account,
       // Discord allows 25 options
       options: accounts.slice(0, 25).map((a) => ({
-        label: a.name,
+        label: isolate(a.name),
         value: a.playerTag,
         description: fill(words.menus.accountRow, { tag: a.playerTag, level: a.townHallLevel }),
         default: a.playerTag === account.playerTag,
@@ -427,8 +427,8 @@ export function buildStatusMessage(
     {
       author:
         view.area === 'overview'
-          ? fill(words.author, { name: account.name })
-          : fill(words.authorArea, { name: account.name, area: label }),
+          ? fill(words.author, { name: isolate(account.name) })
+          : fill(words.authorArea, { name: isolate(account.name), area: label }),
       thumbnail: isHome ? CocAssetService.getTownHallUrl(th) : CocAssetService.getBuilderHallUrl(bh),
       footer: accountFooter(account),
       menus: statusMenus(accounts, account, view, { th, bh }),
@@ -448,10 +448,10 @@ function statusErrorMessage(accounts: LinkedAccount[], account: LinkedAccount, v
   return layoutMessage(
     card({
       accent: VILLAGE_COLORS[fitted.village],
-      author: fill(words.author, { name: account.name }),
+      author: fill(words.author, { name: isolate(account.name) }),
       title: villageHeading(fitted.village, fitted.village === 'home' ? account.townHallLevel : bh),
       body: fill(words.couldNotLoad, {
-        name: account.name,
+        name: isolate(account.name),
         tag: account.playerTag,
         reason: err?.message || commandWords.errors.apiError,
       }),

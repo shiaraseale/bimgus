@@ -60,7 +60,8 @@ const botConfig: BotConfigDoc = {
   warReminderHours: [4],
 };
 
-const NAMES = ['Avery', 'Blake', 'Casey', 'Devon', 'Emery', 'Finley', 'Harper', 'Jordan', 'Kendall', 'Logan'];
+// Devon's name is in Arabic, to check that right-to-left names don't flip a line's layout on any device
+const NAMES = ['Avery', 'Blake', 'Casey', 'ديفون', 'Emery', 'Finley', 'Harper', 'Jordan', 'Kendall', 'Logan'];
 
 const clanMember = (i: number, extra: object = {}) => ({
   tag: `#P${i}`,
@@ -113,8 +114,9 @@ async function previewClanGames() {
 const warClan = (tag: string, name: string, size: number, attacks: (i: number) => WarAttack[]): WarClan => {
   const members = Array.from({ length: size }, (_, i) => ({
     tag: `${tag}-${i + 1}`,
-    // #3 on each side has the longest name the game allows, to show the lineup at its widest
-    name: i === 2 ? (tag === CLAN ? 'Kendall Hawkins' : 'Rival Longnames') : tag === CLAN ? NAMES[i] : `Rival ${i + 1}`,
+    // #3 on each side has the longest name the game allows, to show the lineup at its widest, and their
+    // #1 an Arabic one
+    name: i === 2 ? (tag === CLAN ? 'Kendall Hawkins' : 'Rival Longnames') : tag === CLAN ? NAMES[i] : i === 0 ? 'البرق' : `Rival ${i + 1}`,
     mapPosition: i + 1,
     // The rivals' Town Halls run a little behind ours, so the lineup shows some mismatches
     townhallLevel: 15 - Math.floor((tag === CLAN ? i : i + 1) / 3),

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../config';
 import { log } from '../utils/log';
+import { isolate } from '../templates';
 
 export interface PlayerRoastData {
   name: string;
@@ -155,12 +156,13 @@ RULES:
         return bScore - aScore;
       });
       const p = sorted[0];
+      const name = isolate(p.name);
 
       const accountRoasts = [
-        `${target.discordMention} On your account **${p.name}**, you've received **${p.donationsReceived}** troops and only donated **${p.donations}**—your clanmates aren't your friends, they're your unpaid charity workers!`,
-        `${target.discordMention} Looking at **${p.name}**, you have **${p.attackWins ?? 0} attack wins** this whole season. Your troops aren't invading enemy bases, they're taking guided museum tours!`,
-        `${target.discordMention} Your account **${p.name}** has the offensive firepower of an angry goblin with a toothpick. Even the enemy Clan Castle troops yawn when you deploy!`,
-        `${target.discordMention} I analyzed your account **${p.name}**—even a blindfolded Wall Breaker has better attack pathing than whatever you've been doing in war!`,
+        `${target.discordMention} On your account **${name}**, you've received **${p.donationsReceived}** troops and only donated **${p.donations}**—your clanmates aren't your friends, they're your unpaid charity workers!`,
+        `${target.discordMention} Looking at **${name}**, you have **${p.attackWins ?? 0} attack wins** this whole season. Your troops aren't invading enemy bases, they're taking guided museum tours!`,
+        `${target.discordMention} Your account **${name}** has the offensive firepower of an angry goblin with a toothpick. Even the enemy Clan Castle troops yawn when you deploy!`,
+        `${target.discordMention} I analyzed your account **${name}**—even a blindfolded Wall Breaker has better attack pathing than whatever you've been doing in war!`,
       ];
       return accountRoasts[Math.floor(Math.random() * accountRoasts.length)];
     }

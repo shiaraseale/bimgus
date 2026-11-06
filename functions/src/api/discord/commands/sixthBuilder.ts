@@ -5,7 +5,7 @@ import { VillageImportService } from '../../../services/villageImportService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
 import shared from '../../../templates/shared.json';
-import { accountFooter, fill } from '../../../templates';
+import { accountFooter, fill, isolate } from '../../../templates';
 import { DiscordButtonComponent } from '../../../types/discord';
 import { bobDefenseButton } from '../components/bobDefense';
 import { CommandContext, forEachLinkedAccount } from '../context';
@@ -63,7 +63,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
     const message = layoutMessage(
       card({
         accent: bob.unlocked ? COLORS.GOLD : COLORS.BLUE,
-        title: fill(words.title, { name: account.name }),
+        title: fill(words.title, { name: isolate(account.name) }),
         body: [isCached ? shared.maintenance : '', statusBanner, bbJsonNotice ?? ''].filter(Boolean).join('\n'),
         thumbnail: CocAssetService.getBobUrl(
           bob.unlocked ? 4 : Object.values(bob.tasks).filter((t: any) => t.completed).length

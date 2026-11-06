@@ -74,7 +74,7 @@ describe('processClanGamesDiff start announcement', () => {
     await processClanGamesDiff(members, withBaseline, config, maxed, '#CLAN', utc('2026-11-22T10:00:00'));
     const maxedMsg = sendWebhook.mock.calls
       .map(([, p]: any[]) => p)
-      .find((p: any) => headings(p).includes('🌟 Player maxed Clan Games'));
+      .find((p: any) => headings(p).includes('🌟 \u2068Player\u2069 maxed Clan Games'));
     expect(texts(maxedMsg)).not.toContain('Role');
   });
 

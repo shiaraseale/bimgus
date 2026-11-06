@@ -3,7 +3,7 @@ import { ClanGamesSnapshotDoc, BotConfigDoc } from '../types/db';
 import { DiscordService, COLORS } from '../services/discordService';
 import { card, layoutMessage } from '../services/discordLayout';
 import words from '../templates/clanGames.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { CocService } from '../services/cocService';
 import { isClanGamesActive } from './clanGamesWindow';
 import { mapWithConcurrency } from '../utils/concurrency';
@@ -100,7 +100,7 @@ export async function processClanGamesDiff(
 
         if (webhookUrl && config.notificationsEnabled.clanGamesMaxers) {
           const maxCard = card({
-            title: fill(words.maxed.title, { name: member.name }),
+            title: fill(words.maxed.title, { name: isolate(member.name) }),
             body: fill(words.maxed.body, { maxPoints: MAX_CLAN_GAMES_POINTS.toLocaleString() }),
             footer: member.tag,
             accent: COLORS.GOLD,

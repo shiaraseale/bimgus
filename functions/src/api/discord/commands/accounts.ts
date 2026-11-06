@@ -2,7 +2,7 @@ import { COLORS } from '../../../services/discordService';
 import { CocAssetService } from '../../../services/cocAssetService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 import { LinkedAccount } from '../../../types/user';
 import { CommandContext } from '../context';
 
@@ -34,7 +34,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
       const accountList = accounts.map((a: LinkedAccount, idx: number) => {
         return fill(words.row, {
           index: idx + 1,
-          name: a.name,
+          name: isolate(a.name),
           tag: a.playerTag,
           th: a.townHallLevel,
           bh: a.builderHallLevel || words.noBuilderHall,

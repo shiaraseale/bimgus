@@ -6,7 +6,7 @@ import { card, packMessages } from '../services/discordLayout';
 import { CocAssetService } from '../services/cocAssetService';
 import words from '../templates/clan.json';
 import shared from '../templates/shared.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 
 export async function processClanDiff(
   currentClan: ClanResponse,
@@ -45,7 +45,7 @@ export async function processClanDiff(
         const joined = currentMembersMap[tag];
         cards.push(
           card({
-            title: fill(words.joined.title, { name: joined.name }),
+            title: fill(words.joined.title, { name: isolate(joined.name) }),
             body: fill(words.joined.body, {
               trophies: joined.trophies.toLocaleString(),
               role: formatRole(joined.role),
@@ -64,7 +64,7 @@ export async function processClanDiff(
         const left = prevMap[prevTag];
         cards.push(
           card({
-            title: fill(words.left.title, { name: left.name }),
+            title: fill(words.left.title, { name: isolate(left.name) }),
             body: fill(words.left.body, { role: formatRole(left.role), trophies: left.trophies.toLocaleString() }),
             accent: COLORS.RED,
             footer: fill(words.left.footer, { tag: left.tag, members: currentClan.members }),
@@ -84,7 +84,7 @@ export async function processClanDiff(
         const change = isPromotion ? words.promoted : words.demoted;
         cards.push(
           card({
-            title: fill(change.title, { name: curr.name }),
+            title: fill(change.title, { name: isolate(curr.name) }),
             body: fill(change.body, { from: formatRole(prev.role), to: formatRole(curr.role) }),
             accent: isPromotion ? COLORS.GOLD : COLORS.BLUE,
             footer: curr.tag,
@@ -102,7 +102,7 @@ export async function processClanDiff(
       if (prev && curr && prev.townHallLevel && curr.townHallLevel && curr.townHallLevel > prev.townHallLevel) {
         cards.push(
           card({
-            title: fill(words.townHall.title, { name: curr.name, level: curr.townHallLevel }),
+            title: fill(words.townHall.title, { name: isolate(curr.name), level: curr.townHallLevel }),
             body: words.townHall.body,
             accent: COLORS.GOLD,
             thumbnail: CocAssetService.getTownHallUrl(curr.townHallLevel),

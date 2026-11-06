@@ -16,7 +16,7 @@ import { Village } from '../services/gameDataService';
 import { packMessages, text } from '../services/discordLayout';
 import commandWords from '../templates/commands.json';
 import shared from '../templates/shared.json';
-import { fill } from '../templates';
+import { fill, isolate } from '../templates';
 import { log } from '../utils/log';
 import { discordTime } from '../utils/discordTime';
 
@@ -182,13 +182,13 @@ export async function runImportTask(
       const staleWarning = VillageImportService.isStale(village) ? words.stale : '';
       cards[0].intro = fill(words.exportTaken, { time: discordTime(village.exportTimestamp), stale: staleWarning });
       return villageCards(cards, perAccountBudget, {
-        author: fill(words.author, { name: account.name }),
+        author: fill(words.author, { name: isolate(account.name) }),
         thumbnail: CocAssetService.getTownHallUrl(village.townHallLevel),
-        footer: fill(words.footer, { name: account.name, tag: account.playerTag, file: fileName }),
+        footer: fill(words.footer, { name: isolate(account.name), tag: account.playerTag, file: fileName }),
         buttons: [
           importListButton(
             account.playerTag,
-            pending.length > 1 ? fill(words.fullListFor, { name: account.name }) : words.fullList
+            pending.length > 1 ? fill(words.fullListFor, { name: isolate(account.name) }) : words.fullList
           ),
         ],
       });

@@ -14,7 +14,7 @@ import { DiscordWebhookPayload } from '../types/discord';
 import { card, layoutMessage } from './discordLayout';
 import words from '../templates/dms.json';
 import shared from '../templates/shared.json';
-import { accountFooter, fill } from '../templates';
+import { accountFooter, fill, isolate } from '../templates';
 
 export type UpgradeKind = 'upgraded' | 'unlocked' | 'built' | 'expected';
 
@@ -170,7 +170,7 @@ export function buildUpgradeDm(account: LinkedAccount, events: UpgradeEvent[]): 
       accent: COLORS.GOLD,
       ...(events.length === 1
         ? {
-            title: fill(words.upgrades.titles[only.kind], { account: account.name }),
+            title: fill(words.upgrades.titles[only.kind], { account: isolate(account.name) }),
             body: describeEvent(only, hallTag(account, only.village)),
             thumbnail: CocAssetService.getThumbnail(
               only.assetName,
@@ -180,11 +180,11 @@ export function buildUpgradeDm(account: LinkedAccount, events: UpgradeEvent[]): 
             ),
           }
         : {
-            title: fill(words.upgrades.listTitle, { account: account.name, count: events.length }),
+            title: fill(words.upgrades.listTitle, { account: isolate(account.name), count: events.length }),
             body: byVillage(events).slice(0, 3700),
           }),
       footer: estimated
-        ? fill(words.upgrades.footerEstimated, { name: account.name, tag: account.playerTag })
+        ? fill(words.upgrades.footerEstimated, { name: isolate(account.name), tag: account.playerTag })
         : accountFooter(account),
       buttons: [DiscordService.openGameLinkButton(), dmToggleButton(account.playerTag)],
     })

@@ -155,7 +155,7 @@ describe('war reminders', () => {
     vi.spyOn(FirestoreService, 'getWarSnapshot').mockResolvedValue(snap);
     await runWarPingJob(CLAN);
     // 2.5 hours left: rounded down, as Discord's "in 2 hours" is
-    expect(sent.flatMap(headings)).toContainEqual('⚠️ ~2h left in the war vs Them');
+    expect(sent.flatMap(headings)).toContainEqual('⚠️ ~2h left in the war vs \u2068Them\u2069');
     expect(saved).toEqual([expect.objectContaining({ warId: getWarId(current), pingedMissedAttacks: true })]);
   });
 });

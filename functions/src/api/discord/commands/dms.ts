@@ -2,7 +2,7 @@ import { FirestoreService } from '../../../services/firestoreService';
 import { COLORS } from '../../../services/discordService';
 import { card, layoutMessage } from '../../../services/discordLayout';
 import commandWords from '../../../templates/commands.json';
-import { fill } from '../../../templates';
+import { fill, isolate } from '../../../templates';
 import { CommandContext } from '../context';
 
 /** Slash command definition, registered by scripts/registerCommands.ts */
@@ -54,7 +54,7 @@ export async function execute(ctx: CommandContext): Promise<any> {
         title: enabled ? words.onTitle : words.offTitle,
         body: [
           enabled ? words.onIntro : words.offIntro,
-          ...changed.map((a) => fill(words.row, { name: a.name, tag: a.playerTag })),
+          ...changed.map((a) => fill(words.row, { name: isolate(a.name), tag: a.playerTag })),
           '',
           fill(words.changeTip, { setting: enabled ? 'off' : 'on' }),
         ].join('\n'),
