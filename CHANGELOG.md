@@ -2,6 +2,20 @@
 
 What's new in Bimgus, newest first. Each release is tagged `vYYYY.MM.DD`, the day it went live (with `.2` for a second release that day), and is also listed on the repository's Releases page. Changes from before these notes started are in the commit history.
 
+## v2026.11.06 (6 November 2026)
+
+### For clan members
+
+**Names written right to left no longer scramble a message on phones.** When a line started with an Arabic name, Discord on Android laid out the whole line right to left. It was pushed to the right edge and read backwards, `#6 paka (TH12) → (TH15) البرق #6`, while desktop showed it the right way round. Every device now shows `#6 البرق (TH15) → #6 paka (TH12)`, with the arrow from attacker to defender.
+
+- This covers every message with a player or clan name in it: the clan feed, war and CWL cards, reminders, raid weekends, Clan Games, DMs and slash command replies.
+- The war lineup, CWL leaderboard and raid ranking still line up in neat columns.
+
+### If you run your own copy
+
+- Deploy the functions: `firebase deploy --only functions`. The slash commands and dashboard haven't changed, so there's nothing to re-register.
+- Names are wrapped in invisible Unicode marks (U+2068 and U+2069) when a message is built, not in the template files, so your edited wording needs no changes.
+
 ## v2026.11.01.2 (1 November 2026)
 
 ### For clan members
